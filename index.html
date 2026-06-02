@@ -9,58 +9,128 @@
     body { background: #000; overflow: hidden; font-family: 'Arial', sans-serif; }
     canvas { display: block; }
 
+    /* ── 상단 HUD ── */
     #ui {
       position: fixed;
       top: 0; left: 0; right: 0;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 16px 20px;
+      padding: 14px 16px;
       pointer-events: none;
       z-index: 10;
+      gap: 10px;
     }
 
     #hp-container {
       background: rgba(0,0,0,0.6);
       border: 2px solid #fff;
       border-radius: 12px;
-      padding: 10px 16px;
-      min-width: 200px;
+      padding: 10px 14px;
+      min-width: 160px;
+      flex-shrink: 0;
     }
-    #hp-label { color: #fff; font-size: 12px; margin-bottom: 6px; letter-spacing: 1px; }
-    #hp-bar-bg {
-      background: #333;
-      border-radius: 6px;
-      height: 18px;
-      overflow: hidden;
-    }
+    #hp-label { color: #fff; font-size: 11px; margin-bottom: 5px; letter-spacing: 1px; }
+    #hp-bar-bg { background: #333; border-radius: 6px; height: 16px; overflow: hidden; }
     #hp-bar {
       height: 100%;
       background: linear-gradient(90deg, #ff4444, #ff8800);
       border-radius: 6px;
       transition: width 0.2s, background 0.3s;
     }
-    #hp-text { color: #fff; font-size: 11px; margin-top: 4px; text-align: right; }
+    #hp-text { color: #fff; font-size: 10px; margin-top: 3px; text-align: right; }
 
     #stage-info {
       background: rgba(0,0,0,0.6);
       border: 2px solid #fff;
       border-radius: 12px;
-      padding: 10px 16px;
+      padding: 10px 14px;
       text-align: center;
+      flex-shrink: 0;
     }
-    #stage-text { color: #fff; font-size: 20px; font-weight: bold; }
+    #stage-text { color: #fff; font-size: 18px; font-weight: bold; }
     #stage-sub { color: #aaa; font-size: 11px; margin-top: 2px; }
 
+    /* 점수 + 조작 힌트를 우측에 세로로 쌓기 */
+    #ui-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    #score-ui {
+      background: rgba(0,0,0,0.6);
+      border: 2px solid #7c3aed;
+      border-radius: 12px;
+      padding: 8px 14px;
+      color: #a78bfa;
+      font-size: 13px;
+      font-weight: bold;
+      pointer-events: none;
+      display: none;
+      white-space: nowrap;
+    }
     #controls-hint {
       background: rgba(0,0,0,0.6);
       border: 2px solid #555;
       border-radius: 12px;
-      padding: 10px 14px;
+      padding: 8px 12px;
       color: #ccc;
       font-size: 11px;
       line-height: 1.8;
     }
+    @media (pointer: coarse) { #controls-hint { display: none; } }
+
+    /* ── 터치 컨트롤 ── */
+    #touch-controls {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      display: none;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 24px 32px;
+      pointer-events: none;
+      z-index: 20;
+    }
+    @media (pointer: coarse) { #touch-controls { display: flex; } }
+
+    #joystick-zone {
+      position: relative;
+      width: 130px; height: 130px;
+      pointer-events: all;
+    }
+    #joystick-base {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.25);
+      border-radius: 50%;
+    }
+    #joystick-knob {
+      position: absolute;
+      width: 52px; height: 52px;
+      background: rgba(167,139,250,0.7);
+      border: 2px solid #a78bfa;
+      border-radius: 50%;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      transition: background 0.1s;
+    }
+
+    #jump-btn {
+      width: 90px; height: 90px;
+      background: rgba(124,58,237,0.6);
+      border: 3px solid #a78bfa;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 28px;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: all;
+      user-select: none;
+      -webkit-user-select: none;
+      box-shadow: 0 0 20px rgba(124,58,237,0.5);
+    }
+    #jump-btn:active { background: rgba(167,139,250,0.8); transform: scale(0.95); }
 
     #overlay {
       position: fixed;
@@ -180,25 +250,10 @@
     #score-display .score-big { font-size: 36px; font-weight: bold; color: #a78bfa; }
     #score-display .score-breakdown { font-size: 12px; color: #888; margin-top: 4px; }
 
-    #score-ui {
-      position: fixed;
-      top: 0; right: 0;
-      background: rgba(0,0,0,0.6);
-      border: 2px solid #555;
-      border-radius: 0 0 0 12px;
-      padding: 8px 14px;
-      color: #a78bfa;
-      font-size: 13px;
-      font-weight: bold;
-      pointer-events: none;
-      z-index: 10;
-      display: none;
-    }
   </style>
 </head>
 <body>
 <div id="overlay"><!-- 내용은 JS로 렌더링 --></div>
-<div id="score-ui">SCORE: <span id="score-val-ui">0</span></div>
 
 <div id="damage-flash"></div>
 <div id="level-banner">
@@ -216,11 +271,23 @@
     <div id="stage-text">STAGE 1</div>
     <div id="stage-sub">난이도: 쉬움</div>
   </div>
-  <div id="controls-hint">
-    WASD / 방향키: 이동<br>
-    SPACE: 점프<br>
-    마우스: 카메라
+  <div id="ui-right">
+    <div id="score-ui">SCORE: <span id="score-val-ui">0</span></div>
+    <div id="controls-hint">
+      WASD / 방향키: 이동<br>
+      SPACE: 점프<br>
+      마우스: 카메라
+    </div>
   </div>
+</div>
+
+<!-- 터치 컨트롤 (모바일/아이패드) -->
+<div id="touch-controls">
+  <div id="joystick-zone">
+    <div id="joystick-base"></div>
+    <div id="joystick-knob"></div>
+  </div>
+  <div id="jump-btn">⬆</div>
 </div>
 
 <script type="importmap">
@@ -233,6 +300,81 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
+
+// ─────────────────────────────────────────────
+// SOUND ENGINE (Web Audio API 합성음)
+// ─────────────────────────────────────────────
+const SFX = (() => {
+  let ctx = null;
+  function ac() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function osc(freq, type, gainVal, duration, freqEnd, startTime) {
+    const c = ac();
+    const t = startTime ?? c.currentTime;
+    const g = c.createGain();
+    g.gain.setValueAtTime(gainVal, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    g.connect(c.destination);
+    const o = c.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, t + duration);
+    o.connect(g);
+    o.start(t);
+    o.stop(t + duration + 0.05);
+  }
+  function noise(gainVal, duration, startTime) {
+    const c = ac();
+    const t = startTime ?? c.currentTime;
+    const buf = c.createBuffer(1, c.sampleRate * duration, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const g = c.createGain();
+    g.gain.setValueAtTime(gainVal, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    const filt = c.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.value = 200;
+    src.connect(filt);
+    filt.connect(g);
+    g.connect(c.destination);
+    src.start(t);
+    src.stop(t + duration + 0.05);
+  }
+  return {
+    jump() {
+      osc(280, 'sine', 0.25, 0.18, 520);
+    },
+    land() {
+      noise(0.18, 0.07);
+      osc(90, 'sine', 0.3, 0.12, 50);
+    },
+    damage() {
+      osc(180, 'sawtooth', 0.35, 0.12, 80);
+      osc(120, 'square',   0.2,  0.18, 60, ac().currentTime + 0.05);
+    },
+    stageClear() {
+      const c = ac();
+      const notes = [523, 659, 784, 1047];
+      notes.forEach((f, i) => osc(f, 'sine', 0.3, 0.3, null, c.currentTime + i * 0.13));
+    },
+    gameClear() {
+      const c = ac();
+      const melody = [523,659,784,659,784,1047,784,1047,1319];
+      melody.forEach((f, i) => osc(f, 'sine', 0.28, 0.35, null, c.currentTime + i * 0.12));
+    },
+    gameOver() {
+      const c = ac();
+      const notes = [392, 330, 294, 220];
+      notes.forEach((f, i) => osc(f, 'triangle', 0.3, 0.4, f * 0.7, c.currentTime + i * 0.18));
+    },
+  };
+})();
 
 // ─────────────────────────────────────────────
 // GLOBALS
@@ -389,6 +531,92 @@ function updateScoreUI() {
   const live = sessionScore + calcScore();
   document.getElementById('score-val-ui').textContent = live.toLocaleString();
 }
+
+// ── 터치 컨트롤 ──
+(function setupTouch() {
+  const zone   = document.getElementById('joystick-zone');
+  const knob   = document.getElementById('joystick-knob');
+  const jumpEl = document.getElementById('jump-btn');
+
+  let joyId = null;
+  let joyOrigin = { x: 0, y: 0 };
+  const DEAD = 10, MAX_R = 52;
+
+  // 조이스틱
+  zone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    joyId = t.identifier;
+    const rect = zone.getBoundingClientRect();
+    joyOrigin.x = rect.left + rect.width / 2;
+    joyOrigin.y = rect.top  + rect.height / 2;
+  }, { passive: false });
+
+  zone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyId) continue;
+      const dx = t.clientX - joyOrigin.x;
+      const dy = t.clientY - joyOrigin.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const clamped = Math.min(dist, MAX_R);
+      const angle = Math.atan2(dy, dx);
+      knob.style.transform = `translate(calc(-50% + ${Math.cos(angle)*clamped}px), calc(-50% + ${Math.sin(angle)*clamped}px))`;
+
+      if (dist > DEAD) {
+        const nx = dx / dist, ny = dy / dist;
+        // nx: 좌우, ny: 앞뒤 (-ny = 앞)
+        window._touchMove = { x: nx, y: ny };
+      } else {
+        window._touchMove = null;
+      }
+    }
+  }, { passive: false });
+
+  const endJoy = e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyId) {
+        joyId = null;
+        knob.style.transform = 'translate(-50%, -50%)';
+        window._touchMove = null;
+      }
+    }
+  };
+  zone.addEventListener('touchend', endJoy);
+  zone.addEventListener('touchcancel', endJoy);
+
+  // 점프 버튼
+  jumpEl.addEventListener('touchstart', e => {
+    e.preventDefault();
+    keys['Space'] = true;
+  }, { passive: false });
+  jumpEl.addEventListener('touchend',   e => { keys['Space'] = false; });
+
+  // 카메라 스와이프 (조이스틱·점프 영역 제외한 곳)
+  let camId = null, camPrev = { x: 0, y: 0 };
+  document.addEventListener('touchstart', e => {
+    for (const t of e.changedTouches) {
+      if (camId !== null) continue;
+      if (zone.contains(e.target) || jumpEl.contains(e.target)) continue;
+      camId = t.identifier;
+      camPrev = { x: t.clientX, y: t.clientY };
+    }
+  });
+  document.addEventListener('touchmove', e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier !== camId) continue;
+      cameraYaw   -= (t.clientX - camPrev.x) * 0.004;
+      cameraPitch -= (t.clientY - camPrev.y) * 0.004;
+      cameraPitch = Math.max(-0.8, Math.min(1.0, cameraPitch));
+      camPrev = { x: t.clientX, y: t.clientY };
+    }
+  });
+  document.addEventListener('touchend', e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === camId) camId = null;
+    }
+  });
+})();
 
 const GRAVITY = -0.012;
 const JUMP_FORCE = 0.30;
@@ -701,6 +929,11 @@ function updatePlayer() {
   if (keys['KeyS'] || keys['ArrowDown']) move.sub(forward);
   if (keys['KeyA'] || keys['ArrowLeft']) move.sub(right);
   if (keys['KeyD'] || keys['ArrowRight']) move.add(right);
+  // 터치 조이스틱
+  if (window._touchMove) {
+    move.add(forward.clone().multiplyScalar(-window._touchMove.y));
+    move.add(right.clone().multiplyScalar(window._touchMove.x));
+  }
   if (move.lengthSq() > 0) move.normalize().multiplyScalar(MOVE_SPEED);
 
   velocity.x = move.x;
@@ -714,6 +947,7 @@ function updatePlayer() {
     velocity.y = JUMP_FORCE;
     onGround = false;
     keys['Space'] = false;
+    SFX.jump();
   }
 
   // Move player
@@ -726,6 +960,7 @@ function updatePlayer() {
   }
 
   // Platform collision
+  const wasOnGround = onGround;
   onGround = false;
   const pBox = new THREE.Box3().setFromCenterAndSize(
     player.position,
@@ -749,6 +984,7 @@ function updatePlayer() {
         player.position.y = platTop + 0.5;
         velocity.y = 0;
         onGround = true;
+        if (!wasOnGround) SFX.land();
 
         if (plat.userData.isGoal) {
           nextStage();
@@ -773,6 +1009,7 @@ function updatePlayer() {
 
   // Fall death
   if (player.position.y < MAX_FALL) {
+    SFX.damage();
     takeDamage(30);
     respawn();
   }
@@ -787,6 +1024,7 @@ function takeDamage(amount) {
   if (invincibleTimer > 0) return;
   hp = Math.max(0, hp - amount);
   invincibleTimer = 60;
+  SFX.damage();
   updateHpBar();
   showDamageFlash();
   spawnDamageParticles();
@@ -850,6 +1088,7 @@ function nextStage() {
   currentStage++;
   stageStartTime = Date.now();
   const palette = STAGE_COLORS[Math.min(currentStage - 1, STAGE_COLORS.length - 1)];
+  SFX.stageClear();
   buildStage(currentStage);
   player.position.set(0, 2, 0);
   velocity.set(0, 0, 0);
@@ -862,6 +1101,7 @@ function gameClear() {
   gameActive = false;
   document.exitPointerLock();
   document.getElementById('score-ui').style.display = 'none';
+  SFX.gameClear();
   const finalScore = sessionScore;
   const rankings = addRanking(playerName, finalScore, 5);
   const myIdx = rankings.findIndex(r => r.name === playerName && r.score === finalScore);
@@ -889,6 +1129,7 @@ function gameOver() {
   gameActive = false;
   document.exitPointerLock();
   document.getElementById('score-ui').style.display = 'none';
+  SFX.gameOver();
   const finalScore = sessionScore + calcScore();
   const rankings = addRanking(playerName, finalScore, currentStage);
   showGameOverScreen(finalScore, rankings);
