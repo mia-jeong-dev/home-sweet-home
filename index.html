@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>메타몽의 점프맵 어드벤처</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: 'Arial', sans-serif; }
+    canvas { display: block; }
+
+    #ui {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 16px 20px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #hp-container {
+      background: rgba(0,0,0,0.6);
+      border: 2px solid #fff;
+      border-radius: 12px;
+      padding: 10px 16px;
+      min-width: 200px;
+    }
+    #hp-label { color: #fff; font-size: 12px; margin-bottom: 6px; letter-spacing: 1px; }
+    #hp-bar-bg {
+      background: #333;
+      border-radius: 6px;
+      height: 18px;
+      overflow: hidden;
+    }
+    #hp-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #ff8800);
+      border-radius: 6px;
+      transition: width 0.2s, background 0.3s;
+    }
+    #hp-text { color: #fff; font-size: 11px; margin-top: 4px; text-align: right; }
+
+    #stage-info {
+      background: rgba(0,0,0,0.6);
+      border: 2px solid #fff;
+      border-radius: 12px;
+      padding: 10px 16px;
+      text-align: center;
+    }
+    #stage-text { color: #fff; font-size: 20px; font-weight: bold; }
+    #stage-sub { color: #aaa; font-size: 11px; margin-top: 2px; }
+
+    #controls-hint {
+      background: rgba(0,0,0,0.6);
+      border: 2px solid #555;
+      border-radius: 12px;
+      padding: 10px 14px;
+      color: #ccc;
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      color: #fff;
+    }
+    #overlay h1 { font-size: 42px; margin-bottom: 8px; text-shadow: 0 0 20px #a78bfa; }
+    #overlay p { font-size: 16px; color: #ccc; margin-bottom: 30px; text-align: center; line-height: 1.6; }
+    #start-btn {
+      background: linear-gradient(135deg, #7c3aed, #a78bfa);
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      padding: 14px 40px;
+      border-radius: 30px;
+      cursor: pointer;
+      pointer-events: all;
+      transition: transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(124,58,237,0.6);
+    }
+    #start-btn:hover { transform: scale(1.05); box-shadow: 0 6px 30px rgba(124,58,237,0.8); }
+
+    #damage-flash {
+      position: fixed;
+      inset: 0;
+      background: rgba(255,0,0,0.35);
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    #level-banner {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      border-radius: 16px;
+      padding: 20px 50px;
+      text-align: center;
+      z-index: 60;
+      display: none;
+      pointer-events: none;
+    }
+    #level-banner h2 { font-size: 36px; font-weight: bold; margin-bottom: 6px; }
+    #level-banner p { font-size: 16px; color: #ddd; }
+
+    /* ── 랭킹보드 ── */
+    .panel {
+      background: rgba(15,10,30,0.95);
+      border: 2px solid #a78bfa;
+      border-radius: 18px;
+      padding: 28px 36px;
+      width: 420px;
+      max-width: 92vw;
+    }
+    .panel h2 { font-size: 26px; font-weight: bold; margin-bottom: 6px; text-align: center; }
+    .panel .sub { color: #aaa; font-size: 13px; text-align: center; margin-bottom: 20px; }
+
+    .name-input {
+      width: 100%;
+      background: rgba(255,255,255,0.07);
+      border: 2px solid #7c3aed;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 18px;
+      padding: 10px 14px;
+      outline: none;
+      margin-bottom: 14px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    .name-input:focus { border-color: #a78bfa; box-shadow: 0 0 10px rgba(167,139,250,0.4); }
+
+    .btn {
+      width: 100%;
+      border: none;
+      border-radius: 30px;
+      font-size: 17px;
+      font-weight: bold;
+      padding: 12px 0;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+      margin-bottom: 10px;
+    }
+    .btn:hover { transform: scale(1.03); }
+    .btn-purple { background: linear-gradient(135deg,#7c3aed,#a78bfa); color:#fff; box-shadow:0 4px 18px rgba(124,58,237,0.5); }
+    .btn-red    { background: linear-gradient(135deg,#dc2626,#ef4444); color:#fff; box-shadow:0 4px 18px rgba(220,38,38,0.5); }
+    .btn-gray   { background: rgba(255,255,255,0.1); color:#ccc; border:1px solid #555; }
+
+    .ranking-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    .ranking-table th {
+      color: #a78bfa; font-size: 12px; letter-spacing: 1px;
+      padding: 6px 8px; border-bottom: 1px solid #333; text-align: left;
+    }
+    .ranking-table td { padding: 9px 8px; font-size: 14px; border-bottom: 1px solid #1e1e2e; color: #eee; }
+    .ranking-table tr.me td { color: #ffd700; font-weight: bold; }
+    .rank-medal { font-size: 18px; }
+    .score-val { color: #a78bfa; font-weight: bold; }
+    .no-record { text-align:center; color:#555; padding: 20px 0; font-size:14px; }
+
+    #score-display {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid #555;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+    #score-display .score-big { font-size: 36px; font-weight: bold; color: #a78bfa; }
+    #score-display .score-breakdown { font-size: 12px; color: #888; margin-top: 4px; }
+
+    #score-ui {
+      position: fixed;
+      top: 0; right: 0;
+      background: rgba(0,0,0,0.6);
+      border: 2px solid #555;
+      border-radius: 0 0 0 12px;
+      padding: 8px 14px;
+      color: #a78bfa;
+      font-size: 13px;
+      font-weight: bold;
+      pointer-events: none;
+      z-index: 10;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<div id="overlay"><!-- 내용은 JS로 렌더링 --></div>
+<div id="score-ui">SCORE: <span id="score-val-ui">0</span></div>
+
+<div id="damage-flash"></div>
+<div id="level-banner">
+  <h2 id="level-banner-title"></h2>
+  <p id="level-banner-sub"></p>
+</div>
+
+<div id="ui">
+  <div id="hp-container">
+    <div id="hp-label">HP</div>
+    <div id="hp-bar-bg"><div id="hp-bar" style="width:100%"></div></div>
+    <div id="hp-text">100 / 100</div>
+  </div>
+  <div id="stage-info">
+    <div id="stage-text">STAGE 1</div>
+    <div id="stage-sub">난이도: 쉬움</div>
+  </div>
+  <div id="controls-hint">
+    WASD / 방향키: 이동<br>
+    SPACE: 점프<br>
+    마우스: 카메라
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ─────────────────────────────────────────────
+// GLOBALS
+// ─────────────────────────────────────────────
+let scene, camera, renderer;
+let player, playerBody;
+let platforms = [];
+let hazards = [];
+let spikePositions = [];
+let keys = {};
+let velocity = new THREE.Vector3();
+let onGround = false;
+let hp = 100, maxHp = 100;
+let currentStage = 1;
+let gameActive = false;
+let damageFlashTimeout = null;
+let invincibleTimer = 0;
+let mouseX = 0, mouseY = 0;
+let cameraYaw = 0, cameraPitch = 0.3;
+let lastDamageTime = 0;
+let particles = [];
+let dittoWobble = 0;
+
+// ── 플레이어 & 랭킹 ──
+let playerName = '';
+let sessionScore = 0;
+let stageStartTime = 0;
+
+const LS_KEY = 'ditto_jump_rankings';
+
+function loadRankings() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
+  catch { return []; }
+}
+function saveRankings(list) {
+  localStorage.setItem(LS_KEY, JSON.stringify(list));
+}
+function addRanking(name, score, stage) {
+  const list = loadRankings();
+  list.push({ name, score, stage, date: new Date().toLocaleDateString('ko-KR') });
+  list.sort((a, b) => b.score - a.score);
+  if (list.length > 20) list.length = 20;
+  saveRankings(list);
+  return list;
+}
+function calcScore() {
+  const elapsed = Math.max(1, (Date.now() - stageStartTime) / 1000);
+  const stageBonus = (currentStage - 1) * 1000;
+  const hpBonus = hp * 5;
+  const timeBonus = Math.floor(Math.max(0, 300 - elapsed) * 3);
+  return stageBonus + hpBonus + timeBonus;
+}
+
+function medal(rank) {
+  if (rank === 0) return '🥇';
+  if (rank === 1) return '🥈';
+  if (rank === 2) return '🥉';
+  return `${rank + 1}.`;
+}
+
+function rankingRows(list, highlightName) {
+  if (!list.length) return `<tr><td colspan="4" class="no-record">기록 없음</td></tr>`;
+  return list.map((r, i) => `
+    <tr class="${r.name === highlightName && i === list.findIndex(x=>x.name===highlightName&&x.score===r.score) ? 'me' : ''}">
+      <td><span class="rank-medal">${medal(i)}</span></td>
+      <td>${r.name}</td>
+      <td class="score-val">${r.score.toLocaleString()}</td>
+      <td style="color:#666;font-size:12px">${r.date}</td>
+    </tr>`).join('');
+}
+
+// ── 화면 렌더링 ──
+function showTitleScreen() {
+  const rankings = loadRankings();
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="panel">
+      <h2>🟣 메타몽의 점프맵 🟣</h2>
+      <p class="sub">함정 가시를 피해 꼭대기까지 올라가세요!</p>
+      <input id="name-input" class="name-input" maxlength="12" placeholder="닉네임 입력 (최대 12자)" />
+      <button class="btn btn-purple" onclick="onClickStart()">게임 시작!</button>
+      ${rankings.length ? `
+      <div style="margin-top:18px">
+        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">🏆 랭킹</div>
+        <table class="ranking-table">
+          <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+          ${rankingRows(rankings, '')}
+        </table>
+      </div>` : ''}
+    </div>`;
+  const inp = document.getElementById('name-input');
+  if (playerName) inp.value = playerName;
+  inp.focus();
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') onClickStart(); });
+}
+
+function showGameOverScreen(score, rankings) {
+  const myIdx = rankings.findIndex(r => r.name === playerName && r.score === score);
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="panel">
+      <h2 style="color:#ef4444">💀 게임 오버</h2>
+      <p class="sub">STAGE ${currentStage} 도달 · 플레이어: ${playerName}</p>
+      <div id="score-display">
+        <div class="score-big">${score.toLocaleString()}</div>
+        <div class="score-breakdown">
+          스테이지 보너스 ${((currentStage-1)*1000).toLocaleString()}
+          + HP 보너스 ${(hp*5).toLocaleString()}
+          + 시간 보너스 포함
+        </div>
+      </div>
+      ${myIdx >= 0 ? `<div style="color:#ffd700;text-align:center;margin-bottom:14px;font-size:14px">🎉 ${myIdx+1}위 등록!</div>` : ''}
+      <table class="ranking-table" style="margin-bottom:18px">
+        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+        ${rankingRows(rankings, playerName)}
+      </table>
+      <button class="btn btn-red" onclick="onClickRestart()">다시 시작</button>
+      <button class="btn btn-gray" onclick="onClickChangeName()">이름 변경</button>
+    </div>`;
+}
+
+window.onClickStart = function() {
+  const inp = document.getElementById('name-input');
+  const name = inp ? inp.value.trim() : playerName;
+  if (!name) { if (inp) inp.style.borderColor='#ef4444'; return; }
+  playerName = name;
+  startGame();
+};
+
+window.onClickRestart = function() {
+  sessionScore = 0;
+  currentStage = 1;
+  hp = maxHp;
+  updateHpBar();
+  buildStage(1);
+  player.position.set(0, 2, 0);
+  velocity.set(0, 0, 0);
+  invincibleTimer = 0;
+  stageStartTime = Date.now();
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('score-ui').style.display = 'block';
+  updateScoreUI();
+  gameActive = true;
+  renderer.domElement.requestPointerLock();
+};
+
+window.onClickChangeName = function() {
+  showTitleScreen();
+};
+
+function updateScoreUI() {
+  const live = sessionScore + calcScore();
+  document.getElementById('score-val-ui').textContent = live.toLocaleString();
+}
+
+const GRAVITY = -0.012;
+const JUMP_FORCE = 0.30;
+const MOVE_SPEED = 0.07;
+const MAX_FALL = -60;
+
+// Stage color palettes
+const STAGE_COLORS = [
+  { platform: 0x22c55e, hazard: 0xff4444, sky1: 0x1e3a5f, sky2: 0x0f172a, name: '초록 숲', diff: '쉬움' },
+  { platform: 0x3b82f6, hazard: 0xff6600, sky1: 0x1e1b4b, sky2: 0x0f0f2a, name: '파란 하늘', diff: '보통' },
+  { platform: 0xf59e0b, hazard: 0xff2222, sky1: 0x431407, sky2: 0x1c0a00, name: '사막 바람', diff: '어려움' },
+  { platform: 0xa855f7, hazard: 0x00ffff, sky1: 0x1a0533, sky2: 0x0d0018, name: '마법 왕국', diff: '매우 어려움' },
+  { platform: 0xef4444, hazard: 0xffff00, sky1: 0x1f0000, sky2: 0x0a0000, name: '용암 지옥', diff: '지옥' },
+];
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+function init() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0f172a, 0.018);
+
+  camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 300);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  document.body.appendChild(renderer.domElement);
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambient);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  dirLight.position.set(20, 40, 20);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(2048, 2048);
+  dirLight.shadow.camera.near = 0.5;
+  dirLight.shadow.camera.far = 200;
+  dirLight.shadow.camera.left = -80;
+  dirLight.shadow.camera.right = 80;
+  dirLight.shadow.camera.top = 80;
+  dirLight.shadow.camera.bottom = -80;
+  scene.add(dirLight);
+
+  const pointLight = new THREE.PointLight(0xa78bfa, 2, 50);
+  scene.add(pointLight);
+  window._pointLight = pointLight;
+
+  buildStars();
+  buildPlayer();
+  buildStage(1);
+
+  window.addEventListener('keydown', e => { keys[e.code] = true; });
+  window.addEventListener('keyup', e => { keys[e.code] = false; });
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  renderer.domElement.addEventListener('mousedown', () => {
+    renderer.domElement.requestPointerLock();
+  });
+  document.addEventListener('mousemove', e => {
+    if (document.pointerLockElement === renderer.domElement) {
+      cameraYaw -= e.movementX * 0.003;
+      cameraPitch -= e.movementY * 0.003;
+      cameraPitch = Math.max(-0.8, Math.min(1.0, cameraPitch));
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+// STARS
+// ─────────────────────────────────────────────
+function buildStars() {
+  const geo = new THREE.BufferGeometry();
+  const positions = [];
+  for (let i = 0; i < 2000; i++) {
+    positions.push((Math.random() - 0.5) * 600, (Math.random() - 0.5) * 600, (Math.random() - 0.5) * 600);
+  }
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.4, sizeAttenuation: true });
+  scene.add(new THREE.Points(geo, mat));
+}
+
+// ─────────────────────────────────────────────
+// DITTO PLAYER
+// ─────────────────────────────────────────────
+function buildPlayer() {
+  player = new THREE.Group();
+
+  // Body - purple blob
+  const bodyGeo = new THREE.SphereGeometry(0.55, 20, 20);
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0x9b59b6,
+    roughness: 0.3,
+    metalness: 0.1,
+    emissive: 0x5b2c8d,
+    emissiveIntensity: 0.3,
+  });
+  playerBody = new THREE.Mesh(bodyGeo, bodyMat);
+  playerBody.castShadow = true;
+  player.add(playerBody);
+
+  // Eyes
+  const eyeGeo = new THREE.SphereGeometry(0.1, 12, 12);
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+  const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+  leftEye.position.set(-0.18, 0.12, 0.46);
+  player.add(leftEye);
+  const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+  rightEye.position.set(0.18, 0.12, 0.46);
+  player.add(rightEye);
+
+  // Eye shine
+  const shineGeo = new THREE.SphereGeometry(0.04, 8, 8);
+  const shineMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1 });
+  const ls = new THREE.Mesh(shineGeo, shineMat);
+  ls.position.set(-0.14, 0.16, 0.5);
+  player.add(ls);
+  const rs = new THREE.Mesh(shineGeo, shineMat);
+  rs.position.set(0.22, 0.16, 0.5);
+  player.add(rs);
+
+  // Mouth curve
+  const mouthCurve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(-0.15, -0.08, 0.5),
+    new THREE.Vector3(0, -0.22, 0.52),
+    new THREE.Vector3(0.15, -0.08, 0.5)
+  );
+  const mouthPoints = mouthCurve.getPoints(12);
+  const mouthGeo = new THREE.BufferGeometry().setFromPoints(mouthPoints);
+  const mouthMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+  player.add(new THREE.Line(mouthGeo, mouthMat));
+
+  player.position.set(0, 2, 0);
+  scene.add(player);
+}
+
+// ─────────────────────────────────────────────
+// STAGE BUILDER
+// ─────────────────────────────────────────────
+function clearStage() {
+  platforms.forEach(p => scene.remove(p));
+  hazards.forEach(h => scene.remove(h));
+  platforms = [];
+  hazards = [];
+  spikePositions = [];
+  particles.forEach(p => scene.remove(p.mesh));
+  particles = [];
+}
+
+function buildStage(stage) {
+  clearStage();
+  const s = stage - 1;
+  const palette = STAGE_COLORS[Math.min(s, STAGE_COLORS.length - 1)];
+
+  scene.fog.color.setHex(palette.sky2);
+  renderer.setClearColor(palette.sky2);
+
+  const platformCount = 18 + stage * 2;
+  const hGap = 3.5 + stage * 0.3;   // 수평 간격 (점프 1~2번 거리)
+  const vStep = 1.2 + stage * 0.1;  // 높이 상승 (완만하게)
+  const hazardChance = 0.15 + stage * 0.08;
+  const platformMinSize = Math.max(2.0, 4.0 - stage * 0.25);
+
+  // Start platform
+  addPlatform(0, 0, 0, 6, 0.5, 6, palette.platform, false);
+
+  // Z축 방향(앞쪽)으로 주로 전진, 좌우는 약간만 흔들림
+  let x = 0, y = 0, z = 0;
+  for (let i = 0; i < platformCount; i++) {
+    const lateralJitter = (Math.random() - 0.5) * hGap * 0.8;
+    x += lateralJitter;
+    z -= hGap * (0.8 + Math.random() * 0.4); // Z 음방향으로 전진
+    y += vStep * (0.5 + Math.random() * 0.5);
+
+    const w = platformMinSize + Math.random() * 1.5;
+    const d = platformMinSize + Math.random() * 1.5;
+    const isHazard = Math.random() < hazardChance && i > 2;
+    addPlatform(x, y, z, w, 0.4, d, palette.platform, isHazard);
+  }
+
+  // Goal platform at top
+  addPlatform(x, y + vStep * 2, z, 6, 0.5, 6, 0xffd700, false, true);
+
+  updateStageUI(stage, palette);
+}
+
+function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+
+  let mat;
+  if (isGoal) {
+    mat = new THREE.MeshStandardMaterial({
+      color: 0xffd700,
+      emissive: 0xffa500,
+      emissiveIntensity: 0.6,
+      roughness: 0.2,
+      metalness: 0.5,
+    });
+  } else {
+    mat = new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.6,
+      metalness: 0.1,
+    });
+  }
+
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = { w, h, d, isHazard, isGoal };
+  scene.add(mesh);
+
+  // hazard 블록도 밟을 수 있는 일반 플랫폼처럼 등록 (대미지는 가시로만)
+  platforms.push(mesh);
+
+  // Spike decoration on hazard — 가시만 빨간색, 가시 충돌로만 대미지
+  if (isHazard) {
+    const spikeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff2200, emissiveIntensity: 0.8 });
+    const spacing = 1.4;
+    const cols = Math.max(1, Math.floor(w / spacing));
+    const rows = Math.max(1, Math.floor(d / spacing));
+    for (let ci = 0; ci < cols; ci++) {
+      for (let ri = 0; ri < rows; ri++) {
+        const sx = x - w / 2 + (ci + 0.5) * (w / cols);
+        const sy = y + h / 2 + 0.225;
+        const sz = z - d / 2 + (ri + 0.5) * (d / rows);
+        const spikeGeo = new THREE.ConeGeometry(0.15, 0.45, 6);
+        const spike = new THREE.Mesh(spikeGeo, spikeMat);
+        spike.position.set(sx, sy, sz);
+        scene.add(spike);
+        platforms.push(spike); // 씬 정리용
+        spikePositions.push(new THREE.Vector3(sx, sy, sz));
+      }
+    }
+  }
+}
+
+function updateStageUI(stage, palette) {
+  document.getElementById('stage-text').textContent = `STAGE ${stage}`;
+  document.getElementById('stage-sub').textContent = `난이도: ${palette.diff}`;
+}
+
+// ─────────────────────────────────────────────
+// GAME LOOP
+// ─────────────────────────────────────────────
+function startGame() {
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('score-ui').style.display = 'block';
+  gameActive = true;
+  currentStage = 1;
+  sessionScore = 0;
+  hp = maxHp;
+  updateHpBar();
+  buildStage(1);
+  player.position.set(0, 2, 0);
+  velocity.set(0, 0, 0);
+  stageStartTime = Date.now();
+  renderer.domElement.requestPointerLock();
+  animate();
+}
+window.startGame = startGame;
+
+function showLevelBanner(stage, palette) {
+  const banner = document.getElementById('level-banner');
+  document.getElementById('level-banner-title').textContent = `🎉 STAGE ${stage}`;
+  document.getElementById('level-banner-title').style.color = `#${palette.platform.toString(16).padStart(6, '0')}`;
+  document.getElementById('level-banner-sub').textContent = `${palette.name} — ${palette.diff}`;
+  banner.style.display = 'block';
+  setTimeout(() => { banner.style.display = 'none'; }, 2200);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (!gameActive) return;
+
+  dittoWobble += 0.08;
+  playerBody.scale.y = 1 + Math.sin(dittoWobble) * 0.04;
+  playerBody.scale.x = 1 - Math.sin(dittoWobble) * 0.02;
+
+  updatePlayer();
+  updateParticles();
+  updateCamera();
+  updateScoreUI();
+
+  window._pointLight.position.copy(player.position);
+  renderer.render(scene, camera);
+}
+
+// ─────────────────────────────────────────────
+// PLAYER PHYSICS
+// ─────────────────────────────────────────────
+function updatePlayer() {
+  if (invincibleTimer > 0) invincibleTimer--;
+
+  // Input direction in camera space
+  const forward = new THREE.Vector3(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
+  const right = new THREE.Vector3(Math.cos(cameraYaw), 0, -Math.sin(cameraYaw));
+
+  let move = new THREE.Vector3();
+  if (keys['KeyW'] || keys['ArrowUp']) move.add(forward);
+  if (keys['KeyS'] || keys['ArrowDown']) move.sub(forward);
+  if (keys['KeyA'] || keys['ArrowLeft']) move.sub(right);
+  if (keys['KeyD'] || keys['ArrowRight']) move.add(right);
+  if (move.lengthSq() > 0) move.normalize().multiplyScalar(MOVE_SPEED);
+
+  velocity.x = move.x;
+  velocity.z = move.z;
+
+  // Gravity
+  velocity.y += GRAVITY;
+
+  // Jump
+  if ((keys['Space'] || keys['KeyW']) && onGround) {
+    velocity.y = JUMP_FORCE;
+    onGround = false;
+    keys['Space'] = false;
+  }
+
+  // Move player
+  player.position.add(velocity);
+
+  // Face direction
+  if (move.lengthSq() > 0) {
+    const angle = Math.atan2(move.x, move.z);
+    player.rotation.y = angle;
+  }
+
+  // Platform collision
+  onGround = false;
+  const pBox = new THREE.Box3().setFromCenterAndSize(
+    player.position,
+    new THREE.Vector3(0.9, 1.0, 0.9)
+  );
+
+  for (const plat of platforms) {
+    if (!plat.userData.w) continue; // 가시 메시 등 userData 없는 것 스킵
+    const { w, h, d } = plat.userData;
+    const platBox = new THREE.Box3().setFromCenterAndSize(
+      plat.position,
+      new THREE.Vector3(w, h, d)
+    );
+
+    if (pBox.intersectsBox(platBox)) {
+      const playerBottom = player.position.y - 0.5;
+      const platTop = plat.position.y + h / 2;
+      const overlapY = platTop - playerBottom;
+
+      if (overlapY > 0 && overlapY < 0.7 && velocity.y <= 0) {
+        player.position.y = platTop + 0.5;
+        velocity.y = 0;
+        onGround = true;
+
+        if (plat.userData.isGoal) {
+          nextStage();
+          return;
+        }
+      }
+    }
+  }
+
+  // Spike collision — 가시에 닿을 때만 대미지
+  if (invincibleTimer <= 0) {
+    for (const sp of spikePositions) {
+      const dx = player.position.x - sp.x;
+      const dy = player.position.y - sp.y;
+      const dz = player.position.z - sp.z;
+      if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) {
+        takeDamage(12 + currentStage * 3);
+        break;
+      }
+    }
+  }
+
+  // Fall death
+  if (player.position.y < MAX_FALL) {
+    takeDamage(30);
+    respawn();
+  }
+}
+
+function respawn() {
+  player.position.set(0, 2, 0);
+  velocity.set(0, 0, 0);
+}
+
+function takeDamage(amount) {
+  if (invincibleTimer > 0) return;
+  hp = Math.max(0, hp - amount);
+  invincibleTimer = 60;
+  updateHpBar();
+  showDamageFlash();
+  spawnDamageParticles();
+  if (hp <= 0) gameOver();
+}
+
+function updateHpBar() {
+  const pct = (hp / maxHp) * 100;
+  document.getElementById('hp-bar').style.width = pct + '%';
+  document.getElementById('hp-text').textContent = `${hp} / ${maxHp}`;
+  const r = Math.round(255 * (1 - hp / maxHp));
+  const g = Math.round(200 * (hp / maxHp));
+  document.getElementById('hp-bar').style.background =
+    `linear-gradient(90deg, rgb(${255},${g},0), rgb(${200},${g + 50},0))`;
+}
+
+function showDamageFlash() {
+  const flash = document.getElementById('damage-flash');
+  flash.style.opacity = '1';
+  clearTimeout(damageFlashTimeout);
+  damageFlashTimeout = setTimeout(() => { flash.style.opacity = '0'; }, 150);
+}
+
+function spawnDamageParticles() {
+  for (let i = 0; i < 10; i++) {
+    const geo = new THREE.SphereGeometry(0.08, 6, 6);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(player.position);
+    scene.add(mesh);
+    particles.push({
+      mesh,
+      vel: new THREE.Vector3((Math.random() - 0.5) * 0.3, Math.random() * 0.3 + 0.1, (Math.random() - 0.5) * 0.3),
+      life: 40
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.vel.y -= 0.01;
+    p.mesh.position.add(p.vel);
+    p.life--;
+    p.mesh.material.opacity = p.life / 40;
+    if (p.life <= 0) {
+      scene.remove(p.mesh);
+      particles.splice(i, 1);
+    }
+  }
+}
+
+function nextStage() {
+  sessionScore += calcScore();
+
+  if (currentStage >= 5) {
+    gameClear();
+    return;
+  }
+
+  currentStage++;
+  stageStartTime = Date.now();
+  const palette = STAGE_COLORS[Math.min(currentStage - 1, STAGE_COLORS.length - 1)];
+  buildStage(currentStage);
+  player.position.set(0, 2, 0);
+  velocity.set(0, 0, 0);
+  hp = maxHp;
+  updateHpBar();
+  showLevelBanner(currentStage, palette);
+}
+
+function gameClear() {
+  gameActive = false;
+  document.exitPointerLock();
+  document.getElementById('score-ui').style.display = 'none';
+  const finalScore = sessionScore;
+  const rankings = addRanking(playerName, finalScore, 5);
+  const myIdx = rankings.findIndex(r => r.name === playerName && r.score === finalScore);
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="panel">
+      <h2 style="color:#ffd700">🎉 게임 클리어! 🎉</h2>
+      <p class="sub">모든 5단계를 완주했습니다! · ${playerName}</p>
+      <div id="score-display">
+        <div class="score-big">${finalScore.toLocaleString()}</div>
+        <div class="score-breakdown">최종 점수</div>
+      </div>
+      ${myIdx >= 0 ? `<div style="color:#ffd700;text-align:center;margin-bottom:14px;font-size:14px">🏆 ${myIdx+1}위 등록!</div>` : ''}
+      <table class="ranking-table" style="margin-bottom:18px">
+        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+        ${rankingRows(rankings, playerName)}
+      </table>
+      <button class="btn btn-purple" onclick="onClickRestart()">다시 도전</button>
+      <button class="btn btn-gray" onclick="onClickChangeName()">이름 변경</button>
+    </div>`;
+}
+
+function gameOver() {
+  gameActive = false;
+  document.exitPointerLock();
+  document.getElementById('score-ui').style.display = 'none';
+  const finalScore = sessionScore + calcScore();
+  const rankings = addRanking(playerName, finalScore, currentStage);
+  showGameOverScreen(finalScore, rankings);
+}
+
+// ─────────────────────────────────────────────
+// CAMERA
+// ─────────────────────────────────────────────
+function updateCamera() {
+  const dist = 9;
+  const cx = player.position.x + Math.sin(cameraYaw) * Math.cos(cameraPitch) * dist;
+  const cy = player.position.y + Math.sin(cameraPitch) * dist + 1;
+  const cz = player.position.z + Math.cos(cameraYaw) * Math.cos(cameraPitch) * dist;
+  camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.12);
+  camera.lookAt(player.position.x, player.position.y + 0.5, player.position.z);
+}
+
+init();
+showTitleScreen();
+</script>
+</body>
+</html>
