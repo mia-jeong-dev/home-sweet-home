@@ -285,6 +285,70 @@
     #score-display .score-big { font-size: 36px; font-weight: bold; color: #a78bfa; }
     #score-display .score-breakdown { font-size: 12px; color: #888; margin-top: 4px; }
 
+    /* ── 코인 HUD ── */
+    #coin-ui {
+      background: rgba(0,0,0,0.6);
+      border: 2px solid #f59e0b;
+      border-radius: 10px;
+      padding: 7px 12px;
+      color: #fcd34d;
+      font-size: 13px;
+      font-weight: bold;
+      pointer-events: none;
+      display: none;
+      white-space: nowrap;
+    }
+
+    /* ── 상점 ── */
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .color-card {
+      border-radius: 12px;
+      border: 2px solid #333;
+      padding: 10px 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.1s;
+      background: rgba(255,255,255,0.04);
+      position: relative;
+    }
+    .color-card:hover { transform: scale(1.04); }
+    .color-card.owned  { border-color: #a78bfa; }
+    .color-card.active { border-color: #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.4); }
+    .color-swatch {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      margin: 0 auto 6px;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+    .color-name  { font-size: 11px; color: #ccc; margin-bottom: 4px; }
+    .color-price { font-size: 11px; color: #fcd34d; font-weight: bold; }
+    .color-owned { font-size: 10px; color: #a78bfa; }
+    .color-active-badge {
+      position: absolute; top: 4px; right: 4px;
+      font-size: 10px; background: #ffd700;
+      color: #000; border-radius: 4px; padding: 1px 4px; font-weight: bold;
+    }
+    .shop-coin-bar {
+      background: rgba(245,158,11,0.15);
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fcd34d;
+      font-size: 14px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 420px) {
+      .shop-grid { grid-template-columns: repeat(3, 1fr); gap: 7px; }
+      .color-swatch { width: 32px; height: 32px; }
+      .color-name { font-size: 10px; }
+    }
   </style>
 </head>
 <body>
@@ -308,6 +372,7 @@
   </div>
   <div id="ui-right">
     <div id="score-ui">SCORE: <span id="score-val-ui">0</span></div>
+    <div id="coin-ui">🪙 <span id="coin-val-ui">0</span></div>
     <div id="controls-hint">
       WASD / 방향키: 이동<br>
       SPACE: 점프<br>
@@ -408,6 +473,10 @@ const SFX = (() => {
       const notes = [392, 330, 294, 220];
       notes.forEach((f, i) => osc(f, 'triangle', 0.3, 0.4, f * 0.7, c.currentTime + i * 0.18));
     },
+    coin() {
+      osc(880, 'sine', 0.18, 0.1, 1200);
+      osc(1200, 'sine', 0.12, 0.08, null, ac().currentTime + 0.06);
+    },
   };
 })();
 
@@ -419,6 +488,8 @@ let player, playerBody;
 let platforms = [];
 let hazards = [];
 let spikePositions = [];
+let coinMeshes = [];     // 씬에 놓인 코인 목록
+let sessionCoins = 0;    // 이번 게임에서 모은 코인
 let keys = {};
 let velocity = new THREE.Vector3();
 let onGround = false;
@@ -484,14 +555,17 @@ function rankingRows(list, highlightName) {
 // ── 화면 렌더링 ──
 function showTitleScreen() {
   const rankings = loadRankings();
+  const coins = loadCoins();
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
     <div class="panel">
       <h2>🟣 동글이의 점프맵 어드벤처 🟣</h2>
       <p class="sub">함정 가시를 피해 꼭대기까지 올라가세요!</p>
+      <div class="shop-coin-bar">🪙 보유 코인: ${coins}</div>
       <input id="name-input" class="name-input" maxlength="12" placeholder="닉네임 입력 (최대 12자)" />
       <button class="btn btn-purple" onclick="onClickStart()">게임 시작!</button>
+      <button class="btn btn-gray" onclick="showShop()" style="margin-top:4px">🛒 상점</button>
       ${rankings.length ? `
       <div style="margin-top:18px">
         <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">🏆 랭킹</div>
@@ -505,6 +579,72 @@ function showTitleScreen() {
   if (playerName) inp.value = playerName;
   inp.focus();
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') onClickStart(); });
+}
+
+function showShop() {
+  const coins   = loadCoins();
+  const owned   = loadOwned();
+  const activeId = loadActiveColor();
+  const overlay  = document.getElementById('overlay');
+  overlay.innerHTML = `
+    <div class="panel">
+      <h2>🛒 캐릭터 상점</h2>
+      <p class="sub">코인으로 동글이 색깔을 바꿔보세요!</p>
+      <div class="shop-coin-bar">🪙 보유 코인: <span id="shop-coin-count">${coins}</span></div>
+      <div class="shop-grid">
+        ${SHOP_COLORS.map(c => {
+          const isOwned  = owned.includes(c.id);
+          const isActive = c.id === activeId;
+          return `
+          <div class="color-card ${isOwned ? 'owned' : ''} ${isActive ? 'active' : ''}"
+               onclick="onShopClick('${c.id}', ${c.price})">
+            ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
+            <div class="color-swatch" style="background:${c.hex}"></div>
+            <div class="color-name">${c.name}</div>
+            <div class="${isOwned ? 'color-owned' : 'color-price'}">
+              ${isOwned ? (isActive ? '✓ 착용중' : '✓ 보유') : `🪙 ${c.price}`}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <button class="btn btn-gray" onclick="showTitleScreen()">← 뒤로</button>
+    </div>`;
+}
+
+window.onShopClick = function(id, price) {
+  const owned = loadOwned();
+  const activeId = loadActiveColor();
+  if (owned.includes(id)) {
+    // 이미 보유 — 착용
+    if (id === activeId) return;
+    saveActiveColor(id);
+    applyCharacterColor(id);
+    showShop();
+    SFX.coin();
+  } else {
+    // 구매
+    const coins = loadCoins();
+    if (coins < price) {
+      // 코인 부족 — 버튼 흔들기
+      document.getElementById('shop-coin-count').style.color = '#ef4444';
+      setTimeout(() => { document.getElementById('shop-coin-count').style.color = ''; }, 600);
+      return;
+    }
+    saveCoins(coins - price);
+    const newOwned = [...owned, id];
+    saveOwned(newOwned);
+    saveActiveColor(id);
+    applyCharacterColor(id);
+    showShop();
+    SFX.stageClear();
+  }
+};
+
+function applyCharacterColor(id) {
+  if (!playerBody) return;
+  const col = SHOP_COLORS.find(c => c.id === id) || SHOP_COLORS[0];
+  playerBody.material.color.setHex(col.color);
+  playerBody.material.emissive.setHex(col.emissive);
 }
 
 function showGameOverScreen(score, rankings) {
@@ -529,6 +669,7 @@ function showGameOverScreen(score, rankings) {
         ${rankingRows(rankings, playerName)}
       </table>
       <button class="btn btn-red" onclick="onClickRestart()">다시 시작</button>
+      <button class="btn btn-gray" onclick="showShop()">🛒 상점</button>
       <button class="btn btn-gray" onclick="onClickChangeName()">이름 변경</button>
     </div>`;
 }
@@ -553,6 +694,8 @@ window.onClickRestart = function() {
   stageStartTime = Date.now();
   document.getElementById('overlay').style.display = 'none';
   document.getElementById('score-ui').style.display = 'block';
+  document.getElementById('coin-ui').style.display = 'block';
+  updateCoinUI();
   updateScoreUI();
   gameActive = true;
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
@@ -561,6 +704,30 @@ window.onClickRestart = function() {
 window.onClickChangeName = function() {
   showTitleScreen();
 };
+
+function updateCoins() {
+  for (const c of coinMeshes) {
+    if (c.collected) continue;
+    c.mesh.rotation.y += 0.06;
+    c.mesh.position.y += Math.sin(Date.now() * 0.003 + c.mesh.position.x) * 0.003;
+    const dx = player.position.x - c.mesh.position.x;
+    const dy = player.position.y - c.mesh.position.y;
+    const dz = player.position.z - c.mesh.position.z;
+    if (dx*dx + dy*dy + dz*dz < 0.8 * 0.8) {
+      c.collected = true;
+      scene.remove(c.mesh);
+      sessionCoins++;
+      const total = loadCoins() + 1;
+      saveCoins(total);
+      updateCoinUI();
+      SFX.coin();
+    }
+  }
+}
+
+function updateCoinUI() {
+  document.getElementById('coin-val-ui').textContent = loadCoins();
+}
 
 function updateScoreUI() {
   const live = sessionScore + calcScore();
@@ -658,6 +825,30 @@ const JUMP_FORCE = 0.30;
 const MOVE_SPEED = 0.07;
 const MAX_FALL = -60;
 
+// ── 상점 색상 목록 ──
+const SHOP_COLORS = [
+  { id: 'purple', name: '기본 보라',   hex: '#9b59b6', color: 0x9b59b6, emissive: 0x5b2c8d, price: 0 },
+  { id: 'red',    name: '불꽃 빨강',   hex: '#e74c3c', color: 0xe74c3c, emissive: 0x7b241c, price: 50 },
+  { id: 'blue',   name: '하늘 파랑',   hex: '#3498db', color: 0x3498db, emissive: 0x1a5276, price: 50 },
+  { id: 'green',  name: '잔디 초록',   hex: '#27ae60', color: 0x27ae60, emissive: 0x145a32, price: 80 },
+  { id: 'yellow', name: '태양 노랑',   hex: '#f1c40f', color: 0xf1c40f, emissive: 0x7d6608, price: 80 },
+  { id: 'pink',   name: '벚꽃 핑크',   hex: '#ff69b4', color: 0xff69b4, emissive: 0x8b1a4a, price: 100 },
+  { id: 'white',  name: '순백 화이트', hex: '#ecf0f1', color: 0xecf0f1, emissive: 0x808b96, price: 120 },
+  { id: 'black',  name: '어둠 블랙',   hex: '#2c3e50', color: 0x2c3e50, emissive: 0x1a252f, price: 150 },
+  { id: 'gold',   name: '황금 골드',   hex: '#f39c12', color: 0xf39c12, emissive: 0x784212, price: 200 },
+];
+
+const LS_COINS    = 'ditto_coins';
+const LS_OWNED    = 'ditto_owned_colors';
+const LS_ACTIVE   = 'ditto_active_color';
+
+function loadCoins()      { return parseInt(localStorage.getItem(LS_COINS) || '0'); }
+function saveCoins(n)     { localStorage.setItem(LS_COINS, String(n)); }
+function loadOwned()      { try { return JSON.parse(localStorage.getItem(LS_OWNED)) || ['purple']; } catch { return ['purple']; } }
+function saveOwned(arr)   { localStorage.setItem(LS_OWNED, JSON.stringify(arr)); }
+function loadActiveColor(){ return localStorage.getItem(LS_ACTIVE) || 'purple'; }
+function saveActiveColor(id){ localStorage.setItem(LS_ACTIVE, id); }
+
 // Stage color palettes
 const STAGE_COLORS = [
   { platform: 0x22c55e, hazard: 0xff4444, sky1: 0x1e3a5f, sky2: 0x0f172a, name: '초록 숲', diff: '쉬움' },
@@ -750,13 +941,15 @@ function buildStars() {
 function buildPlayer() {
   player = new THREE.Group();
 
-  // Body - purple blob
+  // Body - 저장된 색상 적용
+  const activeId = loadActiveColor();
+  const activeCol = SHOP_COLORS.find(c => c.id === activeId) || SHOP_COLORS[0];
   const bodyGeo = new THREE.SphereGeometry(0.55, 20, 20);
   const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0x9b59b6,
+    color: activeCol.color,
     roughness: 0.3,
     metalness: 0.1,
-    emissive: 0x5b2c8d,
+    emissive: activeCol.emissive,
     emissiveIntensity: 0.3,
   });
   playerBody = new THREE.Mesh(bodyGeo, bodyMat);
@@ -807,6 +1000,8 @@ function clearStage() {
   platforms = [];
   hazards = [];
   spikePositions = [];
+  coinMeshes.forEach(c => scene.remove(c.mesh));
+  coinMeshes = [];
   particles.forEach(p => scene.remove(p.mesh));
   particles = [];
 }
@@ -845,7 +1040,30 @@ function buildStage(stage) {
   // Goal platform at top
   addPlatform(x, y + vStep * 2, z, 6, 0.5, 6, 0xffd700, false, true);
 
+  buildCoins();
   updateStageUI(stage, palette);
+}
+
+function buildCoins() {
+  const coinGeo  = new THREE.CylinderGeometry(0.28, 0.28, 0.12, 16);
+  const coinMat  = new THREE.MeshStandardMaterial({
+    color: 0xffd700, emissive: 0xffa500, emissiveIntensity: 0.6,
+    roughness: 0.2, metalness: 0.8,
+  });
+  // 플랫폼 중 일반 플랫폼(가시 없는 큰 것)마다 일부에 코인 배치
+  const eligible = platforms.filter(p => p.userData.w && p.userData.w > 2 && !p.userData.isGoal);
+  eligible.forEach((plat, i) => {
+    if (i % 3 !== 1) return; // 3개 중 1개에만 배치
+    const mesh = new THREE.Mesh(coinGeo, coinMat);
+    mesh.position.set(
+      plat.position.x + (Math.random() - 0.5) * (plat.userData.w * 0.4),
+      plat.position.y + plat.userData.h / 2 + 0.5,
+      plat.position.z + (Math.random() - 0.5) * (plat.userData.d * 0.4)
+    );
+    mesh.castShadow = false;
+    scene.add(mesh);
+    coinMeshes.push({ mesh, collected: false });
+  });
 }
 
 function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false) {
@@ -911,9 +1129,12 @@ function updateStageUI(stage, palette) {
 function startGame() {
   document.getElementById('overlay').style.display = 'none';
   document.getElementById('score-ui').style.display = 'block';
+  document.getElementById('coin-ui').style.display = 'block';
+  updateCoinUI();
   gameActive = true;
   currentStage = 1;
   sessionScore = 0;
+  sessionCoins = 0;
   hp = maxHp;
   updateHpBar();
   buildStage(1);
@@ -944,6 +1165,7 @@ function animate() {
   playerBody.scale.x = 1 - Math.sin(dittoWobble) * 0.02;
 
   updatePlayer();
+  updateCoins();
   updateParticles();
   updateCamera();
   updateScoreUI();
@@ -1139,6 +1361,7 @@ function gameClear() {
   gameActive = false;
   document.exitPointerLock();
   document.getElementById('score-ui').style.display = 'none';
+  document.getElementById('coin-ui').style.display = 'none';
   SFX.gameClear();
   const finalScore = sessionScore;
   const rankings = addRanking(playerName, finalScore, 5);
@@ -1167,6 +1390,7 @@ function gameOver() {
   gameActive = false;
   document.exitPointerLock();
   document.getElementById('score-ui').style.display = 'none';
+  document.getElementById('coin-ui').style.display = 'none';
   SFX.gameOver();
   const finalScore = sessionScore + calcScore();
   const rankings = addRanking(playerName, finalScore, currentStage);
