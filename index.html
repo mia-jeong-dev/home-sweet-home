@@ -734,6 +734,25 @@ function updateCoinUI() {
   document.getElementById('coin-val-ui').textContent = loadCoins();
 }
 
+function updateBgAnimations() {
+  const t = Date.now() * 0.001;
+  bgObjects.forEach((o, i) => {
+    // 수정(OctahedronGeometry) 천천히 회전
+    if (o.geometry && o.geometry.type === 'OctahedronGeometry') {
+      o.rotation.y += 0.008;
+      o.position.y += Math.sin(t + i) * 0.005;
+    }
+    // 용암 불꽃 위아래 흔들림
+    if (o.geometry && o.geometry.type === 'SphereGeometry' && o.material.color && o.material.color.getHex() === 0xff6600) {
+      o.position.y += Math.sin(t * 2 + i) * 0.02;
+    }
+    // 구름 천천히 이동
+    if (o.geometry && o.geometry.type === 'SphereGeometry' && o.material.emissive && o.material.emissive.getHex() === 0xccddff) {
+      o.position.x += Math.sin(t * 0.1 + i) * 0.01;
+    }
+  });
+}
+
 function updateScoreUI() {
   const live = sessionScore + calcScore();
   document.getElementById('score-val-ui').textContent = live.toLocaleString();
@@ -997,6 +1016,137 @@ function buildPlayer() {
 }
 
 // ─────────────────────────────────────────────
+// BACKGROUND
+// ─────────────────────────────────────────────
+let bgObjects = [];
+
+function clearBackground() {
+  bgObjects.forEach(o => scene.remove(o));
+  bgObjects = [];
+}
+
+function addBg(mesh) { scene.add(mesh); bgObjects.push(mesh); }
+
+function buildBackground(stage) {
+  clearBackground();
+  // 플랫폼이 Z 음방향으로 펼쳐지므로 배경도 그 범위에 분포
+  const spread = (fn) => {
+    for (let i = 0; i < 28; i++) {
+      const side = (Math.random() > 0.5 ? 1 : -1);
+      fn(
+        side * (18 + Math.random() * 22),           // x
+        Math.random() * 80,                          // y (높이)
+        -(Math.random() * 160)                       // z (맵 길이 방향)
+      );
+    }
+  };
+
+  if (stage === 1) {
+    // ── 초록 숲: 나무 ──
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3d1e, roughness: 0.9 });
+    const leafMat  = new THREE.MeshStandardMaterial({ color: 0x27ae60, roughness: 0.8, emissive: 0x0d3b1e, emissiveIntensity: 0.2 });
+    spread((x, y, z) => {
+      const h = 4 + Math.random() * 5;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, h, 7), trunkMat);
+      trunk.position.set(x, y, z);
+      addBg(trunk);
+      const leaf = new THREE.Mesh(new THREE.ConeGeometry(2.5 + Math.random(), h * 0.9, 7), leafMat);
+      leaf.position.set(x, y + h * 0.8, z);
+      addBg(leaf);
+    });
+
+  } else if (stage === 2) {
+    // ── 파란 하늘: 구름 ──
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, emissive: 0xccddff, emissiveIntensity: 0.15 });
+    spread((x, y, z) => {
+      const baseY = 30 + Math.random() * 50;
+      const count = 3 + Math.floor(Math.random() * 4);
+      for (let c = 0; c < count; c++) {
+        const r = 2 + Math.random() * 2;
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), cloudMat);
+        puff.position.set(x + c * r * 1.2 - count * r * 0.6, baseY + Math.random() * 1.5, z + (Math.random() - 0.5) * 3);
+        addBg(puff);
+      }
+    });
+    // 작은 새 (V자 라인)
+    for (let b = 0; b < 12; b++) {
+      const birdGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0.4, 0), new THREE.Vector3(1, 0, 0)
+      ]);
+      const bird = new THREE.Line(birdGeo, new THREE.LineBasicMaterial({ color: 0x1a1a2e }));
+      bird.position.set((Math.random() - 0.5) * 80, 30 + Math.random() * 40, -(Math.random() * 160));
+      bird.scale.setScalar(0.6 + Math.random() * 0.8);
+      addBg(bird);
+    }
+
+  } else if (stage === 3) {
+    // ── 사막: 선인장 + 모래언덕 ──
+    const cactMat  = new THREE.MeshStandardMaterial({ color: 0x4a7c3f, roughness: 0.8 });
+    const duneMat  = new THREE.MeshStandardMaterial({ color: 0xc8a96e, roughness: 1 });
+    spread((x, y, z) => {
+      const h = 3 + Math.random() * 5;
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, h, 7), cactMat);
+      body.position.set(x, y, z);
+      addBg(body);
+      // 팔
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, h * 0.4, 6), cactMat);
+      arm.rotation.z = Math.PI / 2.2;
+      arm.position.set(x + 0.9, y + h * 0.35, z);
+      addBg(arm);
+    });
+    // 모래언덕
+    for (let d = 0; d < 14; d++) {
+      const dune = new THREE.Mesh(new THREE.SphereGeometry(6 + Math.random() * 8, 10, 5), duneMat);
+      dune.scale.y = 0.3;
+      dune.position.set((Math.random() - 0.5) * 100, -3, -(Math.random() * 160));
+      addBg(dune);
+    }
+
+  } else if (stage === 4) {
+    // ── 마법 왕국: 수정 + 빛기둥 ──
+    const crystalColors = [0xc084fc, 0x818cf8, 0xe879f9, 0x67e8f9];
+    spread((x, y, z) => {
+      const col = crystalColors[Math.floor(Math.random() * crystalColors.length)];
+      const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.5, roughness: 0.1, metalness: 0.3 });
+      const h = 3 + Math.random() * 7;
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(1 + Math.random() * 1.2), mat);
+      crystal.scale.y = h;
+      crystal.position.set(x, y, z);
+      crystal.rotation.y = Math.random() * Math.PI;
+      addBg(crystal);
+    });
+    // 빛기둥
+    for (let p = 0; p < 10; p++) {
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0xe879f9, emissive: 0xe879f9, emissiveIntensity: 0.4, transparent: true, opacity: 0.18 });
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 80, 8), pillarMat);
+      pillar.position.set((Math.random() - 0.5) * 80, 20, -(Math.random() * 160));
+      addBg(pillar);
+    }
+
+  } else if (stage === 5) {
+    // ── 용암 지옥: 용암기둥 + 불기둥 ──
+    const lavaMat  = new THREE.MeshStandardMaterial({ color: 0xff4500, emissive: 0xff2200, emissiveIntensity: 0.8, roughness: 0.4 });
+    const darkMat  = new THREE.MeshStandardMaterial({ color: 0x1a0000, roughness: 1 });
+    spread((x, y, z) => {
+      const h = 5 + Math.random() * 15;
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, h, 7), darkMat);
+      pillar.position.set(x, y - 10, z);
+      addBg(pillar);
+      const top = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 6), lavaMat);
+      top.position.set(x, y - 10 + h / 2, z);
+      addBg(top);
+    });
+    // 불꽃 파티클 (정적)
+    for (let f = 0; f < 40; f++) {
+      const fireMat = new THREE.MeshBasicMaterial({ color: f % 2 === 0 ? 0xff6600 : 0xffcc00 });
+      const fire = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 5, 4), fireMat);
+      fire.position.set((Math.random() - 0.5) * 80, Math.random() * 40, -(Math.random() * 160));
+      addBg(fire);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
 // STAGE BUILDER
 // ─────────────────────────────────────────────
 function clearStage() {
@@ -1009,6 +1159,7 @@ function clearStage() {
   coinMeshes = [];
   particles.forEach(p => scene.remove(p.mesh));
   particles = [];
+  clearBackground();
 }
 
 function buildStage(stage) {
@@ -1046,6 +1197,7 @@ function buildStage(stage) {
   addPlatform(x, y + vStep * 2, z, 6, 0.5, 6, 0xffd700, false, true);
 
   buildCoins();
+  buildBackground(stage);
   updateStageUI(stage, palette);
 }
 
@@ -1172,6 +1324,7 @@ function animate() {
 
   updatePlayer();
   updateCoins();
+  updateBgAnimations();
   updateParticles();
   updateCamera();
   updateScoreUI();
