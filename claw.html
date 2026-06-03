@@ -175,16 +175,10 @@
 <div id="overlay"></div>
 
 <script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
-  }
-}
+{ "imports": { "three": "https://unpkg.com/three@0.165.0/build/three.module.js" } }
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // ────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -263,15 +257,31 @@ const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 30
 camera.position.set(0, 7, 28);
 camera.lookAt(0, 0, 0);
 
-const orbitControls = new OrbitControls(camera, renderer.domElement);
-orbitControls.target.set(0, 0, 0);
-orbitControls.minDistance = 14;
-orbitControls.maxDistance = 42;
-orbitControls.minPolarAngle = 0.2;
-orbitControls.maxPolarAngle = Math.PI / 2.1;
-orbitControls.enableDamping = true;
-orbitControls.dampingFactor = 0.09;
-orbitControls.enabled = false;
+// ── 수동 카메라 orbit ──
+let camTheta = 0, camPhi = 1.1, camDist = 28;
+let camDragging = false, camLastX = 0, camLastY = 0;
+function updateCamera() {
+  camera.position.set(
+    camDist * Math.sin(camPhi) * Math.sin(camTheta),
+    camDist * Math.cos(camPhi),
+    camDist * Math.sin(camPhi) * Math.cos(camTheta)
+  );
+  camera.lookAt(0, 0, 0);
+}
+updateCamera();
+renderer.domElement.addEventListener('mousedown', e => { if (gameActive) { camDragging=true; camLastX=e.clientX; camLastY=e.clientY; } });
+window.addEventListener('mouseup', () => { camDragging=false; });
+window.addEventListener('mousemove', e => {
+  if (!camDragging) return;
+  camTheta -= (e.clientX-camLastX)*0.006;
+  camPhi = Math.max(0.25, Math.min(Math.PI/2.05, camPhi+(e.clientY-camLastY)*0.006));
+  camLastX=e.clientX; camLastY=e.clientY;
+  updateCamera();
+});
+renderer.domElement.addEventListener('wheel', e => {
+  camDist = Math.max(14, Math.min(42, camDist+e.deltaY*0.05));
+  updateCamera();
+}, { passive:true });
 
 window.addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
@@ -892,7 +902,6 @@ function showToast(msg, borderCol = '#f59e0b') {
 
 function showTitle() {
   gameActive = false;
-  orbitControls.enabled = false;
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
@@ -922,7 +931,6 @@ window.onEnter = function() {
   updateHud();
   document.getElementById('overlay').style.display = 'none';
   gameActive = true;
-  if (!isMobile) orbitControls.enabled = true;
   setStatus('이동 후 SPACE로 뽑기');
   if (freeMsg) setTimeout(() => showToast(freeMsg, '#f59e0b'), 600);
 };
@@ -933,7 +941,6 @@ window.showCollection = function() {
   const total = Object.values(col).reduce((a,b)=>a+b,0);
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
-  orbitControls.enabled = false;
   const cards = ANIMALS.map(a => `
     <div class="doll-card ${col[a.id]?'owned':''}">
       <div style="font-size:26px">${a.emoji}</div>
@@ -953,7 +960,6 @@ window.showCollection = function() {
 
 window.closeOverlay = function() {
   document.getElementById('overlay').style.display = 'none';
-  if (gameActive && !isMobile) orbitControls.enabled = true;
 };
 
 // ────────────────────────────────────────────────────────────────
@@ -1035,7 +1041,6 @@ function animate() {
     s.rotation.z += dt * (0.6 + i * 0.1);
   });
 
-  orbitControls.update();
   renderer.render(scene, camera);
 }
 
