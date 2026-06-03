@@ -349,12 +349,46 @@
       .color-swatch { width: 32px; height: 32px; }
       .color-name { font-size: 10px; }
     }
+
+    .coupon-section-title {
+      color: #f59e0b; font-size: 13px; font-weight: bold;
+      letter-spacing: 1px; margin: 18px 0 10px;
+    }
+    .coupon-card {
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 2px solid #333; border-radius: 12px;
+      padding: 12px 14px; cursor: pointer;
+      transition: border-color 0.15s, transform 0.1s;
+      margin-bottom: 8px; position: relative;
+    }
+    .coupon-card:hover { transform: scale(1.02); }
+    .coupon-card.owned  { border-color: #a78bfa; }
+    .coupon-card.active { border-color: #f59e0b; box-shadow: 0 0 10px rgba(245,158,11,0.4); }
+    .coupon-icon  { font-size: 24px; flex-shrink: 0; }
+    .coupon-name  { font-size: 14px; color: #eee; font-weight: bold; margin-bottom: 3px; }
+    .coupon-info  { flex: 1; }
+    .coupon-status-badge {
+      position: absolute; top: 6px; right: 8px;
+      font-size: 10px; background: #f59e0b;
+      color: #000; border-radius: 4px; padding: 1px 5px; font-weight: bold;
+    }
   </style>
 </head>
 <body>
 <div id="overlay"><!-- 내용은 JS로 렌더링 --></div>
 
 <div id="damage-flash"></div>
+
+<div id="teleport-pw-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,5,20,0.97);border:2px solid #f59e0b;border-radius:16px;padding:24px 28px;z-index:200;text-align:center;min-width:260px;max-width:90vw;">
+  <div style="color:#fcd34d;font-size:16px;font-weight:bold;margin-bottom:6px">⚡ 순간이동</div>
+  <div style="color:#aaa;font-size:12px;margin-bottom:14px">암호를 입력하세요</div>
+  <input id="teleport-pw-input" class="name-input" maxlength="20" placeholder="암호 입력" style="-webkit-text-security:disc;letter-spacing:4px;margin-bottom:12px;" />
+  <div style="display:flex;gap:8px;">
+    <button class="btn btn-purple" style="margin:0;flex:1" onclick="confirmTeleport()">확인</button>
+    <button class="btn btn-gray" style="margin:0;flex:1" onclick="cancelTeleport()">취소</button>
+  </div>
+</div>
 <div id="level-banner">
   <h2 id="level-banner-title"></h2>
   <p id="level-banner-sub"></p>
@@ -373,6 +407,8 @@
   <div id="ui-right">
     <div id="score-ui">SCORE: <span id="score-val-ui">0</span></div>
     <div id="coin-ui">🪙 <span id="coin-val-ui">0</span></div>
+    <div id="teleport-ui" onclick="useTeleportCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f59e0b;border-radius:10px;padding:7px 12px;color:#fcd34d;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">⚡ 순간이동 [T]</div>
+    <div id="shop-hud-btn" onclick="openShopDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🛒 상점</div>
     <div id="controls-hint">
       WASD / 방향키: 이동<br>
       SPACE: 점프<br>
@@ -477,6 +513,11 @@ const SFX = (() => {
       osc(880, 'sine', 0.18, 0.1, 1200);
       osc(1200, 'sine', 0.12, 0.08, null, ac().currentTime + 0.06);
     },
+    heal() {
+      osc(523, 'sine', 0.22, 0.15, 784);
+      osc(784, 'sine', 0.18, 0.18, 1047, ac().currentTime + 0.12);
+      osc(1047, 'sine', 0.14, 0.2, null, ac().currentTime + 0.24);
+    },
   };
 })();
 
@@ -490,6 +531,12 @@ let hazards = [];
 let spikePositions = [];
 let coinMeshes = [];     // 씬에 놓인 코인 목록
 let sessionCoins = 0;    // 이번 게임에서 모은 코인
+let potionMeshes = [];   // 씬에 놓인 물약 목록
+let flagGroup = null;
+let flagBanner = null;
+const flagBasePos = new THREE.Vector3();
+const goalPlatformPos = new THREE.Vector3();
+const preFinalPlatformPos = new THREE.Vector3();
 let animating = false;   // animate 루프 중복 방지
 let spikeDamageTimer = 0; // 가시 전용 틱 타이머 (60 = 1초)
 let keys = {};
@@ -568,8 +615,13 @@ function rankingRows(list, highlightName) {
 
 // ── 화면 렌더링 ──
 function showTitleScreen() {
-  const rankings = loadRankings();
-  const coins = loadCoins();
+  const rankings     = loadRankings();
+  const coins        = loadCoins();
+  const activeCoupon  = loadActiveCoupon();
+  const couponCounts  = loadOwnedCoupons();
+  const couponInfo    = (activeCoupon && (couponCounts[activeCoupon] || 0) > 0)
+    ? SHOP_COUPONS.find(c => c.id === activeCoupon) : null;
+  const couponRemain  = couponInfo ? (couponCounts[activeCoupon] || 0) : 0;
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
@@ -579,6 +631,7 @@ function showTitleScreen() {
       <div class="shop-coin-bar">🪙 보유 코인: ${coins}</div>
       <input id="name-input" class="name-input" maxlength="12" placeholder="닉네임 입력 (최대 12자)" />
       <button class="btn btn-purple" onclick="onClickStart()">게임 시작!</button>
+      ${couponInfo ? `<div style="color:#f59e0b;font-size:12px;text-align:center;margin-top:-4px;margin-bottom:6px">${couponInfo.icon} ${couponInfo.name} 사용중 — ${couponInfo.stage}단계부터 시작 (잔여 ${couponRemain}회)</div>` : ''}
       <button class="btn btn-gray" onclick="showShop()" style="margin-top:4px">🛒 상점</button>
       <a href="claw.html" style="display:block;text-align:center;margin-top:8px;padding:12px 0;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:30px;color:#ccc;font-size:15px;font-weight:bold;text-decoration:none;">🧸 인형뽑기</a>
       ${rankings.length ? `
@@ -598,15 +651,48 @@ function showTitleScreen() {
 }
 
 function showShop() {
-  const coins   = loadCoins();
-  const owned   = loadOwned();
-  const activeId = loadActiveColor();
-  const overlay  = document.getElementById('overlay');
+  const coins        = loadCoins();
+  const owned        = loadOwned();
+  const activeId     = loadActiveColor();
+  const ownedCoupons = loadOwnedCoupons(); // { stage2: 2, ... }
+  const activeCoupon = loadActiveCoupon();
+  const overlay      = document.getElementById('overlay');
   overlay.innerHTML = `
     <div class="panel">
       <h2>🛒 캐릭터 상점</h2>
-      <p class="sub">코인으로 동글이 색깔을 바꿔보세요!</p>
+      <p class="sub">코인으로 동글이를 꾸미고 스테이지를 건너뛰세요!</p>
       <div class="shop-coin-bar">🪙 보유 코인: <span id="shop-coin-count">${coins}</span></div>
+
+      <div class="coupon-section-title">🎟️ 스타트 쿠폰</div>
+      <div class="coupon-card owned active">
+        <span class="coupon-status-badge">사용가능</span>
+        <span class="coupon-icon">⚡</span>
+        <div class="coupon-info">
+          <div class="coupon-name">순간이동권 <span style="font-size:10px;color:#888">(비밀)</span></div>
+          <div class="color-owned">✓ 무제한 — 게임 중 [T]키 또는 버튼 · 암호 입력 필요</div>
+        </div>
+      </div>
+      ${SHOP_COUPONS.map(c => {
+        const remaining = ownedCoupons[c.id] || 0;
+        const isOwned   = remaining > 0;
+        const isActive  = activeCoupon === c.id && isOwned;
+        return `
+        <div class="coupon-card ${isOwned ? 'owned' : ''} ${isActive ? 'active' : ''}"
+             onclick="onCouponClick('${c.id}', ${c.price})">
+          ${isActive ? '<span class="coupon-status-badge">사용중</span>' : ''}
+          <span class="coupon-icon">${c.icon}</span>
+          <div class="coupon-info">
+            <div class="coupon-name">${c.name}</div>
+            <div class="${isOwned ? 'color-owned' : 'color-price'}">
+              ${isOwned
+                ? (isActive ? `✓ 사용중 — 잔여 ${remaining}회 (클릭하면 해제)` : `✓ 잔여 ${remaining}회 — 클릭하여 적용`)
+                : `🪙 ${c.price} · 3회 제공`}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+
+      <div style="color:#a78bfa;font-size:13px;font-weight:bold;letter-spacing:1px;margin:18px 0 10px">🎨 캐릭터 색상</div>
       <div class="shop-grid">
         ${SHOP_COLORS.map(c => {
           const isOwned  = owned.includes(c.id);
@@ -623,9 +709,35 @@ function showShop() {
           </div>`;
         }).join('')}
       </div>
-      <button class="btn btn-gray" onclick="showTitleScreen()">← 뒤로</button>
+      ${_shopOpenedDuringGame
+        ? `<button class="btn btn-purple" onclick="resumeFromShop()">▶ 게임으로 돌아가기</button>`
+        : `<button class="btn btn-gray" onclick="showTitleScreen()">← 뒤로</button>`}
     </div>`;
 }
+
+window.onCouponClick = function(id, price) {
+  const owned = loadOwnedCoupons();
+  if ((owned[id] || 0) > 0) {
+    // 보유 — 토글 (적용/해제)
+    saveActiveCoupon(loadActiveCoupon() === id ? null : id);
+    showShop();
+    SFX.coin();
+  } else {
+    // 구매 → 3회 충전
+    const coins = loadCoins();
+    if (coins < price) {
+      document.getElementById('shop-coin-count').style.color = '#ef4444';
+      setTimeout(() => { document.getElementById('shop-coin-count').style.color = ''; }, 600);
+      return;
+    }
+    saveCoins(coins - price);
+    owned[id] = 3;
+    saveOwnedCoupons(owned);
+    saveActiveCoupon(id);
+    showShop();
+    SFX.stageClear();
+  }
+};
 
 window.onShopClick = function(id, price) {
   const owned = loadOwned();
@@ -690,6 +802,25 @@ function showGameOverScreen(score, rankings) {
     </div>`;
 }
 
+let _shopOpenedDuringGame = false;
+
+function openShopDuringGame() {
+  _shopOpenedDuringGame = true;
+  gameActive = false;
+  document.exitPointerLock();
+  document.getElementById('overlay').style.display = 'flex';
+  showShop();
+}
+window.openShopDuringGame = openShopDuringGame;
+
+function resumeFromShop() {
+  _shopOpenedDuringGame = false;
+  document.getElementById('overlay').style.display = 'none';
+  gameActive = true;
+  if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+}
+window.resumeFromShop = resumeFromShop;
+
 window.showTitleScreen = showTitleScreen;
 window.showShop = showShop;
 
@@ -703,10 +834,12 @@ window.onClickStart = function() {
 
 window.onClickRestart = function() {
   sessionScore = 0;
-  currentStage = 1;
+  currentStage = getStartStage();
+  useCoupon();
   hp = maxHp;
   updateHpBar();
-  buildStage(1);
+  buildStage(currentStage);
+  updateTeleportUI();
   player.position.set(0, 2, 0);
   velocity.set(0, 0, 0);
   invincibleTimer = 0;
@@ -714,6 +847,7 @@ window.onClickRestart = function() {
   document.getElementById('overlay').style.display = 'none';
   document.getElementById('score-ui').style.display = 'block';
   document.getElementById('coin-ui').style.display = 'block';
+  document.getElementById('shop-hud-btn').style.display = 'block';
   updateCoinUI();
   updateScoreUI();
   gameActive = true;
@@ -880,25 +1014,148 @@ const SHOP_COLORS = [
   { id: 'rainbow', name: '레인보우',    hex: 'rainbow', color: 0xff0000, emissive: 0x440000, price: 100 },
 ];
 
-const LS_COINS    = 'ditto_coins';
-const LS_OWNED    = 'ditto_owned_colors';
-const LS_ACTIVE   = 'ditto_active_color';
+const LS_COINS         = 'ditto_coins';
+const LS_OWNED         = 'ditto_owned_colors';
+const LS_ACTIVE        = 'ditto_active_color';
+const LS_COUPONS       = 'ditto_owned_coupons';
+const LS_ACTIVE_COUPON = 'ditto_active_coupon';
 
-function loadCoins()      { return parseInt(localStorage.getItem(LS_COINS) || '0'); }
-function saveCoins(n)     { localStorage.setItem(LS_COINS, String(n)); }
+const SHOP_COUPONS = [
+  { id: 'stage2', name: '2단계 시작권', stage: 2, price: 25, icon: '🎟️' },
+  { id: 'stage3', name: '3단계 시작권', stage: 3, price: 50, icon: '🎫' },
+  { id: 'stage5', name: '5단계 시작권', stage: 5, price: 85, icon: '🏆' },
+];
 
-function loadOwned()      { try { return JSON.parse(localStorage.getItem(LS_OWNED)) || ['purple']; } catch { return ['purple']; } }
-function saveOwned(arr)   { localStorage.setItem(LS_OWNED, JSON.stringify(arr)); }
-function loadActiveColor(){ return localStorage.getItem(LS_ACTIVE) || 'purple'; }
+function loadCoins()       { return parseInt(localStorage.getItem(LS_COINS) || '0'); }
+function saveCoins(n)      { localStorage.setItem(LS_COINS, String(n)); }
+
+function loadOwned()       { try { return JSON.parse(localStorage.getItem(LS_OWNED)) || ['purple']; } catch { return ['purple']; } }
+function saveOwned(arr)    { localStorage.setItem(LS_OWNED, JSON.stringify(arr)); }
+function loadActiveColor() { return localStorage.getItem(LS_ACTIVE) || 'purple'; }
 function saveActiveColor(id){ localStorage.setItem(LS_ACTIVE, id); }
+
+// 쿠폰 잔여 횟수 저장 형식: { stage2: 2, stage5: 3, ... }
+function loadOwnedCoupons()    { try { return JSON.parse(localStorage.getItem(LS_COUPONS)) || {}; } catch { return {}; } }
+function saveOwnedCoupons(obj) { localStorage.setItem(LS_COUPONS, JSON.stringify(obj)); }
+function loadActiveCoupon()    { return localStorage.getItem(LS_ACTIVE_COUPON) || null; }
+function saveActiveCoupon(id)  { id ? localStorage.setItem(LS_ACTIVE_COUPON, id) : localStorage.removeItem(LS_ACTIVE_COUPON); }
+
+function useCoupon() {
+  const id = loadActiveCoupon();
+  if (!id || id === 'teleport') return; // 순간이동권은 게임 중 별도 사용
+  const owned = loadOwnedCoupons();
+  if ((owned[id] || 0) <= 0) return;
+  owned[id]--;
+  if (owned[id] <= 0) {
+    delete owned[id];
+    saveActiveCoupon(null);
+  }
+  saveOwnedCoupons(owned);
+}
+
+function getStartStage() {
+  const c = loadActiveCoupon();
+  if (!c || c === 'teleport') return 1;
+  const owned = loadOwnedCoupons();
+  if ((owned[c] || 0) <= 0) return 1;
+  const coupon = SHOP_COUPONS.find(x => x.id === c);
+  return coupon ? coupon.stage : 1;
+}
+
+function updateTeleportUI() {
+  const el = document.getElementById('teleport-ui');
+  if (!el) return;
+  el.style.display = 'block';
+  el.textContent = `⚡ 순간이동 [T]`;
+}
+
+function useTeleportCoupon() {
+  // T키: 암호 모달 표시 (소유/활성화 무관하게 항상 사용 가능)
+  gameActive = false;
+  document.exitPointerLock();
+  const modal = document.getElementById('teleport-pw-modal');
+  const inp   = document.getElementById('teleport-pw-input');
+  inp.value = '';
+  inp.placeholder = '암호 입력';
+  inp.style.borderColor = '';
+  modal.style.display = 'block';
+  inp.focus();
+  inp.onkeydown = e => { if (e.key === 'Enter') confirmTeleport(); if (e.key === 'Escape') cancelTeleport(); };
+}
+window.useTeleportCoupon = useTeleportCoupon;
+
+window.confirmTeleport = function() {
+  const inp = document.getElementById('teleport-pw-input');
+  if (inp.value !== '016712') {
+    inp.style.borderColor = '#ef4444';
+    inp.value = '';
+    inp.placeholder = '암호가 틀렸습니다...';
+    return;
+  }
+  // 암호 일치 → 순간이동
+  document.getElementById('teleport-pw-modal').style.display = 'none';
+  gameActive = true;
+  if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+  // 스테이지 10으로 이동 후 골 직전 블록에 배치
+  currentStage = 10;
+  buildStage(10);
+  updateTeleportUI();
+  player.position.set(preFinalPlatformPos.x, preFinalPlatformPos.y, preFinalPlatformPos.z);
+  velocity.set(0, 0, 0);
+  SFX.stageClear();
+  showDamageFlash();
+};
+
+window.cancelTeleport = function() {
+  document.getElementById('teleport-pw-modal').style.display = 'none';
+  gameActive = true;
+  if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+};
+
+function showTeleportPasswordPrompt() {
+  const overlay = document.getElementById('overlay');
+  overlay.innerHTML = `
+    <div class="panel">
+      <h2>🔒 비밀 쿠폰</h2>
+      <p class="sub">암호를 입력하면 순간이동권(무제한)을 획득합니다!</p>
+      <input id="pw-input" class="name-input" maxlength="20" placeholder="암호 입력" style="-webkit-text-security:disc;letter-spacing:4px;" />
+      <button class="btn btn-purple" onclick="onTeleportPasswordSubmit()">확인</button>
+      <button class="btn btn-gray" onclick="showShop()">← 뒤로</button>
+    </div>`;
+  const inp = document.getElementById('pw-input');
+  inp.focus();
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') onTeleportPasswordSubmit(); });
+}
+window.showTeleportPasswordPrompt = showTeleportPasswordPrompt;
+
+window.onTeleportPasswordSubmit = function() {
+  const inp = document.getElementById('pw-input');
+  if (inp.value === '016712') {
+    const owned = loadOwnedCoupons();
+    owned['teleport'] = 1;
+    saveOwnedCoupons(owned);
+    saveActiveCoupon('teleport');
+    showShop();
+    SFX.stageClear();
+  } else {
+    inp.style.borderColor = '#ef4444';
+    inp.value = '';
+    inp.placeholder = '암호가 틀렸습니다...';
+  }
+};
 
 // Stage color palettes
 const STAGE_COLORS = [
-  { platform: 0x22c55e, hazard: 0xff4444, sky1: 0x1e3a5f, sky2: 0x0f172a, name: '초록 숲', diff: '쉬움' },
-  { platform: 0x3b82f6, hazard: 0xff6600, sky1: 0x1e1b4b, sky2: 0x0f0f2a, name: '파란 하늘', diff: '보통' },
-  { platform: 0xf59e0b, hazard: 0xff2222, sky1: 0x431407, sky2: 0x1c0a00, name: '사막 바람', diff: '어려움' },
-  { platform: 0xa855f7, hazard: 0x00ffff, sky1: 0x1a0533, sky2: 0x0d0018, name: '마법 왕국', diff: '매우 어려움' },
-  { platform: 0xef4444, hazard: 0xffff00, sky1: 0x1f0000, sky2: 0x0a0000, name: '용암 지옥', diff: '지옥' },
+  { platform: 0x22c55e, hazard: 0xff4444, sky1: 0x1e3a5f, sky2: 0x0f172a, name: '초록 숲',     diff: '쉬움' },
+  { platform: 0x3b82f6, hazard: 0xff6600, sky1: 0x1e1b4b, sky2: 0x0f0f2a, name: '파란 하늘',   diff: '보통' },
+  { platform: 0xf59e0b, hazard: 0xff2222, sky1: 0x431407, sky2: 0x1c0a00, name: '사막 바람',   diff: '어려움' },
+  { platform: 0xa855f7, hazard: 0x00ffff, sky1: 0x1a0533, sky2: 0x0d0018, name: '마법 왕국',   diff: '매우 어려움' },
+  { platform: 0xef4444, hazard: 0xffff00, sky1: 0x1f0000, sky2: 0x0a0000, name: '용암 지옥',   diff: '지옥' },
+  { platform: 0x7dd3fc, hazard: 0x00e5ff, sky1: 0x0c2340, sky2: 0x040e1c, name: '얼음 동굴',   diff: '극악' },
+  { platform: 0x94a3b8, hazard: 0x39ff14, sky1: 0x00000f, sky2: 0x000005, name: '우주 정거장', diff: '악몽' },
+  { platform: 0x0891b2, hazard: 0xff69b4, sky1: 0x001a2e, sky2: 0x000d17, name: '심해 세계',   diff: '심연' },
+  { platform: 0xfef08a, hazard: 0xff6b35, sky1: 0x3d2400, sky2: 0x1a0f00, name: '천상의 세계', diff: '신성' },
+  { platform: 0x4c1d95, hazard: 0xff00ff, sky1: 0x050010, sky2: 0x020008, name: '혼돈의 세계', diff: '혼돈' },
 ];
 
 // ─────────────────────────────────────────────
@@ -944,7 +1201,10 @@ function init() {
   buildPlayer();
   buildStage(1);
 
-  window.addEventListener('keydown', e => { keys[e.code] = true; });
+  window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'KeyT' && gameActive) { e.preventDefault(); useTeleportCoupon(); }
+  });
   window.addEventListener('keyup', e => { keys[e.code] = false; });
   window.addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;
@@ -1155,12 +1415,162 @@ function buildBackground(stage) {
       top.position.set(x, y - 10 + h / 2, z);
       addBg(top);
     });
-    // 불꽃 파티클 (정적)
     for (let f = 0; f < 40; f++) {
       const fireMat = new THREE.MeshBasicMaterial({ color: f % 2 === 0 ? 0xff6600 : 0xffcc00 });
       const fire = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 5, 4), fireMat);
       fire.position.set((Math.random() - 0.5) * 80, Math.random() * 40, -(Math.random() * 160));
       addBg(fire);
+    }
+
+  } else if (stage === 6) {
+    // ── 얼음 동굴: 고드름 + 얼음 결정 ──
+    const iceMat = new THREE.MeshStandardMaterial({ color: 0xaee8f8, emissive: 0x00a8cc, emissiveIntensity: 0.3, roughness: 0.1, metalness: 0.4, transparent: true, opacity: 0.85 });
+    const stalMat = new THREE.MeshStandardMaterial({ color: 0xdff4ff, roughness: 0.2, metalness: 0.1 });
+    spread((x, y, z) => {
+      // 고드름 (아래로 뾰족한 원뿔)
+      const h = 3 + Math.random() * 7;
+      const icicle = new THREE.Mesh(new THREE.ConeGeometry(0.4 + Math.random() * 0.3, h, 6), stalMat);
+      icicle.rotation.z = Math.PI; // 아래 방향
+      icicle.position.set(x, y + 20, z);
+      addBg(icicle);
+    });
+    // 얼음 결정 기둥
+    for (let c = 0; c < 20; c++) {
+      const h = 4 + Math.random() * 10;
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.8 + Math.random() * 0.6), iceMat);
+      crystal.scale.y = h;
+      crystal.position.set((Math.random() - 0.5) * 80, Math.random() * 40, -(Math.random() * 160));
+      crystal.rotation.y = Math.random() * Math.PI;
+      addBg(crystal);
+    }
+    // 눈 입자
+    for (let s = 0; s < 60; s++) {
+      const snowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const snow = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.08, 4, 4), snowMat);
+      snow.position.set((Math.random() - 0.5) * 80, Math.random() * 60, -(Math.random() * 160));
+      addBg(snow);
+    }
+
+  } else if (stage === 7) {
+    // ── 우주 정거장: 행성 + 소행성 ──
+    const planetColors = [0x6366f1, 0xf59e0b, 0x10b981, 0xef4444, 0xa78bfa];
+    for (let p = 0; p < 6; p++) {
+      const col = planetColors[p % planetColors.length];
+      const planetMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.7 });
+      const r = 4 + Math.random() * 8;
+      const planet = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), planetMat);
+      planet.position.set((Math.random() - 0.5) * 120, 20 + Math.random() * 60, -(Math.random() * 200));
+      addBg(planet);
+      // 링
+      if (Math.random() > 0.5) {
+        const ringMat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+        const ring = new THREE.Mesh(new THREE.RingGeometry(r * 1.4, r * 2.2, 32), ringMat);
+        ring.rotation.x = Math.PI / 3;
+        ring.position.copy(planet.position);
+        addBg(ring);
+      }
+    }
+    // 소행성 군집
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 1 });
+    spread((x, y, z) => {
+      const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + Math.random() * 1.2, 0), rockMat);
+      rock.position.set(x, y, z);
+      rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      addBg(rock);
+    });
+
+  } else if (stage === 8) {
+    // ── 심해: 해파리 + 해초 + 기포 ──
+    const jellyColors = [0xff69b4, 0x00e5ff, 0x7c3aed, 0x10b981];
+    spread((x, y, z) => {
+      const col = jellyColors[Math.floor(Math.random() * jellyColors.length)];
+      const jellyMat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.4, transparent: true, opacity: 0.6 });
+      const body = new THREE.Mesh(new THREE.SphereGeometry(1.2 + Math.random(), 10, 8), jellyMat);
+      body.scale.y = 0.6;
+      body.position.set(x, y, z);
+      addBg(body);
+    });
+    // 해초
+    const seaweedMat = new THREE.MeshStandardMaterial({ color: 0x065f46, roughness: 0.9 });
+    for (let w = 0; w < 30; w++) {
+      const h = 5 + Math.random() * 12;
+      const weed = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, h, 5), seaweedMat);
+      weed.rotation.z = (Math.random() - 0.5) * 0.4;
+      weed.position.set((Math.random() - 0.5) * 80, -5, -(Math.random() * 160));
+      addBg(weed);
+    }
+    // 기포
+    const bubbleMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.3, roughness: 0, metalness: 0.5 });
+    for (let b = 0; b < 50; b++) {
+      const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.1 + Math.random() * 0.3, 8, 6), bubbleMat);
+      bubble.position.set((Math.random() - 0.5) * 80, Math.random() * 60, -(Math.random() * 160));
+      addBg(bubble);
+    }
+
+  } else if (stage === 9) {
+    // ── 천상: 황금 기둥 + 구름 + 후광 ──
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xff8c00, emissiveIntensity: 0.5, roughness: 0.1, metalness: 0.9 });
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, emissive: 0xfffacd, emissiveIntensity: 0.3 });
+    // 황금 기둥
+    for (let c = 0; c < 16; c++) {
+      const h = 10 + Math.random() * 20;
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, h, 8), goldMat);
+      pillar.position.set((Math.random() - 0.5) * 80, Math.random() * 30, -(Math.random() * 160));
+      addBg(pillar);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 8), goldMat);
+      cap.position.set(pillar.position.x, pillar.position.y + h / 2, pillar.position.z);
+      addBg(cap);
+    }
+    // 구름
+    spread((x, y, z) => {
+      const baseY = 20 + Math.random() * 50;
+      for (let c = 0; c < 5; c++) {
+        const r = 2.5 + Math.random() * 2;
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), cloudMat);
+        puff.position.set(x + c * r * 1.1, baseY + Math.random() * 2, z);
+        addBg(puff);
+      }
+    });
+    // 빛 후광
+    for (let h = 0; h < 8; h++) {
+      const haloMat = new THREE.MeshBasicMaterial({ color: 0xffff99, transparent: true, opacity: 0.12, side: THREE.DoubleSide });
+      const halo = new THREE.Mesh(new THREE.RingGeometry(5, 7, 32), haloMat);
+      halo.rotation.x = Math.PI / 2;
+      halo.position.set((Math.random() - 0.5) * 80, 30 + Math.random() * 40, -(Math.random() * 160));
+      addBg(halo);
+    }
+
+  } else if (stage === 10) {
+    // ── 혼돈: 파편 + 에너지 구체 + 균열 ──
+    const chaosColors = [0xff00ff, 0x00ffff, 0xff4500, 0x7c3aed, 0xffd700];
+    spread((x, y, z) => {
+      const col = chaosColors[Math.floor(Math.random() * chaosColors.length)];
+      const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.8, roughness: 0.1 });
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.8 + Math.random() * 1.5, 8, 6), mat);
+      orb.position.set(x, y, z);
+      addBg(orb);
+    });
+    // 파편들
+    const shardMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.8 });
+    for (let s = 0; s < 40; s++) {
+      const shard = new THREE.Mesh(new THREE.TetrahedronGeometry(0.5 + Math.random() * 1.5), shardMat);
+      shard.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
+      shard.position.set((Math.random() - 0.5) * 80, Math.random() * 60, -(Math.random() * 160));
+      addBg(shard);
+    }
+    // 균열 라인
+    for (let l = 0; l < 15; l++) {
+      const col = chaosColors[l % chaosColors.length];
+      const lineMat = new THREE.LineBasicMaterial({ color: col });
+      const pts = [];
+      let lx = (Math.random() - 0.5) * 60, ly = Math.random() * 50, lz = -(Math.random() * 160);
+      for (let p = 0; p < 6; p++) {
+        pts.push(new THREE.Vector3(lx, ly, lz));
+        lx += (Math.random() - 0.5) * 6;
+        ly += (Math.random() - 0.5) * 6;
+      }
+      const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+      addBg(new THREE.Line(lineGeo, lineMat));
     }
   }
 }
@@ -1176,8 +1586,11 @@ function clearStage() {
   spikePositions = [];
   coinMeshes.forEach(c => scene.remove(c.mesh));
   coinMeshes = [];
+  potionMeshes.forEach(p => scene.remove(p.group));
+  potionMeshes = [];
   particles.forEach(p => scene.remove(p.mesh));
   particles = [];
+  if (flagGroup) { scene.remove(flagGroup); flagGroup = null; flagBanner = null; }
   clearBackground();
 }
 
@@ -1190,7 +1603,7 @@ function buildStage(stage) {
   renderer.setClearColor(palette.sky2);
 
   const platformCount = 18 + stage * 2;
-  const hGap = 3.5 + stage * 0.3;   // 수평 간격 (점프 1~2번 거리)
+  const hGap = 3.5 + stage * 0.3 - (stage > 5 ? 0.4 : 0);   // 수평 간격 (6단계~는 조금 좁힘)
   const vStep = 1.2 + stage * 0.1;  // 높이 상승 (완만하게)
   const hazardChance = 0.15 + stage * 0.08;
   const platformMinSize = Math.max(2.0, 4.0 - stage * 0.25);
@@ -1200,7 +1613,9 @@ function buildStage(stage) {
 
   // Z축 방향(앞쪽)으로 주로 전진, 좌우는 약간만 흔들림
   let x = 0, y = 0, z = 0;
+  let prevX = 0, prevY = 0, prevZ = 0;
   for (let i = 0; i < platformCount; i++) {
+    prevX = x; prevY = y; prevZ = z;
     const lateralJitter = (Math.random() - 0.5) * hGap * 0.8;
     x += lateralJitter;
     z -= hGap * (0.8 + Math.random() * 0.4); // Z 음방향으로 전진
@@ -1213,9 +1628,24 @@ function buildStage(stage) {
   }
 
   // Goal platform at top
-  addPlatform(x, y + vStep * 2, z, 6, 0.5, 6, 0xffd700, false, true);
+  const goalY = y + vStep * 2;
+  preFinalPlatformPos.set(prevX, prevY + 0.75, prevZ); // 순간이동 목적지: 골 2칸 전 블록
+  goalPlatformPos.set(x, goalY, z);
+  if (stage === 10) {
+    addPlatform(x, goalY, z, 8, 0.5, 8, 0xffd700, false, false);
+    buildFlag(x, goalY + 0.25, z);
+  } else {
+    addPlatform(x, goalY, z, 6, 0.5, 6, 0xffd700, false, true);
+  }
 
   buildCoins();
+  if (stage >= 6) {
+    buildPotion(0.25);
+    buildPotion(0.5);
+    buildPotion(0.75);
+  } else {
+    buildPotion(0.5);
+  }
   buildBackground(stage);
   updateStageUI(stage, palette);
 }
@@ -1240,6 +1670,94 @@ function buildCoins() {
     scene.add(mesh);
     coinMeshes.push({ mesh, collected: false });
   });
+}
+
+function buildPotion(fraction = 0.5) {
+  const eligible = platforms.filter(p => p.userData.w && p.userData.w >= 2 && !p.userData.isGoal && !p.userData.isHazard);
+  if (!eligible.length) return;
+  const plat = eligible[Math.floor(eligible.length * fraction)];
+
+  const group = new THREE.Group();
+
+  // 병 몸통 (초록 유리병 느낌)
+  const bottleMat = new THREE.MeshStandardMaterial({
+    color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 0.7,
+    roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.85,
+  });
+  const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.55, 10), bottleMat);
+  bottle.position.set(0, 0.28, 0);
+  group.add(bottle);
+
+  // 병 목
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.18, 0.22, 8), bottleMat);
+  neck.position.set(0, 0.66, 0);
+  group.add(neck);
+
+  // 코르크 마개
+  const corkMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.9 });
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.12, 8), corkMat);
+  cork.position.set(0, 0.83, 0);
+  group.add(cork);
+
+  // 내부 빛 (하트 느낌의 발광 구)
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0x86efac, transparent: true, opacity: 0.6 });
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), glowMat);
+  glow.position.set(0, 0.25, 0);
+  group.add(glow);
+
+  // 십자(+) 표시 — 두 개의 얇은 박스
+  const crossMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const barH = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.04), crossMat);
+  barH.position.set(0, 0.28, 0.3);
+  group.add(barH);
+  const barV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.3, 0.04), crossMat);
+  barV.position.set(0, 0.28, 0.3);
+  group.add(barV);
+
+  group.position.set(
+    plat.position.x,
+    plat.position.y + plat.userData.h / 2 + 0.05,
+    plat.position.z
+  );
+  scene.add(group);
+  potionMeshes.push({ group, collected: false });
+}
+
+function updatePotions() {
+  const t = Date.now() * 0.002;
+  for (const p of potionMeshes) {
+    if (p.collected) continue;
+    // 위아래 둥실 + 회전
+    p.group.position.y += Math.sin(t + p.group.position.x) * 0.004;
+    p.group.rotation.y += 0.02;
+
+    const dx = player.position.x - p.group.position.x;
+    const dy = player.position.y - p.group.position.y;
+    const dz = player.position.z - p.group.position.z;
+    if (dx*dx + dy*dy + dz*dz < 1.0 * 1.0) {
+      p.collected = true;
+      scene.remove(p.group);
+      hp = Math.min(maxHp, hp + 30);
+      updateHpBar();
+      SFX.heal();
+      spawnHealParticles(p.group.position.clone());
+    }
+  }
+}
+
+function spawnHealParticles(pos) {
+  for (let i = 0; i < 12; i++) {
+    const geo = new THREE.SphereGeometry(0.07, 6, 6);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x4ade80 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos);
+    scene.add(mesh);
+    particles.push({
+      mesh,
+      vel: new THREE.Vector3((Math.random() - 0.5) * 0.25, Math.random() * 0.3 + 0.08, (Math.random() - 0.5) * 0.25),
+      life: 50,
+    });
+  }
 }
 
 function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false) {
@@ -1299,6 +1817,49 @@ function updateStageUI(stage, palette) {
   document.getElementById('stage-sub').textContent = `난이도: ${palette.diff}`;
 }
 
+function buildFlag(x, y, z) {
+  flagGroup = new THREE.Group();
+  flagBasePos.set(x, y, z);
+
+  // 기둥
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.8, roughness: 0.2 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 8, 8), poleMat);
+  pole.position.set(0, 4, 0);
+  flagGroup.add(pole);
+
+  // 깃발 천
+  const bannerMat = new THREE.MeshStandardMaterial({
+    color: 0xff1111, emissive: 0xff0000, emissiveIntensity: 0.4, roughness: 0.7, side: THREE.DoubleSide,
+  });
+  flagBanner = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.4), bannerMat);
+  flagBanner.position.set(1.2, 7.3, 0);
+  flagGroup.add(flagBanner);
+
+  // 깃발에 흰 별 데칼 (작은 원 두 개로 눈 모양 대신 별 느낌)
+  const starDeco = new THREE.Mesh(
+    new THREE.CircleGeometry(0.35, 5),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+  );
+  starDeco.position.set(1.2, 7.3, 0.01);
+  flagGroup.add(starDeco);
+
+  // 꼭대기 구슬
+  const ballMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 1.0, metalness: 0.7, roughness: 0.1 });
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), ballMat);
+  ball.position.set(0, 8.2, 0);
+  flagGroup.add(ball);
+
+  // 발광 후광 (바닥)
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.18, side: THREE.DoubleSide });
+  const glow = new THREE.Mesh(new THREE.RingGeometry(1.2, 2.2, 32), glowMat);
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.set(0, 0.05, 0);
+  flagGroup.add(glow);
+
+  flagGroup.position.set(x, y, z);
+  scene.add(flagGroup);
+}
+
 // ─────────────────────────────────────────────
 // GAME LOOP
 // ─────────────────────────────────────────────
@@ -1306,15 +1867,18 @@ function startGame() {
   document.getElementById('overlay').style.display = 'none';
   document.getElementById('score-ui').style.display = 'block';
   document.getElementById('coin-ui').style.display = 'block';
+  document.getElementById('shop-hud-btn').style.display = 'block';
   updateCoinUI();
   gameActive = true;
-  currentStage = 1;
+  currentStage = getStartStage();
+  useCoupon();
   sessionScore = 0;
   sessionCoins = 0;
   spikeDamageTimer = 0;
   hp = maxHp;
   updateHpBar();
-  buildStage(1);
+  buildStage(currentStage);
+  updateTeleportUI();
   player.position.set(0, 2, 0);
   velocity.set(0, 0, 0);
   stageStartTime = Date.now();
@@ -1350,10 +1914,23 @@ function animate() {
 
   updatePlayer();
   updateCoins();
+  updatePotions();
   updateBgAnimations();
   updateParticles();
   updateCamera();
   updateScoreUI();
+
+  // 깃발 애니메이션
+  if (flagGroup) {
+    const t = Date.now() * 0.003;
+    if (flagBanner) flagBanner.rotation.y = Math.sin(t * 1.8) * 0.35;
+    // 꼭대기 구슬 발광 맥동
+    const ball = flagGroup.children.find(c => c.geometry && c.geometry.type === 'SphereGeometry');
+    if (ball) ball.material.emissiveIntensity = 0.6 + Math.sin(t * 3) * 0.4;
+    // 후광 회전
+    const ring = flagGroup.children.find(c => c.geometry && c.geometry.type === 'RingGeometry');
+    if (ring) ring.rotation.z += 0.01;
+  }
 
   window._pointLight.position.copy(player.position);
   renderer.render(scene, camera);
@@ -1436,6 +2013,16 @@ function updatePlayer() {
           return;
         }
       }
+    }
+  }
+
+  // 10단계 깃발 충돌 — 깃발에 닿으면 게임 클리어
+  if (currentStage === 10 && flagGroup) {
+    const dx = player.position.x - flagBasePos.x;
+    const dz = player.position.z - flagBasePos.z;
+    if (dx * dx + dz * dz < 1.6 * 1.6) {
+      nextStage();
+      return;
     }
   }
 
@@ -1537,7 +2124,7 @@ function updateParticles() {
 function nextStage() {
   sessionScore += calcScore();
 
-  if (currentStage >= 5) {
+  if (currentStage >= 10) {
     gameClear();
     return;
   }
@@ -1556,19 +2143,22 @@ function nextStage() {
 
 function gameClear() {
   gameActive = false;
+  _shopOpenedDuringGame = false;
   document.exitPointerLock();
   document.getElementById('score-ui').style.display = 'none';
   document.getElementById('coin-ui').style.display = 'none';
+  document.getElementById('shop-hud-btn').style.display = 'none';
+  document.getElementById('teleport-ui').style.display = 'none';
   SFX.gameClear();
   const finalScore = sessionScore;
-  const rankings = addRanking(playerName, finalScore, 5);
+  const rankings = addRanking(playerName, finalScore, 10);
   const myIdx = rankings.findIndex(r => r.name === playerName && r.score === finalScore);
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
     <div class="panel">
       <h2 style="color:#ffd700">🎉 게임 클리어! 🎉</h2>
-      <p class="sub">모든 5단계를 완주했습니다! · ${playerName}</p>
+      <p class="sub">모든 10단계를 완주했습니다! · ${playerName}</p>
       <div id="score-display">
         <div class="score-big">${finalScore.toLocaleString()}</div>
         <div class="score-breakdown">최종 점수</div>
@@ -1588,6 +2178,9 @@ function gameOver() {
   document.exitPointerLock();
   document.getElementById('score-ui').style.display = 'none';
   document.getElementById('coin-ui').style.display = 'none';
+  document.getElementById('shop-hud-btn').style.display = 'none';
+  document.getElementById('teleport-ui').style.display = 'none';
+  _shopOpenedDuringGame = false;
   SFX.gameOver();
   const finalScore = sessionScore + calcScore();
   const rankings = addRanking(playerName, finalScore, currentStage);

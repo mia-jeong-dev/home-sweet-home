@@ -200,7 +200,7 @@ const PLAY_COST      = 5;
 const SUCCESS_REFUND = 2;
 const WELCOME_COINS  = 50;
 const DAILY_COINS    = 30;
-const SUCCESS_RATE   = 0.38;
+const SUCCESS_RATE   = 0.65;
 
 const MW = 12, MD = 10, MH = 14;
 const CLAW_Y_TOP    =  MH / 2 - 1.6;
@@ -476,7 +476,7 @@ function buildMachine() {
 let clawGroup;
 const clawArms = [];
 const OPEN_ANGLE  = 0.48;
-const CLOSE_ANGLE = 0.04;
+const CLOSE_ANGLE = 0.01;
 let clawTargetAngle = OPEN_ANGLE;
 let wireMesh, clawLight;
 
@@ -821,7 +821,7 @@ function updateGame(dt) {
             const dist = Math.sqrt(dx*dx+dz*dz);
             if (dist < bestDist) { bestDist = dist; best = d; }
           });
-          if (best && bestDist < 3.5) {
+          if (best && bestDist < 4.5) {
             grabbedDoll = best;
             grabbedDoll.userData.grabbed = true;
             caughtAnimal = grabbedDoll.userData.animal;
