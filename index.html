@@ -674,6 +674,9 @@ function showGameOverScreen(score, rankings) {
     </div>`;
 }
 
+window.showTitleScreen = showTitleScreen;
+window.showShop = showShop;
+
 window.onClickStart = function() {
   const inp = document.getElementById('name-input');
   const name = inp ? inp.value.trim() : playerName;
