@@ -170,7 +170,7 @@
 <div id="result-banner">
   <h2 id="result-title"></h2>
   <p id="result-sub"></p>
-  <button id="next-btn" onclick="window.nextGame()" style="
+  <button id="next-btn" style="
     margin-top:18px; padding:12px 32px;
     background:linear-gradient(135deg,#6d28d9,#a78bfa);
     border:none; border-radius:30px;
@@ -896,7 +896,7 @@ function resetAfterResult() {
   updateHud();
 }
 
-window.nextGame = resetAfterResult;
+document.getElementById('next-btn').addEventListener('click', resetAfterResult);
 
 // ────────────────────────────────────────────────────────────────
 // UI
