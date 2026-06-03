@@ -511,13 +511,25 @@ let playerName = '';
 let sessionScore = 0;
 let stageStartTime = 0;
 
-const LS_KEY = 'ditto_jump_rankings';
+const LS_KEY      = 'ditto_jump_rankings';
+const LS_RANK_DATE = 'ditto_jump_ranking_date';
 
+function todayStr() {
+  return new Date().toLocaleDateString('ko-KR');
+}
 function loadRankings() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
-  catch { return []; }
+  try {
+    const saved = localStorage.getItem(LS_RANK_DATE);
+    if (saved !== todayStr()) {
+      localStorage.removeItem(LS_KEY);
+      localStorage.setItem(LS_RANK_DATE, todayStr());
+      return [];
+    }
+    return JSON.parse(localStorage.getItem(LS_KEY)) || [];
+  } catch { return []; }
 }
 function saveRankings(list) {
+  localStorage.setItem(LS_RANK_DATE, todayStr());
   localStorage.setItem(LS_KEY, JSON.stringify(list));
 }
 function addRanking(name, score, stage) {
@@ -570,7 +582,8 @@ function showTitleScreen() {
       <button class="btn btn-gray" onclick="showShop()" style="margin-top:4px">🛒 상점</button>
       ${rankings.length ? `
       <div style="margin-top:18px">
-        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">🏆 랭킹</div>
+        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:4px;letter-spacing:1px">🏆 오늘의 랭킹</div>
+        <div style="color:#555;font-size:10px;margin-bottom:8px">${todayStr()} · 매일 자정 초기화</div>
         <table class="ranking-table">
           <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
           ${rankingRows(rankings, '')}
