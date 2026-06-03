@@ -7,175 +7,157 @@
   <title>인형뽑기</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      background:#0a0a1a;
-      font-family:'Arial',sans-serif;
-      overflow:hidden;
-      position:fixed; width:100%; height:100%;
-      touch-action:none; user-select:none; -webkit-user-select:none;
-    }
+    body { background:#050010; font-family:'Arial',sans-serif; overflow:hidden; position:fixed; width:100%; height:100%; touch-action:none; user-select:none; -webkit-user-select:none; }
     canvas { display:block; }
 
-    /* ── HUD ── */
+    /* HUD */
     #hud {
       position:fixed; top:0; left:0; right:0;
       display:flex; justify-content:space-between; align-items:flex-start;
-      padding:14px 16px;
-      padding-top:calc(14px + env(safe-area-inset-top));
+      padding:12px 14px;
+      padding-top:calc(12px + env(safe-area-inset-top));
       pointer-events:none; z-index:10; gap:8px;
     }
     .hud-box {
-      background:rgba(0,0,0,0.65);
-      border:2px solid #a78bfa;
+      background:rgba(0,0,0,0.78);
+      border:2px solid #7c3aed;
       border-radius:12px;
-      padding:8px 14px;
-      color:#fff; font-size:13px; font-weight:bold;
-      white-space:nowrap;
+      padding:7px 13px;
+      color:#fff; font-size:12px; font-weight:bold;
+      white-space:nowrap; line-height:1.4;
     }
     #coin-display { border-color:#f59e0b; color:#fcd34d; }
+    #user-display { border-color:#a78bfa; color:#ddd6fe; }
+    #state-display { border-color:#4ade80; color:#86efac; flex:1; text-align:center; }
+    #col-btn { border-color:#38bdf8; color:#7dd3fc; pointer-events:all; cursor:pointer; }
+    #col-btn:active { opacity:0.7; }
 
-    /* ── 조작 힌트 ── */
-    #hint {
-      position:fixed; bottom:20px; left:50%;
-      transform:translateX(-50%);
-      background:rgba(0,0,0,0.6);
-      border:1px solid #555;
-      border-radius:10px;
-      padding:8px 16px;
-      color:#aaa; font-size:11px; text-align:center;
-      pointer-events:none; z-index:10;
-      line-height:1.8;
-    }
-    @media (pointer:coarse) { #hint { display:none; } }
-
-    /* ── 터치 컨트롤 ── */
+    /* Touch UI */
     #touch-ui {
       position:fixed; bottom:0; left:0; right:0;
-      display:none;
-      justify-content:space-between;
-      align-items:flex-end;
+      display:none; justify-content:space-between; align-items:flex-end;
       padding:20px 28px;
       padding-bottom:calc(20px + env(safe-area-inset-bottom));
       pointer-events:none; z-index:20;
     }
     @media (pointer:coarse) { #touch-ui { display:flex; } }
-    #joystick-zone {
-      position:relative; width:120px; height:120px;
-      pointer-events:all; touch-action:none;
-    }
-    #joy-base {
-      position:absolute; inset:0;
-      background:rgba(255,255,255,0.08);
-      border:2px solid rgba(255,255,255,0.25);
-      border-radius:50%;
-    }
-    #joy-knob {
-      position:absolute;
-      width:48px; height:48px;
-      background:rgba(167,139,250,0.75);
-      border:2px solid #a78bfa;
-      border-radius:50%;
-      top:50%; left:50%;
-      transform:translate(-50%,-50%);
-    }
+    #joystick-zone { position:relative; width:120px; height:120px; pointer-events:all; touch-action:none; }
+    #joy-base { position:absolute; inset:0; background:rgba(255,255,255,0.07); border:2px solid rgba(255,255,255,0.22); border-radius:50%; }
+    #joy-knob { position:absolute; width:48px; height:48px; background:rgba(124,58,237,0.75); border:2px solid #a78bfa; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); }
     #drop-btn {
-      width:88px; height:88px;
-      background:rgba(239,68,68,0.7);
-      border:3px solid #f87171;
-      border-radius:50%;
+      width:90px; height:90px;
+      background:radial-gradient(circle, rgba(239,68,68,0.85) 0%, rgba(153,27,27,0.9) 100%);
+      border:3px solid #f87171; border-radius:50%;
       color:#fff; font-size:13px; font-weight:bold;
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center;
-      gap:2px;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
       pointer-events:all; touch-action:none;
-      box-shadow:0 0 20px rgba(239,68,68,0.5);
+      box-shadow:0 0 28px rgba(239,68,68,0.55);
       -webkit-tap-highlight-color:transparent;
     }
-    #drop-btn:active { transform:scale(0.93); }
+    #drop-btn:active { transform:scale(0.88); }
 
-    /* ── 오버레이 ── */
+    /* Hint */
+    #hint {
+      position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+      background:rgba(0,0,0,0.65); border:1px solid #444; border-radius:10px;
+      padding:7px 16px; color:#888; font-size:11px; text-align:center;
+      pointer-events:none; z-index:10; line-height:1.8;
+    }
+    @media (pointer:coarse) { #hint { display:none; } }
+
+    /* Overlay */
     #overlay {
       position:fixed; inset:0;
-      background:rgba(0,0,0,0.88);
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:flex-start;
+      background:rgba(2,0,15,0.92);
+      display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
       overflow-y:auto; -webkit-overflow-scrolling:touch;
-      padding:24px 0;
-      padding-top:calc(24px + env(safe-area-inset-top));
-      padding-bottom:calc(24px + env(safe-area-inset-bottom));
+      padding:28px 0;
+      padding-top:calc(28px + env(safe-area-inset-top));
+      padding-bottom:calc(28px + env(safe-area-inset-bottom));
       z-index:100; color:#fff;
     }
     .panel {
-      background:rgba(15,10,30,0.95);
-      border:2px solid #a78bfa;
-      border-radius:18px;
-      padding:24px 20px;
-      width:400px; max-width:96vw;
+      background:rgba(8,3,28,0.98);
+      border:2px solid #6d28d9;
+      border-radius:22px;
+      padding:28px 22px;
+      width:420px; max-width:96vw;
+      box-shadow:0 0 40px rgba(109,40,217,0.3);
     }
-    .panel h2 { font-size:22px; font-weight:bold; text-align:center; margin-bottom:6px; }
-    .panel .sub { color:#aaa; font-size:12px; text-align:center; margin-bottom:16px; }
+    .panel h2 { font-size:26px; font-weight:bold; text-align:center; margin-bottom:6px; }
+    .panel .sub { color:#888; font-size:13px; text-align:center; margin-bottom:20px; }
     .btn {
       width:100%; border:none; border-radius:30px;
-      font-size:16px; font-weight:bold;
-      padding:12px 0; cursor:pointer;
-      margin-bottom:10px;
-      transition:transform 0.1s;
+      font-size:16px; font-weight:bold; padding:13px 0;
+      cursor:pointer; margin-bottom:10px;
+      transition:transform 0.1s, box-shadow 0.1s;
       -webkit-tap-highlight-color:transparent;
     }
     .btn:hover { transform:scale(1.02); }
-    .btn-purple { background:linear-gradient(135deg,#7c3aed,#a78bfa); color:#fff; }
-    .btn-gray   { background:rgba(255,255,255,0.1); color:#ccc; border:1px solid #555; }
-    .btn-red    { background:linear-gradient(135deg,#dc2626,#ef4444); color:#fff; }
+    .btn-purple { background:linear-gradient(135deg,#6d28d9,#a78bfa); color:#fff; box-shadow:0 4px 18px rgba(109,40,217,0.4); }
+    .btn-gray { background:rgba(255,255,255,0.08); color:#bbb; border:1px solid #444; }
+    .name-input {
+      width:100%; background:rgba(255,255,255,0.06);
+      border:2px solid #6d28d9; border-radius:14px;
+      color:#fff; font-size:16px; padding:13px 16px;
+      margin-bottom:14px; outline:none;
+    }
+    .name-input:focus { border-color:#a78bfa; box-shadow:0 0 12px rgba(167,139,250,0.3); }
     .coin-bar {
-      background:rgba(245,158,11,0.15);
-      border:1px solid #f59e0b;
-      border-radius:8px;
-      padding:8px 12px;
+      background:rgba(245,158,11,0.1); border:1px solid #f59e0b;
+      border-radius:10px; padding:10px 14px;
       color:#fcd34d; font-size:14px; font-weight:bold;
       text-align:center; margin-bottom:14px;
     }
+    .info-box {
+      background:rgba(255,255,255,0.04); border:1px solid #333;
+      border-radius:10px; padding:10px 14px;
+      color:#aaa; font-size:12px; line-height:1.8;
+      margin-bottom:14px;
+    }
 
-    /* ── 결과 배너 ── */
+    /* Result Banner */
     #result-banner {
       position:fixed; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      background:rgba(0,0,0,0.9);
-      border:3px solid #ffd700;
-      border-radius:20px;
-      padding:24px 40px;
-      text-align:center; z-index:80;
-      display:none; pointer-events:none;
+      transform:translate(-50%,-50%) scale(0.6);
+      background:rgba(4,0,20,0.96);
+      border:3px solid #ffd700; border-radius:24px;
+      padding:30px 48px; text-align:center;
+      z-index:80; display:none; pointer-events:none;
+      opacity:0; transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s;
     }
-    #result-banner h2 { font-size:28px; margin-bottom:6px; }
-    #result-banner p  { color:#ccc; font-size:14px; }
+    #result-banner.show { transform:translate(-50%,-50%) scale(1); opacity:1; }
+    #result-banner h2 { font-size:30px; margin-bottom:8px; }
+    #result-banner p  { color:#aaa; font-size:14px; }
 
-    /* ── 컬렉션 ── */
-    .collection-grid {
-      display:grid; grid-template-columns:repeat(4,1fr);
-      gap:8px; margin-top:12px;
-    }
+    /* Collection */
+    .coll-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
     .doll-card {
-      background:rgba(255,255,255,0.06);
-      border:1px solid #333;
-      border-radius:10px;
-      padding:8px 4px;
-      text-align:center; font-size:22px;
+      background:rgba(255,255,255,0.04); border:1px solid #2a2a2a;
+      border-radius:12px; padding:10px 4px; text-align:center; opacity:0.35;
     }
-    .doll-card .doll-name { font-size:10px; color:#aaa; margin-top:3px; }
-    .doll-count { font-size:10px; color:#a78bfa; font-weight:bold; }
+    .doll-card.owned { border-color:#6d28d9; background:rgba(109,40,217,0.12); opacity:1; }
+    .doll-name { font-size:10px; color:#888; margin-top:4px; }
+    .doll-count { font-size:11px; color:#a78bfa; font-weight:bold; }
+
+    @keyframes shimmer {
+      0%,100% { box-shadow:0 0 20px rgba(109,40,217,0.4); }
+      50%      { box-shadow:0 0 40px rgba(167,139,250,0.7); }
+    }
   </style>
 </head>
 <body>
 
 <div id="hud">
-  <div class="hud-box" id="coin-display">🪙 <span id="coin-num">0</span></div>
+  <div class="hud-box" id="user-display">👤 <span id="user-name">-</span></div>
   <div class="hud-box" id="state-display">대기 중</div>
-  <div class="hud-box" style="pointer-events:all; cursor:pointer;" onclick="showCollection()">🧸 컬렉션</div>
+  <div style="display:flex;gap:6px;align-items:flex-start">
+    <div class="hud-box" id="coin-display">🪙 <span id="coin-num">0</span></div>
+    <div class="hud-box" id="col-btn" onclick="window.showCollection()">🧸</div>
+  </div>
 </div>
 
-<div id="hint">
-  WASD / 방향키: 집게 이동&nbsp;&nbsp;|&nbsp;&nbsp;SPACE: 뽑기 (5코인)
-</div>
+<div id="hint">WASD / 방향키: 집게 이동 &nbsp;|&nbsp; SPACE: 뽑기 (5🪙) &nbsp;|&nbsp; 마우스 드래그: 카메라</div>
 
 <div id="touch-ui">
   <div id="joystick-zone">
@@ -190,104 +172,106 @@
   <p id="result-sub"></p>
 </div>
 
-<div id="overlay"><!-- JS로 렌더링 --></div>
+<div id="overlay"></div>
 
 <script type="importmap">
-{ "imports": { "three": "https://unpkg.com/three@0.165.0/build/three.module.js" } }
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
+  }
+}
 </script>
 <script type="module">
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// ── 상수 ──
-const COIN_KEY  = 'ditto_coins';
-const COL_KEY   = 'claw_collection';
-const PLAY_COST = 5;
+// ────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ────────────────────────────────────────────────────────────────
+const PLAY_COST      = 5;
+const SUCCESS_REFUND = 2;
+const WELCOME_COINS  = 50;
+const DAILY_COINS    = 30;
+const SUCCESS_RATE   = 0.38;
 
-const MW = 12, MD = 10, MH = 14;  // 기계 크기
-const CLAW_TOP    =  MH / 2 - 1.2;
-const CLAW_BOTTOM = -MH / 2 + 2.2;
-const MAX_X = 4.2, MAX_Z = 3.2;
+const MW = 12, MD = 10, MH = 14;
+const CLAW_Y_TOP    =  MH / 2 - 1.6;
+const CLAW_Y_BOTTOM = -MH / 2 + 2.9;
+const MAX_X = 4.0, MAX_Z = 3.4;
+const CLAW_SPEED = 0.075;
 
-// ── 동물 정의 ──
-const ANIMALS = [
-  { id:'dog',     name:'강아지', emoji:'🐶', bodyCol:0xc9a96e, headCol:0xd4b483, earCol:0xa0784a },
-  { id:'cat',     name:'고양이', emoji:'🐱', bodyCol:0xf4a460, headCol:0xf4a460, earCol:0xe8956d },
-  { id:'rabbit',  name:'토끼',   emoji:'🐰', bodyCol:0xf5f0eb, headCol:0xf5f0eb, earCol:0xffb6c1 },
-  { id:'bear',    name:'곰',     emoji:'🐻', bodyCol:0x8b6347, headCol:0x9b7357, earCol:0x7a5230 },
-  { id:'panda',   name:'판다',   emoji:'🐼', bodyCol:0xffffff, headCol:0xffffff, earCol:0x222222 },
-  { id:'fox',     name:'여우',   emoji:'🦊', bodyCol:0xe8763a, headCol:0xe8763a, earCol:0xe8763a },
-  { id:'koala',   name:'코알라', emoji:'🐨', bodyCol:0x9e9e9e, headCol:0xb0b0b0, earCol:0x7a7a7a },
-  { id:'hamster', name:'햄스터', emoji:'🐹', bodyCol:0xf5c98a, headCol:0xfad9a8, earCol:0xf0b090 },
-];
+// ────────────────────────────────────────────────────────────────
+// PER-USER STORAGE
+// ────────────────────────────────────────────────────────────────
+let currentUser = '';
+const sk = s => `claw2_${s}_${currentUser.toLowerCase().trim()}`;
+function getCoins()   { return parseInt(localStorage.getItem(sk('coins')) || '0'); }
+function setCoins(n)  { localStorage.setItem(sk('coins'), String(Math.max(0, n))); updateHud(); }
+function getCol()     { try { return JSON.parse(localStorage.getItem(sk('col'))) || {}; } catch { return {}; } }
+function addCol(id)   { const c = getCol(); c[id] = (c[id]||0)+1; localStorage.setItem(sk('col'), JSON.stringify(c)); }
 
-// ── localStorage ──
-function getCoins()    { return parseInt(localStorage.getItem(COIN_KEY) || '0'); }
-function setCoins(n)   { localStorage.setItem(COIN_KEY, String(n)); }
-function getCollection(){ try { return JSON.parse(localStorage.getItem(COL_KEY)) || {}; } catch { return {}; } }
-
-// ── 무료 코인 지급 ──
-const LS_WELCOME = 'ditto_welcome_given';
-const LS_DAILY   = 'ditto_daily_coins_date';
 function todayStr() { return new Date().toLocaleDateString('ko-KR'); }
 function claimFreeCoins() {
-  let msg = null;
-  let bonus = 0;
-  if (!localStorage.getItem(LS_WELCOME)) {
-    localStorage.setItem(LS_WELCOME, '1');
-    bonus += 30;
-    msg = '🎉 첫 방문 환영! +30🪙 웰컴 코인이 지급되었어요.';
+  let bonus = 0, msgs = [];
+  if (!localStorage.getItem(sk('welcome'))) {
+    localStorage.setItem(sk('welcome'), '1');
+    bonus += WELCOME_COINS;
+    msgs.push(`🎉 웰컴 코인 +${WELCOME_COINS}🪙`);
   }
-  if (localStorage.getItem(LS_DAILY) !== todayStr()) {
-    localStorage.setItem(LS_DAILY, todayStr());
-    bonus += 15;
-    msg = msg ? '🎉 첫 방문 환영! +30🪙 웰컴 코인 & 오늘의 무료 코인 +15🪙 지급!' : '🪙 오늘의 무료 코인 +15🪙 지급!';
+  if (localStorage.getItem(sk('daily')) !== todayStr()) {
+    localStorage.setItem(sk('daily'), todayStr());
+    bonus += DAILY_COINS;
+    msgs.push(`🪙 오늘의 무료 코인 +${DAILY_COINS}🪙`);
   }
-  if (bonus > 0) {
-    setCoins(getCoins() + bonus);
-    return msg;
-  }
+  if (bonus > 0) { setCoins(getCoins() + bonus); return msgs.join(' · '); }
   return null;
 }
 
-function showFreeCoinsToast(msg) {
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-    background:rgba(10,5,30,0.96); border:2px solid #f59e0b;
-    border-radius:16px; padding:20px 28px; text-align:center;
-    color:#fcd34d; font-size:15px; font-weight:bold;
-    z-index:9999; max-width:88vw; line-height:1.6;
-    box-shadow:0 0 30px rgba(245,158,11,0.4);
-    animation:fadeInPop 0.3s ease;
-  `;
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => {
-    toast.style.transition = 'opacity 0.5s';
-    toast.style.opacity = '0';
-    setTimeout(() => toast.remove(), 500);
-  }, 2800);
-}
-function addToCollection(id) {
-  const col = getCollection();
-  col[id] = (col[id] || 0) + 1;
-  localStorage.setItem(COL_KEY, JSON.stringify(col));
-}
+// ────────────────────────────────────────────────────────────────
+// ANIMALS
+// ────────────────────────────────────────────────────────────────
+const ANIMALS = [
+  { id:'dog',     name:'강아지', emoji:'🐶', bodyCol:0xc9a96e, headCol:0xd4b483, earCol:0xa0784a, eyeCol:0x0a0500 },
+  { id:'cat',     name:'고양이', emoji:'🐱', bodyCol:0xf0a870, headCol:0xf4b080, earCol:0xffb6c1, eyeCol:0x1a3300 },
+  { id:'rabbit',  name:'토끼',   emoji:'🐰', bodyCol:0xf5f0eb, headCol:0xfefefe, earCol:0xffb6c1, eyeCol:0xcc0044 },
+  { id:'bear',    name:'곰',     emoji:'🐻', bodyCol:0x8b6347, headCol:0x9b7357, earCol:0x7a5230, eyeCol:0x080300 },
+  { id:'panda',   name:'판다',   emoji:'🐼', bodyCol:0xffffff, headCol:0xffffff, earCol:0x181818, eyeCol:0x080808 },
+  { id:'fox',     name:'여우',   emoji:'🦊', bodyCol:0xe8763a, headCol:0xee8040, earCol:0xf5f0eb, eyeCol:0x0a0500 },
+  { id:'koala',   name:'코알라', emoji:'🐨', bodyCol:0x8e8e9a, headCol:0xa0a0b0, earCol:0x6a6a7a, eyeCol:0x080808 },
+  { id:'hamster', name:'햄스터', emoji:'🐹', bodyCol:0xf5c98a, headCol:0xfad9a8, earCol:0xf0a88a, eyeCol:0x080300 },
+];
 
-// ── 씬 설정 ──
-const scene    = new THREE.Scene();
-scene.fog      = new THREE.FogExp2(0x0a0a1a, 0.025);
-const camera   = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
-camera.position.set(16, 12, 16);
-camera.lookAt(0, 0, 0);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// ────────────────────────────────────────────────────────────────
+// RENDERER / SCENE / CAMERA
+// ────────────────────────────────────────────────────────────────
 const isMobile = 'ontouchstart' in window;
+
+const renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile ? 1.5 : 2));
 renderer.shadowMap.enabled = !isMobile;
-renderer.setClearColor(0x0a0a1a);
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.3;
 document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x030010, 0.016);
+
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 300);
+camera.position.set(0, 7, 28);
+camera.lookAt(0, 0, 0);
+
+const orbitControls = new OrbitControls(camera, renderer.domElement);
+orbitControls.target.set(0, 0, 0);
+orbitControls.minDistance = 14;
+orbitControls.maxDistance = 42;
+orbitControls.minPolarAngle = 0.2;
+orbitControls.maxPolarAngle = Math.PI / 2.1;
+orbitControls.enableDamping = true;
+orbitControls.dampingFactor = 0.09;
+orbitControls.enabled = false;
 
 window.addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
@@ -295,528 +279,776 @@ window.addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-// 조명
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const dir = new THREE.DirectionalLight(0xffffff, 1.0);
-dir.position.set(10, 20, 10);
-scene.add(dir);
-const interior = new THREE.PointLight(0xffeedd, 1.5, 25);
-interior.position.set(0, MH / 2 - 2, 0);
-scene.add(interior);
-const neonL = new THREE.PointLight(0xa78bfa, 2, 20);
-neonL.position.set(-MW / 2, 2, 0);
-scene.add(neonL);
-const neonR = new THREE.PointLight(0xf472b6, 2, 20);
-neonR.position.set(MW / 2, 2, 0);
-scene.add(neonR);
+// ────────────────────────────────────────────────────────────────
+// LIGHTING
+// ────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x0a0520, 1.2));
 
-// ── 기계 만들기 ──
-function buildMachine() {
-  // 바닥
-  const floor = new THREE.Mesh(
-    new THREE.BoxGeometry(MW, 0.4, MD),
-    new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.6 })
-  );
-  floor.position.y = -MH / 2;
-  scene.add(floor);
-
-  // 유리 패널 (4면)
-  const glassMat = new THREE.MeshStandardMaterial({
-    color: 0x88ccff, transparent: true, opacity: 0.12,
-    roughness: 0, metalness: 0.1, side: THREE.DoubleSide
-  });
-  const panels = [
-    { w: MW, h: MH, d: 0.15, x: 0,       y: 0, z:  MD / 2 },
-    { w: MW, h: MH, d: 0.15, x: 0,       y: 0, z: -MD / 2 },
-    { w: 0.15, h: MH, d: MD, x:  MW / 2, y: 0, z: 0 },
-    { w: 0.15, h: MH, d: MD, x: -MW / 2, y: 0, z: 0 },
-  ];
-  panels.forEach(p => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.h, p.d), glassMat);
-    m.position.set(p.x, p.y, p.z);
-    scene.add(m);
-  });
-
-  // 프레임 (모서리)
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.9, roughness: 0.2 });
-  const edges = [
-    [-MW/2, -MW/2,  MD/2, -MD/2],
-    [ MW/2,  MW/2,  MD/2, -MD/2],
-  ];
-  const framePositions = [
-    [-MW/2, 0,  MD/2], [MW/2, 0,  MD/2],
-    [-MW/2, 0, -MD/2], [MW/2, 0, -MD/2],
-  ];
-  framePositions.forEach(([x, y, z]) => {
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.3, MH, 0.3), frameMat);
-    bar.position.set(x, y, z);
-    scene.add(bar);
-  });
-
-  // 상단 지붕
-  const roof = new THREE.Mesh(
-    new THREE.BoxGeometry(MW + 0.3, 0.5, MD + 0.3),
-    new THREE.MeshStandardMaterial({ color: 0x7c3aed, roughness: 0.5, metalness: 0.3 })
-  );
-  roof.position.y = MH / 2 + 0.25;
-  scene.add(roof);
-
-  // 네온 사인
-  const signMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 1 });
-  const sign = new THREE.Mesh(new THREE.BoxGeometry(MW * 0.6, 0.8, 0.2), signMat);
-  sign.position.set(0, MH / 2 + 1.1, MD / 2 + 0.1);
-  scene.add(sign);
-
-  // 경품 투출구 (오른쪽)
-  const chuteMat = new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.8 });
-  const chute = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2, 0.3), chuteMat);
-  chute.position.set(MW / 2 + 1.1, -MH / 2 + 1, 0);
-  scene.add(chute);
-
-  // 배경 장식 별
-  const starGeo = new THREE.BufferGeometry();
-  const sp = [];
-  for (let i = 0; i < 800; i++)
-    sp.push((Math.random()-0.5)*300, (Math.random()-0.5)*300, (Math.random()-0.5)*300);
-  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
-  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color:0xffffff, size:0.5 })));
+const sun = new THREE.DirectionalLight(0xffffff, 0.5);
+sun.position.set(12, 22, 12);
+if (!isMobile) {
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -22; sun.shadow.camera.right = 22;
+  sun.shadow.camera.top  =  22; sun.shadow.camera.bottom = -22;
 }
+scene.add(sun);
 
-// ── 동물 인형 만들기 ──
-function buildAnimal(def) {
-  const g = new THREE.Group();
-  const mk = (geo, col, emit = 0) => new THREE.Mesh(geo,
-    new THREE.MeshStandardMaterial({ color: col, roughness: 0.8,
-      emissive: emit ? col : 0x000000, emissiveIntensity: emit }));
+// Interior pulsing colored lights
+const intLights = [
+  Object.assign(new THREE.PointLight(0xff00ff, 3.5, 22), { position: new THREE.Vector3(-MW/2+1, 2, 0) }),
+  Object.assign(new THREE.PointLight(0x00eeff, 3.5, 22), { position: new THREE.Vector3( MW/2-1, 2, 0) }),
+  Object.assign(new THREE.PointLight(0xffee00, 2.5, 18), { position: new THREE.Vector3(0, -3, 0) }),
+];
+intLights.forEach(l => { scene.add(l); l.position.copy(l.position); });
 
-  // 몸통
-  const body = mk(new THREE.SphereGeometry(0.7, 12, 10), def.bodyCol);
-  body.scale.y = 1.1;
-  g.add(body);
+// Scene atmosphere spotlights
+const atmoLights = [
+  Object.assign(new THREE.SpotLight(0xff00aa, 5, 80, Math.PI/7, 0.6), {}),
+  Object.assign(new THREE.SpotLight(0x0088ff, 5, 80, Math.PI/7, 0.6), {}),
+];
+atmoLights[0].position.set(-25, 25, 8);
+atmoLights[1].position.set( 25, 25, 8);
+atmoLights.forEach(l => scene.add(l));
 
-  // 머리
-  const head = mk(new THREE.SphereGeometry(0.55, 12, 10), def.headCol);
-  head.position.set(0, 0.85, 0.25);
-  g.add(head);
+// ────────────────────────────────────────────────────────────────
+// SHARED MATERIALS
+// ────────────────────────────────────────────────────────────────
+const mat = {
+  metal:  new THREE.MeshStandardMaterial({ color:0x1a1a2e, metalness:0.9, roughness:0.25 }),
+  chrome: new THREE.MeshStandardMaterial({ color:0x9ab0cc, metalness:1.0, roughness:0.08 }),
+  glass:  new THREE.MeshStandardMaterial({ color:0x90b8ff, transparent:true, opacity:0.13, side:THREE.DoubleSide, metalness:0.0, roughness:0.0 }),
+  floor:  new THREE.MeshStandardMaterial({ color:0x0d0a20, roughness:0.85 }),
+  neon: (col) => new THREE.MeshStandardMaterial({ color:col, emissive:col, emissiveIntensity:3.5, roughness:0.5 }),
+};
 
-  // 눈
-  const eyeM = new THREE.MeshStandardMaterial({ color: 0x111111 });
-  const eyeG = new THREE.SphereGeometry(0.07, 8, 8);
-  [-0.16, 0.16].forEach(ex => {
-    const e = new THREE.Mesh(eyeG, eyeM);
-    e.position.set(ex, 0.92, 0.76);
-    g.add(e);
-  });
+// ────────────────────────────────────────────────────────────────
+// MACHINE BUILDING
+// ────────────────────────────────────────────────────────────────
+const machineGroup = new THREE.Group();
+scene.add(machineGroup);
 
-  // 코
-  const nose = mk(new THREE.SphereGeometry(0.05, 6, 6), def.id === 'panda' ? 0x111111 : 0xff8899);
-  nose.position.set(0, 0.8, 0.8);
-  g.add(nose);
+const NEON_COLORS = [0xff00ff, 0x00ffff, 0xffdd00, 0xff8800, 0x00ff88, 0xff0088];
 
-  // 동물별 귀
-  if (def.id === 'rabbit') {
-    // 긴 귀
-    [-0.22, 0.22].forEach(ex => {
-      const ear = mk(new THREE.CylinderGeometry(0.1, 0.12, 0.9, 8), def.headCol);
-      ear.position.set(ex, 1.65, 0.2);
-      ear.rotation.z = ex < 0 ? 0.15 : -0.15;
-      g.add(ear);
-      const inner = mk(new THREE.CylinderGeometry(0.05, 0.06, 0.7, 8), def.earCol);
-      inner.position.set(ex, 1.65, 0.22);
-      inner.rotation.z = ex < 0 ? 0.15 : -0.15;
-      g.add(inner);
-    });
-  } else if (def.id === 'bear' || def.id === 'panda' || def.id === 'koala' || def.id === 'hamster') {
-    // 둥근 귀
-    [-0.4, 0.4].forEach(ex => {
-      const ear = mk(new THREE.SphereGeometry(0.18, 8, 8), def.earCol);
-      ear.position.set(ex, 1.32, 0.1);
-      g.add(ear);
-    });
-  } else if (def.id === 'cat' || def.id === 'fox') {
-    // 뾰족 귀
-    [-0.35, 0.35].forEach(ex => {
-      const ear = mk(new THREE.ConeGeometry(0.14, 0.3, 6), def.earCol);
-      ear.position.set(ex, 1.4, 0.08);
-      ear.rotation.z = ex < 0 ? 0.3 : -0.3;
-      g.add(ear);
-    });
-  } else {
-    // 강아지: 처진 귀
-    [-0.48, 0.48].forEach(ex => {
-      const ear = mk(new THREE.SphereGeometry(0.22, 8, 6), def.earCol);
-      ear.position.set(ex, 1.05, 0.05);
-      ear.scale.set(0.7, 1.1, 0.5);
-      g.add(ear);
-    });
-  }
-
-  // 판다 눈 무늬
-  if (def.id === 'panda') {
-    [-0.16, 0.16].forEach(ex => {
-      const patch = mk(new THREE.SphereGeometry(0.13, 8, 8), 0x222222);
-      patch.position.set(ex, 0.93, 0.72);
-      g.add(patch);
-    });
-  }
-  // 여우 흰 뺨
-  if (def.id === 'fox') {
-    const cheekM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
-    const cheek  = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), cheekM);
-    cheek.position.set(0, 0.77, 0.7);
-    cheek.scale.set(1, 0.6, 0.5);
-    g.add(cheek);
-  }
-
-  g.userData = { animalId: def.id, animalName: def.name, animalEmoji: def.emoji };
+function tube(len, axis) {
+  const g = new THREE.CylinderGeometry(0.065, 0.065, len, 8);
+  if (axis === 'x') g.rotateZ(Math.PI/2);
+  else if (axis === 'z') g.rotateX(Math.PI/2);
   return g;
 }
 
-// ── 인형 배치 ──
-const dolls = [];
-function spawnDolls() {
-  dolls.forEach(d => scene.remove(d));
-  dolls.length = 0;
-  const usedDefs = [...ANIMALS].sort(() => Math.random() - 0.5).slice(0, 8);
-  usedDefs.forEach((def, i) => {
-    const doll = buildAnimal(def);
-    const col  = i % 4, row = Math.floor(i / 4);
-    doll.position.set(
-      -3.5 + col * 2.4 + (Math.random() - 0.5) * 0.8,
-      -MH / 2 + 1.2,
-      -2.5 + row * 3.2 + (Math.random() - 0.5) * 0.8
-    );
-    doll.rotation.y = Math.random() * Math.PI * 2;
-    scene.add(doll);
-    dolls.push(doll);
+function buildMachine() {
+  const hw=MW/2, hd=MD/2, hh=MH/2;
+
+  // Internal floor
+  const flr = new THREE.Mesh(new THREE.BoxGeometry(MW-0.2, 0.4, MD-0.2), mat.floor);
+  flr.position.y = -hh;
+  if (!isMobile) flr.receiveShadow = true;
+  machineGroup.add(flr);
+
+  // Ceiling plate
+  const ceil = new THREE.Mesh(new THREE.BoxGeometry(MW, 0.55, MD), mat.metal.clone());
+  ceil.position.y = hh;
+  machineGroup.add(ceil);
+
+  // Corner pillars
+  for (const [sx,sz] of [[-1,-1],[1,-1],[1,1],[-1,1]]) {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.55, MH, 0.55), mat.metal.clone());
+    p.position.set(sx*hw, 0, sz*hd);
+    machineGroup.add(p);
+  }
+
+  // Glass walls (4 sides)
+  const wallDefs = [
+    { g: new THREE.BoxGeometry(MW, MH, 0.08), pos: [0,0, hd] },
+    { g: new THREE.BoxGeometry(MW, MH, 0.08), pos: [0,0,-hd] },
+    { g: new THREE.BoxGeometry(0.08, MH, MD), pos: [ hw,0,0] },
+    { g: new THREE.BoxGeometry(0.08, MH, MD), pos: [-hw,0,0] },
+  ];
+  wallDefs.forEach(({g,pos}) => {
+    const w = new THREE.Mesh(g, mat.glass.clone());
+    w.position.set(...pos);
+    machineGroup.add(w);
   });
+
+  // Neon edges — top 4
+  const topY = hh+0.01, botY = -hh-0.01;
+  [
+    { g:tube(MW,'x'), pos:[0,topY, hd], c:NEON_COLORS[0] },
+    { g:tube(MW,'x'), pos:[0,topY,-hd], c:NEON_COLORS[1] },
+    { g:tube(MD,'z'), pos:[ hw,topY,0], c:NEON_COLORS[2] },
+    { g:tube(MD,'z'), pos:[-hw,topY,0], c:NEON_COLORS[3] },
+    { g:tube(MW,'x'), pos:[0,botY, hd], c:NEON_COLORS[3] },
+    { g:tube(MW,'x'), pos:[0,botY,-hd], c:NEON_COLORS[2] },
+    { g:tube(MD,'z'), pos:[ hw,botY,0], c:NEON_COLORS[0] },
+    { g:tube(MD,'z'), pos:[-hw,botY,0], c:NEON_COLORS[1] },
+  ].forEach(({g,pos,c}) => {
+    const m = new THREE.Mesh(g, mat.neon(c));
+    m.position.set(...pos);
+    machineGroup.add(m);
+  });
+
+  // Vertical neon on 4 corners
+  [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].forEach(([x,z],i) => {
+    const vt = new THREE.Mesh(tube(MH,'y'), mat.neon(NEON_COLORS[i%4]));
+    vt.position.set(x, 0, z);
+    machineGroup.add(vt);
+  });
+
+  // Top decorative sign box
+  const signH = 2.6;
+  const signBox = new THREE.Mesh(
+    new THREE.BoxGeometry(MW+0.1, signH, 0.9),
+    new THREE.MeshStandardMaterial({ color:0x0f0525, roughness:0.9 })
+  );
+  signBox.position.set(0, hh + signH/2 + 0.27, 0);
+  machineGroup.add(signBox);
+
+  // Sign neon border
+  const neonBorderMat = mat.neon(0xff00ff);
+  for (const [sx,sy] of [[-MW/2,-signH/2],[MW/2,-signH/2],[MW/2,signH/2],[-MW/2,signH/2],[-MW/2,-signH/2]]) {
+    // corners only — use small spheres
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), mat.neon(0xff00ff));
+    dot.position.set(sx, hh + signH/2 + 0.27 + sy*0.85, 0.47);
+    machineGroup.add(dot);
+  }
+  // Sign horizontal neon lines
+  const sTop = new THREE.Mesh(tube(MW,'x'), mat.neon(0xff00ff));
+  sTop.position.set(0, hh + signH + 0.27, 0.45); machineGroup.add(sTop);
+  const sBot = new THREE.Mesh(tube(MW,'x'), mat.neon(0x00ffff));
+  sBot.position.set(0, hh + 0.27, 0.45); machineGroup.add(sBot);
+
+  // Star decorations on sign
+  for (let i = -2; i <= 2; i++) {
+    const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.18), mat.neon(i%2===0 ? 0xffee00 : 0xff88cc));
+    star.position.set(i * 2, hh + signH/2 + 0.27, 0.5);
+    star.rotation.z = Math.PI/4;
+    machineGroup.add(star);
+  }
+
+  // Base platform
+  const base = new THREE.Mesh(new THREE.BoxGeometry(MW+1.2, 0.9, MD+1.2), mat.metal.clone());
+  base.position.y = -hh - 0.7;
+  if (!isMobile) base.receiveShadow = true;
+  machineGroup.add(base);
+
+  // Neon trim on base
+  const baseTrimY = -hh - 0.25;
+  const bts = new THREE.Mesh(tube(MW+1.2,'x'), mat.neon(0x00ffff));
+  bts.position.set(0, baseTrimY, MD/2+0.6); machineGroup.add(bts);
+  const bts2 = bts.clone(); bts2.position.z = -(MD/2+0.6); machineGroup.add(bts2);
+
+  // Prize chute (front, bottom)
+  const chute = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 0.45), mat.metal.clone());
+  chute.position.set(0, -hh+0.9, hd+0.25);
+  machineGroup.add(chute);
+  const chuteHole = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.0, 0.1),
+    new THREE.MeshStandardMaterial({ color:0x000005 }));
+  chuteHole.position.set(0, -hh+0.9, hd+0.26);
+  machineGroup.add(chuteHole);
+
+  // X-axis rail at top
+  const xRail = new THREE.Mesh(new THREE.BoxGeometry(MW-0.8, 0.18, 0.18), mat.chrome.clone());
+  xRail.position.y = hh - 0.28;
+  machineGroup.add(xRail);
 }
 
-// ── 집게(클로) ──
-const clawGroup = new THREE.Group();
-scene.add(clawGroup);
-let clawX = 0, clawZ = 0;
-let clawY = CLAW_TOP;
+// ────────────────────────────────────────────────────────────────
+// CLAW BUILDING
+// ────────────────────────────────────────────────────────────────
+let clawGroup;
 const clawArms = [];
+const OPEN_ANGLE  = 0.48;
+const CLOSE_ANGLE = 0.04;
+let clawTargetAngle = OPEN_ANGLE;
+let wireMesh;
 
 function buildClaw() {
-  // 수평 레일 X
-  const railMatX = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.9, roughness: 0.2 });
-  const railX = new THREE.Mesh(new THREE.BoxGeometry(MW - 0.5, 0.2, 0.2), railMatX);
-  railX.position.set(0, MH / 2 - 0.5, 0);
-  scene.add(railX);
+  clawGroup = new THREE.Group();
 
-  // 수평 레일 Z
-  const railZ = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, MD - 0.5), railMatX);
-  railZ.position.y = MH / 2 - 0.5;
-  scene.add(railZ);
-  window._railZ = railZ;
+  // Hub
+  const hub = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), mat.chrome.clone());
+  clawGroup.add(hub);
 
-  // 집게 몸통
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.3, 0.25, 0.6, 10),
-    new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.9, roughness: 0.2 })
-  );
-  clawGroup.add(body);
+  // Top ring
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.06, 8, 20), mat.chrome.clone());
+  ring.rotation.x = Math.PI/2;
+  ring.position.y = 0.08;
+  clawGroup.add(ring);
 
-  // 케이블
-  const cable = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.05, 0.05, 1, 6),
-    new THREE.MeshStandardMaterial({ color: 0x555555 })
-  );
-  cable.position.y = 0.8;
-  clawGroup.add(cable);
-  window._cable = cable;
-
-  // 집게 팔 3개
-  const armMat = new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.8, roughness: 0.3 });
+  // 3 arms at 120° apart
   for (let i = 0; i < 3; i++) {
-    const arm = new THREE.Group();
-    const seg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, 0.1), armMat);
-    seg.position.y = -0.55;
-    arm.add(seg);
-    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.25), armMat);
-    tip.position.set(0, -0.85, 0.12);
-    arm.add(tip);
-    arm.rotation.y = (i / 3) * Math.PI * 2;
-    arm.position.set(Math.cos((i/3)*Math.PI*2)*0.35, -0.3, Math.sin((i/3)*Math.PI*2)*0.35);
-    clawGroup.add(arm);
-    clawArms.push(arm);
+    const yAngle = (i / 3) * Math.PI * 2;
+    const armRig = new THREE.Group();
+    armRig.rotation.y = yAngle;
+
+    const pivot = new THREE.Group();
+    pivot.position.y = -0.22;
+
+    // Upper arm
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.04, 1.5, 8), mat.chrome.clone());
+    upper.position.set(0.12, -0.75, 0);
+    pivot.add(upper);
+
+    // Knuckle
+    const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), mat.chrome.clone());
+    knuckle.position.set(0.18, -1.52, 0);
+    pivot.add(knuckle);
+
+    // Hook (torus arc)
+    const hook = new THREE.Mesh(
+      new THREE.TorusGeometry(0.2, 0.045, 8, 16, Math.PI * 0.7),
+      mat.chrome.clone()
+    );
+    hook.position.set(0.22, -1.72, 0);
+    hook.rotation.z = Math.PI / 2 + 0.3;
+    pivot.add(hook);
+
+    pivot.rotation.z = OPEN_ANGLE;
+    clawArms.push(pivot);
+    armRig.add(pivot);
+    clawGroup.add(armRig);
   }
+
+  scene.add(clawGroup);
+
+  // Wire (stretches from claw to ceiling)
+  wireMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.03, 0.03, 1, 6),
+    mat.chrome.clone()
+  );
+  scene.add(wireMesh);
 }
 
-function updateClawTransform() {
-  clawGroup.position.set(clawX, clawY, clawZ);
-  if (window._railZ) window._railZ.position.set(clawX, MH/2 - 0.5, 0);
-  // 케이블 길이
-  if (window._cable) {
-    const cableLen = CLAW_TOP - clawY + 0.5;
-    window._cable.scale.y = Math.max(0.1, cableLen);
-    window._cable.position.y = cableLen / 2 + 0.3;
-  }
-}
-
-function setClawOpen(open) {
-  clawArms.forEach((arm, i) => {
-    const angle = (i / 3) * Math.PI * 2;
-    const spread = open ? 0.5 : 0.15;
-    arm.position.set(Math.cos(angle) * spread, -0.3, Math.sin(angle) * spread);
-    arm.rotation.z = open ? 0.4 : 0;
+function updateClawArmAngle() {
+  clawArms.forEach(arm => {
+    arm.rotation.z += (clawTargetAngle - arm.rotation.z) * 0.14;
   });
 }
 
-// ── 게임 상태 ──
-let state = 'idle'; // idle | moving | dropping | grabbing | raising | depositing | result
-let stateTimer = 0;
-let grabbedDoll = null;
-let dropOriginY = CLAW_TOP;
+// ────────────────────────────────────────────────────────────────
+// DOLL BUILDING
+// ────────────────────────────────────────────────────────────────
+const dollMeshes = [];
+const DOLL_FLOOR_Y = -MH/2 + 0.9;
 
-const DURATIONS = { dropping:1.6, grabbing:0.5, raising:1.2, depositing:1.0, result:2.2 };
+const DOLL_POSITIONS = [
+  [-3.2,-2.8],[-1.1,-2.8],[1.1,-2.8],[3.2,-2.8],
+  [-2.1,-0.6],[0.0,-0.6],[2.1,-0.6],
+  [0.0, 1.6],
+];
 
-const keys = {};
-window.addEventListener('keydown', e => {
-  keys[e.code] = true;
-  if (e.code === 'Space') { e.preventDefault(); tryDrop(); }
-});
-window.addEventListener('keyup', e => { keys[e.code] = false; });
+function makeMat(col) {
+  return new THREE.MeshStandardMaterial({ color:col, roughness:0.72 });
+}
 
-function tryDrop() {
-  if (state !== 'idle') return;
-  if (getCoins() < PLAY_COST) {
-    showResultBanner('❌ 코인 부족!', `코인이 ${PLAY_COST}개 필요합니다.`, '#ef4444');
-    return;
+function makeDoll(animal, x, z) {
+  const g = new THREE.Group();
+  g.userData = { animal, baseY: DOLL_FLOOR_Y, grabbed: false };
+
+  // Body
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.68, 16, 16), makeMat(animal.bodyCol));
+  body.scale.y = 0.88;
+  g.add(body);
+
+  // Belly
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 12),
+    new THREE.MeshStandardMaterial({ color:0xfff8f0, roughness:0.9 }));
+  belly.position.set(0, 0.02, 0.52);
+  belly.scale.z = 0.45;
+  g.add(belly);
+
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 16), makeMat(animal.headCol));
+  head.position.y = 0.88;
+  g.add(head);
+
+  // Eyes
+  const eyeMat = new THREE.MeshStandardMaterial({ color:animal.eyeCol, roughness:0.4, metalness:0.2 });
+  const shineMat = new THREE.MeshStandardMaterial({ color:0xffffff });
+  for (const ex of [-0.18, 0.18]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), eyeMat);
+    eye.position.set(ex, 0.9, 0.39);
+    g.add(eye);
+    const shine = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), shineMat);
+    shine.position.set(ex+0.02, 0.93, 0.445);
+    g.add(shine);
   }
-  setCoins(getCoins() - PLAY_COST);
-  updateCoinUI();
-  state = 'dropping';
-  stateTimer = 0;
-  dropOriginY = clawY;
-  setClawOpen(true);
-  setStateDisplay('내려가는 중...');
-}
 
-function findNearestDoll() {
-  let best = null, bestDist = Infinity;
-  dolls.forEach(d => {
-    if (d.userData.grabbed) return;
-    const dx = d.position.x - clawX;
-    const dz = d.position.z - clawZ;
-    const dist = Math.sqrt(dx*dx + dz*dz);
-    if (dist < bestDist) { bestDist = dist; best = d; }
-  });
-  return { doll: best, dist: bestDist };
-}
+  // Nose
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8),
+    new THREE.MeshStandardMaterial({ color:0x1a0808, roughness:0.5 }));
+  nose.position.set(0, 0.83, 0.46);
+  g.add(nose);
 
-// ── 터치 ──
-let touchMove = null;
-(function setupTouch() {
-  const zone    = document.getElementById('joystick-zone');
-  const knob    = document.getElementById('joy-knob');
-  const dropBtn = document.getElementById('drop-btn');
-  let joyId = null, joyOrigin = { x:0, y:0 };
-  const DEAD = 10, MAX_R = 52;
-
-  zone.addEventListener('touchstart', e => {
-    e.preventDefault();
-    const t = e.changedTouches[0];
-    joyId = t.identifier;
-    const r = zone.getBoundingClientRect();
-    joyOrigin = { x: r.left + r.width/2, y: r.top + r.height/2 };
-  }, { passive:false });
-
-  zone.addEventListener('touchmove', e => {
-    e.preventDefault();
-    for (const t of e.changedTouches) {
-      if (t.identifier !== joyId) continue;
-      const dx = t.clientX - joyOrigin.x, dy = t.clientY - joyOrigin.y;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      const clamped = Math.min(dist, MAX_R);
-      const angle = Math.atan2(dy, dx);
-      knob.style.transform = `translate(calc(-50% + ${Math.cos(angle)*clamped}px), calc(-50% + ${Math.sin(angle)*clamped}px))`;
-      touchMove = dist > DEAD ? { x: dx/dist, y: dy/dist } : null;
+  // Ears
+  if (animal.id === 'rabbit') {
+    for (const ex of [-0.2, 0.2]) {
+      const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.52, 6, 8), makeMat(animal.earCol));
+      ear.position.set(ex, 1.6, 0.02);
+      g.add(ear);
+      const inner = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.38, 6, 8),
+        new THREE.MeshStandardMaterial({ color:0xff99bb, roughness:0.8 }));
+      inner.position.set(ex, 1.6, 0.1);
+      g.add(inner);
     }
-  }, { passive:false });
-
-  const endJoy = e => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === joyId) {
-        joyId = null; touchMove = null;
-        knob.style.transform = 'translate(-50%,-50%)';
+  } else if (animal.id === 'cat' || animal.id === 'fox') {
+    for (const ex of [-0.32, 0.32]) {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 5), makeMat(animal.earCol));
+      ear.position.set(ex, 1.38, 0.04);
+      g.add(ear);
+      if (animal.id === 'cat') {
+        const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 5),
+          new THREE.MeshStandardMaterial({ color:0xffaacc, roughness:0.8 }));
+        innerEar.position.set(ex, 1.38, 0.12);
+        g.add(innerEar);
       }
     }
-  };
-  zone.addEventListener('touchend', endJoy);
-  zone.addEventListener('touchcancel', endJoy);
+    if (animal.id === 'fox') {
+      // White face accent
+      const face = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10),
+        new THREE.MeshStandardMaterial({ color:0xf8f0e0, roughness:0.8 }));
+      face.position.set(0, 0.84, 0.36);
+      face.scale.z = 0.5;
+      g.add(face);
+    }
+  } else if (animal.id === 'koala') {
+    for (const ex of [-0.42, 0.42]) {
+      const outer = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 10), makeMat(animal.earCol));
+      outer.position.set(ex, 1.28, 0.04);
+      g.add(outer);
+      const inner = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10),
+        new THREE.MeshStandardMaterial({ color:0xcccccc, roughness:0.85 }));
+      inner.position.set(ex, 1.28, 0.16);
+      g.add(inner);
+    }
+  } else if (animal.id === 'dog') {
+    for (const [ex, sign] of [[-0.44,-1],[0.44,1]]) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 10), makeMat(animal.earCol));
+      ear.scale.y = 1.55;
+      ear.position.set(ex, 1.1, -0.12);
+      ear.rotation.z = sign * 0.35;
+      g.add(ear);
+    }
+  } else if (animal.id === 'hamster') {
+    for (const ex of [-0.3, 0.3]) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), makeMat(animal.earCol));
+      ear.position.set(ex, 1.28, 0.06);
+      g.add(ear);
+    }
+    // Chubby cheeks
+    for (const ex of [-0.36, 0.36]) {
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10),
+        new THREE.MeshStandardMaterial({ color:0xffccaa, roughness:0.85 }));
+      cheek.position.set(ex, 0.74, 0.28);
+      g.add(cheek);
+    }
+  } else {
+    // Default round ears (bear, panda)
+    for (const ex of [-0.35, 0.35]) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), makeMat(animal.earCol));
+      ear.position.set(ex, 1.3, 0.05);
+      g.add(ear);
+    }
+  }
 
-  dropBtn.addEventListener('touchstart', e => { e.preventDefault(); tryDrop(); }, { passive:false });
-})();
+  // Panda black eye patches
+  if (animal.id === 'panda') {
+    const pMat = new THREE.MeshStandardMaterial({ color:0x0a0a0a, roughness:0.8 });
+    for (const ex of [-0.22, 0.22]) {
+      const patch = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), pMat);
+      patch.position.set(ex, 0.9, 0.36);
+      patch.scale.z = 0.45;
+      g.add(patch);
+    }
+  }
 
-// ── UI 업데이트 ──
-function updateCoinUI() {
-  document.getElementById('coin-num').textContent = getCoins();
+  g.position.set(x, DOLL_FLOOR_Y, z);
+  g.rotation.y = Math.random() * Math.PI * 2;
+  if (!isMobile) g.traverse(c => { if (c.isMesh) c.castShadow = true; });
+  scene.add(g);
+  dollMeshes.push(g);
+  return g;
 }
-function setStateDisplay(txt) {
-  document.getElementById('state-display').textContent = txt;
+
+function spawnDolls() {
+  dollMeshes.forEach(d => scene.remove(d));
+  dollMeshes.length = 0;
+  ANIMALS.forEach((a, i) => {
+    if (i < DOLL_POSITIONS.length) {
+      makeDoll(a, DOLL_POSITIONS[i][0], DOLL_POSITIONS[i][1]);
+    }
+  });
 }
 
+// ────────────────────────────────────────────────────────────────
+// PARTICLES
+// ────────────────────────────────────────────────────────────────
+const particles = [];
+
+function spawnParticles(pos, col) {
+  for (let i = 0; i < 30; i++) {
+    const geo = new THREE.SphereGeometry(0.06 + Math.random()*0.07, 6, 6);
+    const m = new THREE.MeshStandardMaterial({ color:col, emissive:col, emissiveIntensity:2, transparent:true, opacity:1 });
+    const mesh = new THREE.Mesh(geo, m);
+    mesh.position.copy(pos);
+    const sp = 0.1 + Math.random()*0.13;
+    const th = Math.random()*Math.PI*2, ph = Math.random()*Math.PI;
+    const vel = new THREE.Vector3(Math.sin(ph)*Math.cos(th)*sp, Math.abs(Math.cos(ph))*sp+0.06, Math.sin(ph)*Math.sin(th)*sp);
+    scene.add(mesh);
+    particles.push({ mesh, vel, life:1 });
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length-1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt * 1.1;
+    p.vel.y -= dt * 0.35;
+    p.mesh.position.addScaledVector(p.vel, dt*38);
+    p.mesh.material.opacity = Math.max(0, p.life);
+    if (p.life <= 0) {
+      scene.remove(p.mesh);
+      p.mesh.geometry.dispose();
+      p.mesh.material.dispose();
+      particles.splice(i, 1);
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// STAR BACKGROUND
+// ────────────────────────────────────────────────────────────────
+function buildStars() {
+  const geo = new THREE.BufferGeometry();
+  const N = 400, pos = new Float32Array(N*3);
+  for (let i = 0; i < N*3; i++) pos[i] = (Math.random()-0.5)*150;
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color:0xffffff, size:0.3, sizeAttenuation:true })));
+}
+
+// ────────────────────────────────────────────────────────────────
+// GAME STATE MACHINE
+// ────────────────────────────────────────────────────────────────
+let state = 'idle';
+let stateTimer = 0;
+let willSucceed = false;
+let grabbedDoll = null;
+let caughtAnimal = null;
 let resultTimeout = null;
-function showResultBanner(title, sub, color = '#ffd700') {
-  const b = document.getElementById('result-banner');
-  document.getElementById('result-title').textContent = title;
-  document.getElementById('result-title').style.color = color;
-  document.getElementById('result-sub').textContent = sub;
-  b.style.display = 'block';
-  clearTimeout(resultTimeout);
-  resultTimeout = setTimeout(() => { b.style.display = 'none'; }, DURATIONS.result * 1000);
+let gameActive = false;
+
+const DURATIONS = { dropping:1.8, grabbing:0.58, raising:1.4, depositing:1.1 };
+
+let clawX = 0, clawZ = 0, clawY = CLAW_Y_TOP;
+
+function setStatus(text) {
+  const el = document.getElementById('state-display');
+  if (el) el.textContent = text;
 }
 
-// ── 화면 렌더링 ──
+function updateHud() {
+  const cn = document.getElementById('coin-num');
+  if (cn) cn.textContent = getCoins();
+}
+
+function startDrop() {
+  if (state !== 'idle' || !gameActive) return;
+  if (getCoins() < PLAY_COST) { showToast('코인이 부족해요! 🪙', '#ef4444'); return; }
+  setCoins(getCoins() - PLAY_COST);
+  state = 'dropping';
+  stateTimer = DURATIONS.dropping;
+  willSucceed = Math.random() < SUCCESS_RATE;
+  clawTargetAngle = OPEN_ANGLE;
+  setStatus('집게 하강 중...');
+}
+
+function updateGame(dt) {
+  updateClawArmAngle();
+
+  if (state === 'idle') {
+    const dx = (keys.ArrowLeft||keys.a||keys.A ? -1:0) + (keys.ArrowRight||keys.d||keys.D ? 1:0) + joystickX;
+    const dz = (keys.ArrowUp||keys.w||keys.W   ? -1:0) + (keys.ArrowDown||keys.s||keys.S   ? 1:0) + joystickZ;
+    clawX = Math.max(-MAX_X, Math.min(MAX_X, clawX + dx * CLAW_SPEED));
+    clawZ = Math.max(-MAX_Z, Math.min(MAX_Z, clawZ + dz * CLAW_SPEED));
+    clawY = CLAW_Y_TOP;
+  } else {
+    stateTimer -= dt;
+
+    if (state === 'dropping') {
+      const t = Math.max(0, 1 - stateTimer / DURATIONS.dropping);
+      clawY = THREE.MathUtils.lerp(CLAW_Y_TOP, CLAW_Y_BOTTOM, t);
+      if (stateTimer <= 0) {
+        state = 'grabbing';
+        stateTimer = DURATIONS.grabbing;
+        clawTargetAngle = CLOSE_ANGLE;
+        setStatus('집게 닫는 중...');
+        // Determine grabbed doll
+        if (willSucceed) {
+          let best = null, bestDist = Infinity;
+          dollMeshes.forEach(d => {
+            if (d.userData.grabbed) return;
+            const dx = d.position.x - clawX, dz = d.position.z - clawZ;
+            const dist = Math.sqrt(dx*dx+dz*dz);
+            if (dist < bestDist) { bestDist = dist; best = d; }
+          });
+          if (best && bestDist < 3.5) {
+            grabbedDoll = best;
+            grabbedDoll.userData.grabbed = true;
+            caughtAnimal = grabbedDoll.userData.animal;
+          } else {
+            willSucceed = false;
+          }
+        }
+      }
+    } else if (state === 'grabbing') {
+      if (stateTimer <= 0) { state = 'raising'; stateTimer = DURATIONS.raising; setStatus('집게 상승 중...'); }
+    } else if (state === 'raising') {
+      const t = Math.max(0, 1 - stateTimer / DURATIONS.raising);
+      clawY = THREE.MathUtils.lerp(CLAW_Y_BOTTOM, CLAW_Y_TOP, t);
+      if (grabbedDoll) {
+        grabbedDoll.position.set(clawX, clawY - 1.3, clawZ);
+      }
+      if (stateTimer <= 0) { state = 'depositing'; stateTimer = DURATIONS.depositing; setStatus('이동 중...'); }
+    } else if (state === 'depositing') {
+      const t = Math.max(0, 1 - stateTimer / DURATIONS.depositing);
+      clawX = THREE.MathUtils.lerp(clawX, 0, t * 0.12);
+      clawZ = THREE.MathUtils.lerp(clawZ, MD/2, t * 0.12);
+      if (grabbedDoll) grabbedDoll.position.set(clawX, clawY - 1.3, clawZ);
+      if (stateTimer <= 0) showResult();
+    }
+  }
+
+  // Claw group position
+  clawGroup.position.set(clawX, clawY, clawZ);
+
+  // Wire stretching from claw to ceiling
+  const ceilY = MH/2 - 0.28;
+  const wireLen = ceilY - clawY;
+  wireMesh.position.set(clawX, clawY + wireLen/2, clawZ);
+  wireMesh.scale.y = wireLen;
+
+  // Doll wobble
+  const t = Date.now() * 0.001;
+  dollMeshes.forEach((d, i) => {
+    if (!d.userData.grabbed) {
+      d.rotation.y += 0.008;
+      d.position.y = d.userData.baseY + Math.sin(t*0.9 + i*1.3) * 0.045;
+    }
+  });
+}
+
+function showResult() {
+  const banner = document.getElementById('result-banner');
+  const titleEl = document.getElementById('result-title');
+  const subEl   = document.getElementById('result-sub');
+
+  if (willSucceed && grabbedDoll) {
+    addCol(caughtAnimal.id);
+    setCoins(getCoins() + SUCCESS_REFUND);
+    spawnParticles(grabbedDoll.position.clone(), caughtAnimal.bodyCol);
+    scene.remove(grabbedDoll);
+    dollMeshes.splice(dollMeshes.indexOf(grabbedDoll), 1);
+    titleEl.textContent = `${caughtAnimal.emoji} ${caughtAnimal.name} 획득!`;
+    titleEl.style.color = '#ffd700';
+    subEl.textContent = `+${SUCCESS_REFUND}🪙 코인 환급! 컬렉션에 추가됐어요 🎉`;
+    setTimeout(spawnDolls, 2500);
+  } else {
+    titleEl.textContent = '😢 아쉽게도 실패...';
+    titleEl.style.color = '#f87171';
+    subEl.textContent = '다시 도전해보세요!';
+  }
+
+  banner.style.display = 'block';
+  requestAnimationFrame(() => banner.classList.add('show'));
+
+  clearTimeout(resultTimeout);
+  resultTimeout = setTimeout(() => {
+    banner.classList.remove('show');
+    setTimeout(() => { banner.style.display = 'none'; }, 350);
+    state = 'idle';
+    clawX = 0; clawZ = 0;
+    clawTargetAngle = OPEN_ANGLE;
+    grabbedDoll = null; caughtAnimal = null; willSucceed = false;
+    setStatus('이동 후 SPACE로 뽑기');
+    updateHud();
+  }, 2600);
+}
+
+// ────────────────────────────────────────────────────────────────
+// UI
+// ────────────────────────────────────────────────────────────────
+function showToast(msg, borderCol = '#f59e0b') {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:110px;left:50%;transform:translateX(-50%);
+    background:rgba(4,0,18,0.96);border:2px solid ${borderCol};border-radius:12px;
+    padding:11px 22px;color:#fff;font-size:14px;font-weight:bold;
+    z-index:9999;max-width:90vw;text-align:center;white-space:pre-line;
+    box-shadow:0 0 20px ${borderCol}99;opacity:1;transition:opacity 0.4s;`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),400); }, 2400);
+}
+
 function showTitle() {
-  const coins = getCoins();
+  gameActive = false;
+  orbitControls.enabled = false;
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
-    <div class="panel">
+    <div class="panel" style="animation:shimmer 2.5s infinite">
       <h2>🕹️ 인형뽑기</h2>
-      <p class="sub">집게를 조종해서 귀여운 동물 인형을 뽑아보세요!</p>
-      <div class="coin-bar">🪙 보유 코인: ${coins} &nbsp;|&nbsp; 1회 ${PLAY_COST}코인</div>
-      ${coins < PLAY_COST ? `<div style="background:rgba(239,68,68,0.15);border:1px solid #ef4444;border-radius:8px;padding:8px 12px;color:#fca5a5;font-size:12px;text-align:center;margin-bottom:10px">코인이 부족해요!<br>점프맵에서 코인을 모으거나 내일 무료 코인을 받아보세요 🪙</div>` : ''}
-      <button class="btn btn-purple" onclick="window.startClaw()">시작하기</button>
-      <button class="btn btn-gray" onclick="window.showCollection()">🧸 내 컬렉션</button>
-      <div style="text-align:center;color:#666;font-size:11px;margin-top:6px;margin-bottom:2px">매일 무료 🪙15코인 지급 · 첫 방문 🪙30코인</div>
-      <a href="index.html" style="display:block;text-align:center;color:#888;font-size:12px;margin-top:4px;text-decoration:none">← 점프맵으로 돌아가기</a>
+      <p class="sub">귀여운 동물 인형을 뽑아 컬렉션을 채워보세요!</p>
+      <div class="info-box">
+        🎉 첫 접속: <b style="color:#fcd34d">+${WELCOME_COINS}🪙</b> 웰컴 코인<br>
+        📅 매일 무료: <b style="color:#fcd34d">+${DAILY_COINS}🪙</b> 보너스 코인<br>
+        🏆 뽑기 성공: <b style="color:#fcd34d">+${SUCCESS_REFUND}🪙</b> 코인 환급
+      </div>
+      <input id="name-input" class="name-input" maxlength="12" placeholder="닉네임을 입력해주세요" autocomplete="off" />
+      <button class="btn btn-purple" onclick="window.onEnter()">입장하기 →</button>
+      <a href="index.html" style="display:block;text-align:center;color:#555;font-size:12px;margin-top:8px;text-decoration:none">← 점프맵으로 돌아가기</a>
     </div>`;
+  const inp = document.getElementById('name-input');
+  if (inp) { inp.focus(); inp.addEventListener('keydown', e => { if (e.key==='Enter') window.onEnter(); }); }
 }
 
+window.onEnter = function() {
+  const inp = document.getElementById('name-input');
+  const name = (inp?.value || '').trim();
+  if (!name) { showToast('닉네임을 입력해주세요!', '#ef4444'); return; }
+  currentUser = name;
+  document.getElementById('user-name').textContent = name;
+  const freeMsg = claimFreeCoins();
+  updateHud();
+  document.getElementById('overlay').style.display = 'none';
+  gameActive = true;
+  if (!isMobile) orbitControls.enabled = true;
+  setStatus('이동 후 SPACE로 뽑기');
+  if (freeMsg) setTimeout(() => showToast(freeMsg, '#f59e0b'), 600);
+};
+
 window.showCollection = function() {
-  const col = getCollection();
+  if (!currentUser) { showToast('먼저 입장해주세요!', '#ef4444'); return; }
+  const col = getCol();
+  const total = Object.values(col).reduce((a,b)=>a+b,0);
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
+  orbitControls.enabled = false;
   const cards = ANIMALS.map(a => `
-    <div class="doll-card" style="${col[a.id] ? '' : 'opacity:0.3'}">
+    <div class="doll-card ${col[a.id]?'owned':''}">
       <div style="font-size:26px">${a.emoji}</div>
       <div class="doll-name">${a.name}</div>
-      <div class="doll-count">${col[a.id] ? `×${col[a.id]}` : '미획득'}</div>
+      <div class="doll-count">${col[a.id]?`×${col[a.id]}`:'미획득'}</div>
     </div>`).join('');
   overlay.innerHTML = `
     <div class="panel">
-      <h2>🧸 내 컬렉션</h2>
-      <p class="sub">총 ${Object.values(col).reduce((a,b)=>a+b,0)}개 획득</p>
-      <div class="collection-grid">${cards}</div>
-      <div style="margin-top:14px"></div>
-      <button class="btn btn-purple" onclick="window.startClaw()">계속 뽑기</button>
-      <button class="btn btn-gray" onclick="window.showTitle()">← 타이틀로</button>
+      <h2>🧸 컬렉션</h2>
+      <p class="sub">총 ${total}개 획득 · ${currentUser}님의 기록</p>
+      <div class="coin-bar">🪙 보유 코인: ${getCoins()}</div>
+      <div class="coll-grid">${cards}</div>
+      <div style="margin-top:16px"></div>
+      <button class="btn btn-purple" onclick="window.closeOverlay()">✕ 닫기</button>
     </div>`;
 };
 
-window.showTitle = showTitle;
-window.startClaw = function() {
+window.closeOverlay = function() {
   document.getElementById('overlay').style.display = 'none';
-  updateCoinUI();
-  setStateDisplay(`이동 후 SPACE로 뽑기`);
+  if (gameActive && !isMobile) orbitControls.enabled = true;
 };
 
-// ── 게임 루프 ──
+// ────────────────────────────────────────────────────────────────
+// INPUT
+// ────────────────────────────────────────────────────────────────
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (e.key === ' ' && gameActive) { e.preventDefault(); startDrop(); }
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// Joystick
+const jZone = document.getElementById('joystick-zone');
+const jKnob = document.getElementById('joy-knob');
+let jActive = false, jOX = 0, jOY = 0;
+const JR = 36;
+let joystickX = 0, joystickZ = 0;
+
+jZone.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const r = jZone.getBoundingClientRect();
+  jOX = r.left+r.width/2; jOY = r.top+r.height/2;
+  jActive = true;
+}, { passive:false });
+jZone.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!jActive) return;
+  const t = e.touches[0];
+  const dx = t.clientX-jOX, dy = t.clientY-jOY;
+  const dist = Math.min(Math.sqrt(dx*dx+dy*dy), JR);
+  const ang = Math.atan2(dy, dx);
+  const nx = Math.cos(ang)*dist, ny = Math.sin(ang)*dist;
+  jKnob.style.transform = `translate(calc(-50% + ${nx}px),calc(-50% + ${ny}px))`;
+  joystickX = nx/JR; joystickZ = ny/JR;
+}, { passive:false });
+['touchend','touchcancel'].forEach(ev => jZone.addEventListener(ev, () => {
+  jActive=false; jKnob.style.transform='translate(-50%,-50%)'; joystickX=0; joystickZ=0;
+}));
+
+const dropBtn = document.getElementById('drop-btn');
+dropBtn.addEventListener('touchstart', e => { e.preventDefault(); startDrop(); }, { passive:false });
+dropBtn.addEventListener('click', startDrop);
+
+// ────────────────────────────────────────────────────────────────
+// ANIMATION LOOP
+// ────────────────────────────────────────────────────────────────
 const clock = new THREE.Clock();
-let wobble = 0;
+let animT = 0;
+
+// Animated sign stars
+const signStars = [];
+machineGroup.children.forEach(c => {
+  if (c.geometry instanceof THREE.OctahedronGeometry) signStars.push(c);
+});
 
 function animate() {
   requestAnimationFrame(animate);
-  const dt = clock.getDelta();
-  wobble += dt;
+  const dt = Math.min(clock.getDelta(), 0.05);
+  animT += dt;
 
-  // 인형 귀여운 흔들림
-  dolls.forEach((d, i) => {
-    if (!d.userData.grabbed)
-      d.rotation.y += Math.sin(wobble + i) * 0.003;
+  if (gameActive && document.getElementById('overlay').style.display === 'none') {
+    updateGame(dt);
+  }
+  updateParticles(dt);
+
+  // Pulse interior lights
+  intLights[0].intensity = 3.0 + Math.sin(animT * 2.3) * 1.0;
+  intLights[1].intensity = 3.0 + Math.sin(animT * 1.8 + 1.2) * 1.0;
+  intLights[2].intensity = 2.0 + Math.sin(animT * 3.1) * 0.8;
+
+  // Sweep spotlights
+  atmoLights[0].position.x = Math.sin(animT * 0.45) * 28;
+  atmoLights[1].position.x = Math.cos(animT * 0.38) * 28;
+
+  // Spin sign stars
+  signStars.forEach((s, i) => {
+    s.rotation.x += dt * (0.8 + i * 0.15);
+    s.rotation.z += dt * (0.6 + i * 0.1);
   });
 
-  // 조이스틱 / 키보드 이동
-  if (state === 'idle') {
-    const spd = 3.5 * dt;
-    let mx = 0, mz = 0;
-    if (keys['ArrowLeft']  || keys['KeyA']) mx -= spd;
-    if (keys['ArrowRight'] || keys['KeyD']) mx += spd;
-    if (keys['ArrowUp']    || keys['KeyW']) mz -= spd;
-    if (keys['ArrowDown']  || keys['KeyS']) mz += spd;
-    if (touchMove) { mx += touchMove.x * spd * 1.5; mz += touchMove.y * spd * 1.5; }
-    clawX = Math.max(-MAX_X, Math.min(MAX_X, clawX + mx));
-    clawZ = Math.max(-MAX_Z, Math.min(MAX_Z, clawZ + mz));
-  }
-
-  // 상태 머신
-  stateTimer += dt;
-
-  if (state === 'dropping') {
-    const t = Math.min(stateTimer / DURATIONS.dropping, 1);
-    clawY = THREE.MathUtils.lerp(CLAW_TOP, CLAW_BOTTOM, t);
-    if (t >= 1) {
-      state = 'grabbing'; stateTimer = 0;
-      setStateDisplay('집는 중...');
-      const { doll, dist } = findNearestDoll();
-      const success = doll && dist < 2.2 && Math.random() < (1 - dist * 0.3);
-      if (success) {
-        grabbedDoll = doll;
-        grabbedDoll.userData.grabbed = true;
-        setClawOpen(false);
-      } else {
-        setClawOpen(false);
-        setTimeout(() => setClawOpen(true), 300);
-      }
-    }
-  } else if (state === 'grabbing') {
-    if (stateTimer >= DURATIONS.grabbing) {
-      state = 'raising'; stateTimer = 0;
-      setStateDisplay('올라가는 중...');
-    }
-  } else if (state === 'raising') {
-    const t = Math.min(stateTimer / DURATIONS.raising, 1);
-    clawY = THREE.MathUtils.lerp(CLAW_BOTTOM, CLAW_TOP, t);
-    if (grabbedDoll) {
-      grabbedDoll.position.set(clawX, clawY - 1.2, clawZ);
-    }
-    if (t >= 1) {
-      if (grabbedDoll) { state = 'depositing'; stateTimer = 0; setStateDisplay('투출 중...'); }
-      else {
-        state = 'idle'; setClawOpen(true); setStateDisplay('이동 후 SPACE로 뽑기');
-        showResultBanner('😢 아쉽다!', '다시 도전해 보세요!', '#f87171');
-      }
-    }
-  } else if (state === 'depositing') {
-    const t = Math.min(stateTimer / DURATIONS.depositing, 1);
-    clawX = THREE.MathUtils.lerp(clawX, MW / 2 + 1, t * 0.08);
-    if (grabbedDoll) grabbedDoll.position.set(clawX, clawY - 1.2, clawZ);
-    if (stateTimer >= DURATIONS.depositing) {
-      const d = grabbedDoll;
-      addToCollection(d.userData.animalId);
-      scene.remove(d);
-      dolls.splice(dolls.indexOf(d), 1);
-      grabbedDoll = null;
-      setClawOpen(true);
-      state = 'idle';
-      clawX = 0; clawZ = 0;
-      setStateDisplay('이동 후 SPACE로 뽑기');
-      showResultBanner(`${d.userData.animalEmoji} ${d.userData.animalName} 획득!`, '컬렉션에 추가됐어요!', '#ffd700');
-      // 인형이 다 없어지면 리스폰
-      if (dolls.length === 0) setTimeout(spawnDolls, 1500);
-    }
-  }
-
-  updateClawTransform();
+  orbitControls.update();
   renderer.render(scene, camera);
 }
 
-// ── 초기화 ──
+// ────────────────────────────────────────────────────────────────
+// INIT
+// ────────────────────────────────────────────────────────────────
 buildMachine();
 buildClaw();
+buildStars();
 spawnDolls();
-setClawOpen(true);
-updateClawTransform();
-const _freeMsg = claimFreeCoins();
-updateCoinUI();
+clawGroup.position.set(0, CLAW_Y_TOP, 0);
 animate();
 showTitle();
-if (_freeMsg) setTimeout(() => showFreeCoinsToast(_freeMsg), 800);
 </script>
 </body>
 </html>
