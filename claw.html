@@ -180,6 +180,11 @@
 <script type="module">
 import * as THREE from 'three';
 
+// 에러 발생 시 화면에 표시
+window.addEventListener('error', e => {
+  document.body.innerHTML = `<div style="position:fixed;inset:0;background:#000;color:#f87171;padding:24px;font-size:13px;z-index:99999;overflow:auto;white-space:pre-wrap;font-family:monospace">🚨 JS Error\n\n${e.message}\n\n${e.filename}:${e.lineno}\n\n${e.error ? e.error.stack : ''}</div>`;
+});
+
 // ────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ────────────────────────────────────────────────────────────────
@@ -305,21 +310,15 @@ if (!isMobile) {
 scene.add(sun);
 
 // Interior pulsing colored lights
-const intLights = [
-  Object.assign(new THREE.PointLight(0xff00ff, 3.5, 22), { position: new THREE.Vector3(-MW/2+1, 2, 0) }),
-  Object.assign(new THREE.PointLight(0x00eeff, 3.5, 22), { position: new THREE.Vector3( MW/2-1, 2, 0) }),
-  Object.assign(new THREE.PointLight(0xffee00, 2.5, 18), { position: new THREE.Vector3(0, -3, 0) }),
-];
-intLights.forEach(l => { scene.add(l); l.position.copy(l.position); });
+const iL0 = new THREE.PointLight(0xff00ff, 3.5, 22); iL0.position.set(-MW/2+1, 2, 0); scene.add(iL0);
+const iL1 = new THREE.PointLight(0x00eeff, 3.5, 22); iL1.position.set( MW/2-1, 2, 0); scene.add(iL1);
+const iL2 = new THREE.PointLight(0xffee00, 2.5, 18); iL2.position.set(0, -3, 0);       scene.add(iL2);
+const intLights = [iL0, iL1, iL2];
 
 // Scene atmosphere spotlights
-const atmoLights = [
-  Object.assign(new THREE.SpotLight(0xff00aa, 5, 80, Math.PI/7, 0.6), {}),
-  Object.assign(new THREE.SpotLight(0x0088ff, 5, 80, Math.PI/7, 0.6), {}),
-];
-atmoLights[0].position.set(-25, 25, 8);
-atmoLights[1].position.set( 25, 25, 8);
-atmoLights.forEach(l => scene.add(l));
+const aL0 = new THREE.SpotLight(0xff00aa, 5, 80, Math.PI/7, 0.6); aL0.position.set(-25, 25, 8); scene.add(aL0);
+const aL1 = new THREE.SpotLight(0x0088ff, 5, 80, Math.PI/7, 0.6); aL1.position.set( 25, 25, 8); scene.add(aL1);
+const atmoLights = [aL0, aL1];
 
 // ────────────────────────────────────────────────────────────────
 // SHARED MATERIALS
@@ -923,7 +922,7 @@ function showTitle() {
 
 window.onEnter = function() {
   const inp = document.getElementById('name-input');
-  const name = (inp?.value || '').trim();
+  const name = (inp ? inp.value : '').trim();
   if (!name) { showToast('닉네임을 입력해주세요!', '#ef4444'); return; }
   currentUser = name;
   document.getElementById('user-name').textContent = name;
@@ -1009,12 +1008,7 @@ dropBtn.addEventListener('click', startDrop);
 // ────────────────────────────────────────────────────────────────
 const clock = new THREE.Clock();
 let animT = 0;
-
-// Animated sign stars
 const signStars = [];
-machineGroup.children.forEach(c => {
-  if (c.geometry instanceof THREE.OctahedronGeometry) signStars.push(c);
-});
 
 function animate() {
   requestAnimationFrame(animate);
@@ -1048,6 +1042,7 @@ function animate() {
 // INIT
 // ────────────────────────────────────────────────────────────────
 buildMachine();
+machineGroup.children.forEach(c => { if (c.geometry instanceof THREE.OctahedronGeometry) signStars.push(c); });
 buildClaw();
 buildStars();
 spawnDolls();
