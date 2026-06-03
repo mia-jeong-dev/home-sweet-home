@@ -887,38 +887,6 @@ const LS_ACTIVE   = 'ditto_active_color';
 function loadCoins()      { return parseInt(localStorage.getItem(LS_COINS) || '0'); }
 function saveCoins(n)     { localStorage.setItem(LS_COINS, String(n)); }
 
-// ── 무료 코인 지급 ──
-const LS_WELCOME = 'ditto_welcome_given';
-const LS_DAILY   = 'ditto_daily_coins_date';
-function claimFreeCoins() {
-  let msg = null; let bonus = 0;
-  if (!localStorage.getItem(LS_WELCOME)) {
-    localStorage.setItem(LS_WELCOME, '1');
-    bonus += 30;
-    msg = '🎉 첫 방문 환영! +30🪙 웰컴 코인이 지급되었어요.';
-  }
-  if (localStorage.getItem(LS_DAILY) !== todayStr()) {
-    localStorage.setItem(LS_DAILY, todayStr());
-    bonus += 15;
-    msg = msg ? '🎉 첫 방문 환영! +30🪙 웰컴 코인 & 오늘의 무료 코인 +15🪙 지급!' : '🪙 오늘의 무료 코인 +15🪙 지급!';
-  }
-  if (bonus > 0) { saveCoins(loadCoins() + bonus); return msg; }
-  return null;
-}
-function showFreeCoinsToast(msg) {
-  const toast = document.createElement('div');
-  toast.style.cssText = `
-    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-    background:rgba(10,5,30,0.96); border:2px solid #f59e0b;
-    border-radius:16px; padding:20px 28px; text-align:center;
-    color:#fcd34d; font-size:15px; font-weight:bold;
-    z-index:9999; max-width:88vw; line-height:1.6;
-    box-shadow:0 0 30px rgba(245,158,11,0.4);
-  `;
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => { toast.style.transition='opacity 0.5s'; toast.style.opacity='0'; setTimeout(()=>toast.remove(),500); }, 2800);
-}
 function loadOwned()      { try { return JSON.parse(localStorage.getItem(LS_OWNED)) || ['purple']; } catch { return ['purple']; } }
 function saveOwned(arr)   { localStorage.setItem(LS_OWNED, JSON.stringify(arr)); }
 function loadActiveColor(){ return localStorage.getItem(LS_ACTIVE) || 'purple'; }
@@ -1639,9 +1607,7 @@ function updateCamera() {
 }
 
 init();
-const _freeMsg = claimFreeCoins();
 showTitleScreen();
-if (_freeMsg) setTimeout(() => showFreeCoinsToast(_freeMsg), 600);
 </script>
 </body>
 </html>
