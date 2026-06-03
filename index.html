@@ -490,6 +490,7 @@ let hazards = [];
 let spikePositions = [];
 let coinMeshes = [];     // 씬에 놓인 코인 목록
 let sessionCoins = 0;    // 이번 게임에서 모은 코인
+let animating = false;   // animate 루프 중복 방지
 let keys = {};
 let velocity = new THREE.Vector3();
 let onGround = false;
@@ -1146,7 +1147,7 @@ function startGame() {
   stageStartTime = Date.now();
   // 데스크탑에서만 포인터 락 (모바일은 미지원)
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
-  animate();
+  if (!animating) { animating = true; animate(); }
 }
 window.startGame = startGame;
 
