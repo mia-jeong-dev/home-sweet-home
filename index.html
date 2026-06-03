@@ -491,6 +491,7 @@ let spikePositions = [];
 let coinMeshes = [];     // 씬에 놓인 코인 목록
 let sessionCoins = 0;    // 이번 게임에서 모은 코인
 let animating = false;   // animate 루프 중복 방지
+let spikeDamageTimer = 0; // 가시 전용 틱 타이머 (60 = 1초)
 let keys = {};
 let velocity = new THREE.Vector3();
 let onGround = false;
@@ -1139,6 +1140,7 @@ function startGame() {
   currentStage = 1;
   sessionScore = 0;
   sessionCoins = 0;
+  spikeDamageTimer = 0;
   hp = maxHp;
   updateHpBar();
   buildStage(1);
@@ -1258,17 +1260,29 @@ function updatePlayer() {
     }
   }
 
-  // Spike collision — 가시에 닿을 때만 대미지
-  if (invincibleTimer <= 0) {
-    for (const sp of spikePositions) {
-      const dx = player.position.x - sp.x;
-      const dy = player.position.y - sp.y;
-      const dz = player.position.z - sp.z;
-      if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) {
-        takeDamage(12 + currentStage * 3);
-        break;
-      }
+  // Spike collision — 가시 접촉 중 1초(60프레임)마다 독립 틱 대미지
+  let onSpike = false;
+  for (const sp of spikePositions) {
+    const dx = player.position.x - sp.x;
+    const dy = player.position.y - sp.y;
+    const dz = player.position.z - sp.z;
+    if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) { onSpike = true; break; }
+  }
+  if (onSpike) {
+    spikeDamageTimer++;
+    if (spikeDamageTimer >= 60) {
+      spikeDamageTimer = 0;
+      // invincibleTimer 무시하고 가시 대미지만 별도 처리
+      const amount = 12 + currentStage * 3;
+      hp = Math.max(0, hp - amount);
+      updateHpBar();
+      showDamageFlash();
+      spawnDamageParticles();
+      SFX.damage();
+      if (hp <= 0) { gameOver(); return; }
     }
+  } else {
+    spikeDamageTimer = 0;
   }
 
   // Fall death
