@@ -614,7 +614,7 @@ function showShop() {
           <div class="color-card ${isOwned ? 'owned' : ''} ${isActive ? 'active' : ''}"
                onclick="onShopClick('${c.id}', ${c.price})">
             ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
-            <div class="color-swatch" style="background:${c.hex}"></div>
+            <div class="color-swatch" style="background:${c.hex === 'rainbow' ? 'linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0000ff,#8b00ff)' : c.hex}"></div>
             <div class="color-name">${c.name}</div>
             <div class="${isOwned ? 'color-owned' : 'color-price'}">
               ${isOwned ? (isActive ? '✓ 착용중' : '✓ 보유') : `🪙 ${c.price}`}
@@ -872,7 +872,8 @@ const SHOP_COLORS = [
   { id: 'pink',   name: '벚꽃 핑크',   hex: '#ff69b4', color: 0xff69b4, emissive: 0x8b1a4a, price: 40 },
   { id: 'white',  name: '순백 화이트', hex: '#ecf0f1', color: 0xecf0f1, emissive: 0x808b96, price: 50 },
   { id: 'black',  name: '어둠 블랙',   hex: '#2c3e50', color: 0x2c3e50, emissive: 0x1a252f, price: 60 },
-  { id: 'gold',   name: '황금 골드',   hex: '#f39c12', color: 0xf39c12, emissive: 0x784212, price: 80 },
+  { id: 'gold',    name: '황금 골드',   hex: '#f39c12', color: 0xf39c12, emissive: 0x784212, price: 80 },
+  { id: 'rainbow', name: '레인보우',    hex: 'rainbow', color: 0xff0000, emissive: 0x440000, price: 100 },
 ];
 
 const LS_COINS    = 'ditto_coins';
@@ -1334,6 +1335,13 @@ function animate() {
   dittoWobble += 0.08;
   playerBody.scale.y = 1 + Math.sin(dittoWobble) * 0.04;
   playerBody.scale.x = 1 - Math.sin(dittoWobble) * 0.02;
+
+  // 레인보우 색상 순환
+  if (loadActiveColor() === 'rainbow') {
+    const hue = (Date.now() * 0.1) % 360;
+    playerBody.material.color.setHSL(hue / 360, 1, 0.55);
+    playerBody.material.emissive.setHSL(hue / 360, 1, 0.2);
+  }
 
   updatePlayer();
   updateCoins();
