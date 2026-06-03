@@ -170,6 +170,14 @@
 <div id="result-banner">
   <h2 id="result-title"></h2>
   <p id="result-sub"></p>
+  <button id="next-btn" onclick="window.nextGame()" style="
+    margin-top:18px; padding:12px 32px;
+    background:linear-gradient(135deg,#6d28d9,#a78bfa);
+    border:none; border-radius:30px;
+    color:#fff; font-size:15px; font-weight:bold;
+    cursor:pointer; width:100%;
+    box-shadow:0 4px 15px rgba(109,40,217,0.5);
+  ">🎮 다음 게임</button>
 </div>
 
 <div id="overlay"></div>
@@ -748,7 +756,6 @@ let stateTimer = 0;
 let willSucceed = false;
 let grabbedDoll = null;
 let caughtAnimal = null;
-let resultTimeout = null;
 let gameActive = false;
 
 const DURATIONS = { dropping:1.8, grabbing:0.58, raising:1.4, depositing:1.1 };
@@ -875,19 +882,21 @@ function showResult() {
 
   banner.style.display = 'block';
   requestAnimationFrame(() => banner.classList.add('show'));
-
-  clearTimeout(resultTimeout);
-  resultTimeout = setTimeout(() => {
-    banner.classList.remove('show');
-    setTimeout(() => { banner.style.display = 'none'; }, 350);
-    state = 'idle';
-    clawX = 0; clawZ = 0;
-    clawTargetAngle = OPEN_ANGLE;
-    grabbedDoll = null; caughtAnimal = null; willSucceed = false;
-    setStatus('이동 후 SPACE로 뽑기');
-    updateHud();
-  }, 2600);
 }
+
+function resetAfterResult() {
+  const banner = document.getElementById('result-banner');
+  banner.classList.remove('show');
+  setTimeout(() => { banner.style.display = 'none'; }, 300);
+  state = 'idle';
+  clawX = 0; clawZ = 0;
+  clawTargetAngle = OPEN_ANGLE;
+  grabbedDoll = null; caughtAnimal = null; willSucceed = false;
+  setStatus('이동 후 SPACE / ENTER로 뽑기');
+  updateHud();
+}
+
+window.nextGame = resetAfterResult;
 
 // ────────────────────────────────────────────────────────────────
 // UI
