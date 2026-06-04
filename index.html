@@ -554,7 +554,7 @@ let particles = [];
 let dittoWobble = 0;
 
 // ── 플레이어 & 랭킹 ──
-let playerName = '';
+let playerName = localStorage.getItem('ditto_player_name') || '';
 let sessionScore = 0;
 let stageStartTime = 0;
 
@@ -614,7 +614,7 @@ function rankingRows(list, highlightName) {
 }
 
 // ── 화면 렌더링 ──
-function showTitleScreen() {
+function showTitleScreen(forceNameInput = false) {
   const rankings     = loadRankings();
   const coins        = loadCoins();
   const activeCoupon  = loadActiveCoupon();
@@ -629,8 +629,13 @@ function showTitleScreen() {
       <h2>🟣 동글이의 점프맵 어드벤처 🟣</h2>
       <p class="sub">함정 가시를 피해 꼭대기까지 올라가세요!</p>
       <div class="shop-coin-bar">🪙 보유 코인: ${coins}</div>
-      <input id="name-input" class="name-input" maxlength="12" placeholder="닉네임 입력 (최대 12자)" />
-      <button class="btn btn-purple" onclick="onClickStart()">게임 시작!</button>
+      ${(!forceNameInput && playerName)
+        ? `<div style="background:rgba(124,58,237,0.15);border:1px solid #7c3aed;border-radius:10px;padding:10px 14px;text-align:center;margin-bottom:10px;color:#c4b5fd;font-size:15px;font-weight:bold">👤 ${playerName}</div>
+           <button class="btn btn-purple" onclick="onClickStart()">▶ 게임 시작!</button>
+           <button class="btn btn-gray" style="margin-top:-4px;font-size:13px" onclick="showTitleScreen(true)">✏️ 이름 변경</button>`
+        : `<input id="name-input" class="name-input" maxlength="12" placeholder="닉네임 입력 (최대 12자)" />
+           <button class="btn btn-purple" onclick="onClickStart()">게임 시작!</button>`
+      }
       ${couponInfo ? `<div style="color:#f59e0b;font-size:12px;text-align:center;margin-top:-4px;margin-bottom:6px">${couponInfo.icon} ${couponInfo.name} 사용중 — ${couponInfo.stage}단계부터 시작 (잔여 ${couponRemain}회)</div>` : ''}
       <button class="btn btn-gray" onclick="showShop()" style="margin-top:4px">🛒 상점</button>
       <a href="claw.html" style="display:block;text-align:center;margin-top:8px;padding:12px 0;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:30px;color:#ccc;font-size:15px;font-weight:bold;text-decoration:none;">🧸 인형뽑기</a>
@@ -645,9 +650,11 @@ function showTitleScreen() {
       </div>` : ''}
     </div>`;
   const inp = document.getElementById('name-input');
-  if (playerName) inp.value = playerName;
-  inp.focus();
-  inp.addEventListener('keydown', e => { if (e.key === 'Enter') onClickStart(); });
+  if (inp) {
+    if (playerName) inp.value = playerName;
+    inp.focus();
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') onClickStart(); });
+  }
 }
 
 function showShop() {
@@ -829,6 +836,7 @@ window.onClickStart = function() {
   const name = inp ? inp.value.trim() : playerName;
   if (!name) { if (inp) inp.style.borderColor='#ef4444'; return; }
   playerName = name;
+  localStorage.setItem(LS_PLAYER_NAME, name);
   startGame();
 };
 
@@ -839,6 +847,7 @@ window.onClickRestart = function() {
   hp = maxHp;
   updateHpBar();
   buildStage(currentStage);
+  applyCharacterColor(loadActiveColor());
   updateTeleportUI();
   player.position.set(0, 2, 0);
   velocity.set(0, 0, 0);
@@ -855,7 +864,7 @@ window.onClickRestart = function() {
 };
 
 window.onClickChangeName = function() {
-  showTitleScreen();
+  showTitleScreen(true);
 };
 
 function updateCoins() {
@@ -1019,6 +1028,7 @@ const LS_OWNED         = 'ditto_owned_colors';
 const LS_ACTIVE        = 'ditto_active_color';
 const LS_COUPONS       = 'ditto_owned_coupons';
 const LS_ACTIVE_COUPON = 'ditto_active_coupon';
+const LS_PLAYER_NAME   = 'ditto_player_name';
 
 const SHOP_COUPONS = [
   { id: 'stage2', name: '2단계 시작권', stage: 2, price: 25, icon: '🎟️' },
@@ -1878,6 +1888,7 @@ function startGame() {
   hp = maxHp;
   updateHpBar();
   buildStage(currentStage);
+  applyCharacterColor(loadActiveColor());
   updateTeleportUI();
   player.position.set(0, 2, 0);
   velocity.set(0, 0, 0);
