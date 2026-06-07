@@ -334,7 +334,7 @@ const atmoLights = [aL0, aL1];
 const mat = {
   metal:  new THREE.MeshStandardMaterial({ color:0x1a1a2e, metalness:0.9, roughness:0.25 }),
   chrome: new THREE.MeshStandardMaterial({ color:0xddeeff, metalness:0.9, roughness:0.05, emissive:0x223344, emissiveIntensity:0.3 }),
-  glass:  new THREE.MeshStandardMaterial({ color:0x90b8ff, transparent:true, opacity:0.13, side:THREE.DoubleSide, metalness:0.0, roughness:0.0 }),
+  glass:  new THREE.MeshStandardMaterial({ color:0xc8e0ff, emissive:0x4488cc, emissiveIntensity:0.18, transparent:true, opacity:0.28, side:THREE.DoubleSide, metalness:0.0, roughness:0.0 }),
   floor:  new THREE.MeshStandardMaterial({ color:0x0d0a20, roughness:0.85 }),
   neon: (col) => new THREE.MeshStandardMaterial({ color:col, emissive:col, emissiveIntensity:3.5, roughness:0.5 }),
 };
