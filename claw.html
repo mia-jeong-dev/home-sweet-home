@@ -382,8 +382,10 @@ function buildMachine() {
     { g: new THREE.BoxGeometry(0.08, MH, MD), pos: [ hw,0,0] },
     { g: new THREE.BoxGeometry(0.08, MH, MD), pos: [-hw,0,0] },
   ];
-  wallDefs.forEach(({g,pos}) => {
-    const w = new THREE.Mesh(g, mat.glass.clone());
+  wallDefs.forEach(({g,pos}, i) => {
+    const m = mat.glass.clone();
+    if (i === 1) { m.emissiveIntensity = 0.55; m.opacity = 0.35; } // 뒤쪽 유리 더 밝게
+    const w = new THREE.Mesh(g, m);
     w.position.set(...pos);
     machineGroup.add(w);
   });
