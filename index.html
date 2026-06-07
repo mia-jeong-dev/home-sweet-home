@@ -551,6 +551,8 @@ let mouseX = 0, mouseY = 0;
 let cameraYaw = 0, cameraPitch = 0.3;
 let lastDamageTime = 0;
 let particles = [];
+let portalBlocks = [];
+let portalTriggered = false;
 let dittoWobble = 0;
 
 // ── 플레이어 & 랭킹 ──
@@ -1601,6 +1603,8 @@ function clearStage() {
   particles.forEach(p => scene.remove(p.mesh));
   particles = [];
   if (flagGroup) { scene.remove(flagGroup); flagGroup = null; flagBanner = null; }
+  portalBlocks.forEach(b => scene.remove(b));
+  portalBlocks = [];
   clearBackground();
 }
 
@@ -1657,6 +1661,7 @@ function buildStage(stage) {
     buildPotion(0.5);
   }
   buildBackground(stage);
+  if (stage === 1) buildPortal();
   updateStageUI(stage, palette);
 }
 
@@ -1731,6 +1736,51 @@ function buildPotion(fraction = 0.5) {
   );
   scene.add(group);
   potionMeshes.push({ group, collected: false });
+}
+
+function buildPortal() {
+  portalTriggered = false;
+
+  // 아치 프레임 5개 (반투명 보라 블록)
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xa855f7, emissive: 0x7c3aed, emissiveIntensity: 1.0,
+    transparent: true, opacity: 0.38, roughness: 0.0, metalness: 0.2,
+  });
+  //   [3]          ← 꼭대기 중앙
+  // [2] [4]        ← 좌우 위
+  // [1] [5]        ← 좌우 아래
+  const positions = [
+    [2.5, 0.85, 0],
+    [2.5, 1.85, 0],
+    [3.5, 2.65, 0],
+    [4.5, 1.85, 0],
+    [4.5, 0.85, 0],
+  ];
+  positions.forEach(([x, y, z]) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.3), mat);
+    mesh.position.set(x, y, z);
+    scene.add(mesh);
+    portalBlocks.push(mesh);
+  });
+
+  // 포탈 링 (회전하는 토러스)
+  const torusMat = new THREE.MeshStandardMaterial({
+    color: 0xc084fc, emissive: 0xa855f7, emissiveIntensity: 1.5,
+    transparent: true, opacity: 0.75, roughness: 0, metalness: 0.5,
+  });
+  const torus = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.09, 8, 48), torusMat);
+  torus.position.set(3.5, 1.55, 0);
+  scene.add(torus);
+  portalBlocks.push(torus);
+
+  // 포탈 내부 빛
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: 0x9333ea, transparent: true, opacity: 0.15, side: THREE.DoubleSide,
+  });
+  const glow = new THREE.Mesh(new THREE.CircleGeometry(0.95, 32), glowMat);
+  glow.position.set(3.5, 1.55, 0);
+  scene.add(glow);
+  portalBlocks.push(glow);
 }
 
 function updatePotions() {
@@ -1931,6 +1981,16 @@ function animate() {
   updateCamera();
   updateScoreUI();
 
+  // 포탈 애니메이션 (스테이지 1)
+  if (currentStage === 1 && portalBlocks.length > 0) {
+    const t = Date.now() * 0.001;
+    portalBlocks[0].material.emissiveIntensity = 0.7 + Math.sin(t * 2) * 0.5;
+    portalBlocks.forEach(b => {
+      if (b.geometry.type === 'TorusGeometry') b.rotation.z += 0.025;
+      if (b.geometry.type === 'CircleGeometry') b.material.opacity = 0.12 + Math.sin(t * 2.5) * 0.06;
+    });
+  }
+
   // 깃발 애니메이션
   if (flagGroup) {
     const t = Date.now() * 0.003;
@@ -2060,6 +2120,25 @@ function updatePlayer() {
     }
   } else {
     spikeDamageTimer = 0;
+  }
+
+  // 포탈 충돌 (스테이지 1 전용)
+  if (currentStage === 1 && !portalTriggered && portalBlocks.length > 0) {
+    const pdx = player.position.x - 3.5;
+    const pdy = player.position.y - 1.55;
+    const pdz = player.position.z;
+    if (pdx*pdx + pdy*pdy + pdz*pdz < 1.2 * 1.2) {
+      portalTriggered = true;
+      currentStage = 10;
+      buildStage(10);
+      applyCharacterColor(loadActiveColor());
+      updateTeleportUI();
+      player.position.set(preFinalPlatformPos.x, preFinalPlatformPos.y, preFinalPlatformPos.z);
+      velocity.set(0, 0, 0);
+      SFX.stageClear();
+      showDamageFlash();
+      return;
+    }
   }
 
   // Fall death
