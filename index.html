@@ -1318,7 +1318,7 @@ function init() {
     keys[e.code] = true;
     if (e.code === 'KeyT' && gameActive) { e.preventDefault(); useTeleportCoupon(); }
     if (e.code === 'KeyG' && gameActive) { e.preventDefault(); useGlasses(); }
-    if (e.code === 'KeyM' && !gameActive) { e.preventDefault(); showShop(); }
+    if (e.code === 'KeyM') { e.preventDefault(); gameActive ? openShopDuringGame() : showShop(); }
   });
   window.addEventListener('keyup', e => { keys[e.code] = false; });
   window.addEventListener('resize', () => {
