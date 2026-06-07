@@ -757,7 +757,7 @@ function showShop() {
           <div class="color-card ${isOwned ? 'owned' : ''} ${isActive ? 'active' : ''}"
                onclick="onShopClick('${c.id}', ${c.price})">
             ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
-            <div class="color-swatch" style="background:${c.hex === 'rainbow' ? 'linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0000ff,#8b00ff)' : c.hex}"></div>
+            <div class="color-swatch" style="background:${c.hex === 'rainbow' ? 'linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0000ff,#8b00ff)' : c.hex === 'ghost' ? 'rgba(200,255,255,0.12)' : c.hex};${c.hex === 'ghost' ? 'border:2px dashed rgba(0,220,220,0.7)' : ''}"></div>
             <div class="color-name">${c.name}</div>
             <div class="${isOwned ? 'color-owned' : 'color-price'}">
               ${isOwned ? (isActive ? '✓ 착용중' : '✓ 보유') : `🪙 ${c.price}`}
@@ -875,9 +875,22 @@ window.onShopClick = function(id, price) {
 
 function applyCharacterColor(id) {
   if (!playerBody) return;
-  const col = SHOP_COLORS.find(c => c.id === id) || SHOP_COLORS[0];
-  playerBody.material.color.setHex(col.color);
-  playerBody.material.emissive.setHex(col.emissive);
+  if (id === 'ghost') {
+    playerBody.material.transparent = true;
+    playerBody.material.depthWrite = false;
+    playerBody.material.opacity = 0.12;
+    playerBody.material.color.setHex(0xccffff);
+    playerBody.material.emissive.setHex(0x00aaaa);
+    playerBody.material.emissiveIntensity = 0.8;
+  } else {
+    const col = SHOP_COLORS.find(c => c.id === id) || SHOP_COLORS[0];
+    playerBody.material.transparent = false;
+    playerBody.material.depthWrite = true;
+    playerBody.material.opacity = 1;
+    playerBody.material.color.setHex(col.color);
+    playerBody.material.emissive.setHex(col.emissive);
+    playerBody.material.emissiveIntensity = 0.3;
+  }
 }
 
 function showGameOverScreen(score, rankings) {
@@ -1119,6 +1132,7 @@ const SHOP_COLORS = [
   { id: 'black',  name: '어둠 블랙',   hex: '#2c3e50', color: 0x2c3e50, emissive: 0x1a252f, price: 60 },
   { id: 'gold',    name: '황금 골드',   hex: '#f39c12', color: 0xf39c12, emissive: 0x784212, price: 80 },
   { id: 'silver',  name: '은빛 실버',   hex: '#b0b8c1', color: 0xb0b8c1, emissive: 0x4a5568, price: 70 },
+  { id: 'ghost',   name: '투명 동글이', hex: 'ghost',   color: 0xccffff, emissive: 0x00aaaa, price: 15 },
   { id: 'rainbow', name: '레인보우',    hex: 'rainbow', color: 0xff0000, emissive: 0x440000, price: 100 },
 ];
 
@@ -2051,6 +2065,9 @@ function animate() {
     const hue = (Date.now() * 0.1) % 360;
     playerBody.material.color.setHSL(hue / 360, 1, 0.55);
     playerBody.material.emissive.setHSL(hue / 360, 1, 0.2);
+  }
+  if (loadActiveColor() === 'ghost') {
+    playerBody.material.opacity = 0.07 + Math.abs(Math.sin(Date.now() * 0.002)) * 0.1;
   }
 
   updatePlayer();
