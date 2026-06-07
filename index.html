@@ -438,6 +438,28 @@
 <script type="module">
 import * as THREE from 'three';
 
+// ── Firebase 글로벌 랭킹 ──
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, push, query, orderByChild, limitToLast, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const FIREBASE_CONFIG = {
+  apiKey: "FILL_IN",
+  authDomain: "FILL_IN.firebaseapp.com",
+  databaseURL: "https://FILL_IN-default-rtdb.firebaseio.com",
+  projectId: "FILL_IN",
+};
+let db = null, globalRankings = [];
+if (!FIREBASE_CONFIG.databaseURL.includes('FILL_IN')) {
+  try {
+    const fbApp = initializeApp(FIREBASE_CONFIG);
+    db = getDatabase(fbApp);
+    onValue(query(ref(db, 'rankings'), orderByChild('score'), limitToLast(20)), snap => {
+      const d = snap.val();
+      globalRankings = d ? Object.values(d).sort((a,b)=>b.score-a.score).slice(0,20) : [];
+    });
+  } catch(e) { console.warn('Firebase 오류:', e); }
+}
+
 // ─────────────────────────────────────────────
 // SOUND ENGINE (Web Audio API 합성음)
 // ─────────────────────────────────────────────
@@ -570,6 +592,7 @@ function todayStr() {
   return new Date().toLocaleDateString('ko-KR');
 }
 function loadRankings() {
+  if (db) return globalRankings;
   try {
     const saved = localStorage.getItem(LS_RANK_DATE);
     if (saved !== todayStr()) {
@@ -581,12 +604,19 @@ function loadRankings() {
   } catch { return []; }
 }
 function saveRankings(list) {
+  if (db) return;
   localStorage.setItem(LS_RANK_DATE, todayStr());
   localStorage.setItem(LS_KEY, JSON.stringify(list));
 }
 function addRanking(name, score, stage) {
+  const entry = { name, score, stage, date: new Date().toLocaleDateString('ko-KR') };
+  if (db) {
+    push(ref(db, 'rankings'), entry);
+    globalRankings = [...globalRankings, entry].sort((a,b)=>b.score-a.score).slice(0,20);
+    return globalRankings;
+  }
   const list = loadRankings();
-  list.push({ name, score, stage, date: new Date().toLocaleDateString('ko-KR') });
+  list.push(entry);
   list.sort((a, b) => b.score - a.score);
   if (list.length > 20) list.length = 20;
   saveRankings(list);
@@ -646,8 +676,8 @@ function showTitleScreen(forceNameInput = false) {
       <a href="claw.html" style="display:block;text-align:center;margin-top:8px;padding:12px 0;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:30px;color:#ccc;font-size:15px;font-weight:bold;text-decoration:none;">🧸 인형뽑기</a>
       ${rankings.length ? `
       <div style="margin-top:18px">
-        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:4px;letter-spacing:1px">🏆 오늘의 랭킹</div>
-        <div style="color:#555;font-size:10px;margin-bottom:8px">${todayStr()} · 매일 자정 초기화</div>
+        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:4px;letter-spacing:1px">${db ? '🌍 글로벌 랭킹' : '🏆 오늘의 랭킹'}</div>
+        <div style="color:#555;font-size:10px;margin-bottom:8px">${db ? '전체 기간 상위 20명' : todayStr() + ' · 매일 자정 초기화'}</div>
         <table class="ranking-table">
           <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
           ${rankingRows(rankings, '')}
@@ -1288,6 +1318,7 @@ function init() {
     keys[e.code] = true;
     if (e.code === 'KeyT' && gameActive) { e.preventDefault(); useTeleportCoupon(); }
     if (e.code === 'KeyG' && gameActive) { e.preventDefault(); useGlasses(); }
+    if (e.code === 'KeyS' && !gameActive) { e.preventDefault(); showShop(); }
   });
   window.addEventListener('keyup', e => { keys[e.code] = false; });
   window.addEventListener('resize', () => {
