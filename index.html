@@ -408,6 +408,7 @@
     <div id="score-ui">SCORE: <span id="score-val-ui">0</span></div>
     <div id="coin-ui">🪙 <span id="coin-val-ui">0</span></div>
     <div id="teleport-ui" onclick="useTeleportCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f59e0b;border-radius:10px;padding:7px 12px;color:#fcd34d;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">⚡ 순간이동 [T]</div>
+    <div id="glasses-ui" onclick="useGlasses()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #00e5ff;border-radius:10px;padding:7px 12px;color:#67e8f9;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🥽 안경 [G]</div>
     <div id="shop-hud-btn" onclick="openShopDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🛒 상점</div>
     <div id="controls-hint">
       WASD / 방향키: 이동<br>
@@ -554,6 +555,8 @@ let particles = [];
 let portalBlocks = [];
 let portalTriggered = false;
 let dittoWobble = 0;
+let glassesTimer = 0;
+let glassesActive = false;
 
 // ── 플레이어 & 랭킹 ──
 let playerName = localStorage.getItem('ditto_player_name') || '';
@@ -665,6 +668,7 @@ function showShop() {
   const activeId     = loadActiveColor();
   const ownedCoupons = loadOwnedCoupons(); // { stage2: 2, ... }
   const activeCoupon = loadActiveCoupon();
+  const glassesCount = loadGlasses();
   const overlay      = document.getElementById('overlay');
   overlay.innerHTML = `
     <div class="panel">
@@ -701,6 +705,19 @@ function showShop() {
         </div>`;
       }).join('')}
 
+      <div class="coupon-section-title">🔭 특수 아이템</div>
+      <div class="coupon-card ${glassesCount > 0 ? 'owned' : ''}" onclick="onGlassesClick()">
+        <span class="coupon-icon">🥽</span>
+        <div class="coupon-info">
+          <div class="coupon-name">이상한 안경</div>
+          <div class="${glassesCount > 0 ? 'color-owned' : 'color-price'}">
+            ${glassesCount > 0
+              ? `✓ 잔여 ${glassesCount}회 — 게임 중 [G]키로 사용 · 10초간 숨겨진 블록 표시`
+              : '🪙 80 · 3회 제공 — 숨겨진 블록을 10초간 볼 수 있음'}
+          </div>
+        </div>
+      </div>
+
       <div style="color:#a78bfa;font-size:13px;font-weight:bold;letter-spacing:1px;margin:18px 0 10px">🎨 캐릭터 색상</div>
       <div class="shop-grid">
         ${SHOP_COLORS.map(c => {
@@ -723,6 +740,55 @@ function showShop() {
         : `<button class="btn btn-gray" onclick="showTitleScreen()">← 뒤로</button>`}
     </div>`;
 }
+
+window.onGlassesClick = function() {
+  const count = loadGlasses();
+  if (count > 0) { SFX.coin(); return; } // 이미 보유
+  const coins = loadCoins();
+  if (coins < 80) {
+    document.getElementById('shop-coin-count').style.color = '#ef4444';
+    setTimeout(() => { const el = document.getElementById('shop-coin-count'); if (el) el.style.color = ''; }, 600);
+    return;
+  }
+  saveCoins(coins - 80);
+  saveGlasses(3);
+  showShop();
+  SFX.stageClear();
+};
+
+function updateGlassesUI() {
+  const el = document.getElementById('glasses-ui');
+  if (!el) return;
+  const count = loadGlasses();
+  if (count > 0 && !glassesActive) {
+    el.style.display = 'block';
+    el.textContent = `🥽 안경 [G] (${count}회)`;
+    el.style.color = '#67e8f9';
+  } else if (!glassesActive) {
+    el.style.display = 'none';
+  }
+}
+
+function useGlasses() {
+  if (!gameActive || glassesActive) return;
+  const count = loadGlasses();
+  if (count <= 0) return;
+  saveGlasses(count - 1);
+  glassesActive = true;
+  glassesTimer = 600; // 10초 (60fps 기준)
+  // 숨겨진 블록 X선 효과로 표시
+  portalBlocks.forEach(b => {
+    b.visible = true;
+    b.material.color.setHex(b.userData.isPortal ? 0xff6600 : 0x00e5ff);
+    b.material.emissive.setHex(b.userData.isPortal ? 0xff3300 : 0x00aacc);
+    b.material.emissiveIntensity = 1.0;
+    b.material.opacity = 0.5;
+  });
+  const el = document.getElementById('glasses-ui');
+  if (el) { el.style.color = '#ffffff'; }
+  SFX.coin();
+}
+window.useGlasses = useGlasses;
 
 window.onCouponClick = function(id, price) {
   const owned = loadOwnedCoupons();
@@ -860,6 +926,7 @@ window.onClickRestart = function() {
   document.getElementById('coin-ui').style.display = 'block';
   document.getElementById('shop-hud-btn').style.display = 'block';
   updateCoinUI();
+  updateGlassesUI();
   updateScoreUI();
   gameActive = true;
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
@@ -1031,6 +1098,7 @@ const LS_ACTIVE        = 'ditto_active_color';
 const LS_COUPONS       = 'ditto_owned_coupons';
 const LS_ACTIVE_COUPON = 'ditto_active_coupon';
 const LS_PLAYER_NAME   = 'ditto_player_name';
+const LS_GLASSES       = 'ditto_glasses';
 
 const SHOP_COUPONS = [
   { id: 'stage2', name: '2단계 시작권', stage: 2, price: 25, icon: '🎟️' },
@@ -1051,6 +1119,9 @@ function loadOwnedCoupons()    { try { return JSON.parse(localStorage.getItem(LS
 function saveOwnedCoupons(obj) { localStorage.setItem(LS_COUPONS, JSON.stringify(obj)); }
 function loadActiveCoupon()    { return localStorage.getItem(LS_ACTIVE_COUPON) || null; }
 function saveActiveCoupon(id)  { id ? localStorage.setItem(LS_ACTIVE_COUPON, id) : localStorage.removeItem(LS_ACTIVE_COUPON); }
+
+function loadGlasses() { return parseInt(localStorage.getItem(LS_GLASSES) || '0'); }
+function saveGlasses(n) { localStorage.setItem(LS_GLASSES, String(n)); }
 
 function useCoupon() {
   const id = loadActiveCoupon();
@@ -1216,6 +1287,7 @@ function init() {
   window.addEventListener('keydown', e => {
     keys[e.code] = true;
     if (e.code === 'KeyT' && gameActive) { e.preventDefault(); useTeleportCoupon(); }
+    if (e.code === 'KeyG' && gameActive) { e.preventDefault(); useGlasses(); }
   });
   window.addEventListener('keyup', e => { keys[e.code] = false; });
   window.addEventListener('resize', () => {
@@ -1606,6 +1678,8 @@ function clearStage() {
   portalBlocks.forEach(b => scene.remove(b));
   portalBlocks = [];
   portalTriggered = false;
+  glassesActive = false;
+  glassesTimer = 0;
   clearBackground();
 }
 
@@ -1903,6 +1977,7 @@ function startGame() {
   document.getElementById('coin-ui').style.display = 'block';
   document.getElementById('shop-hud-btn').style.display = 'block';
   updateCoinUI();
+  updateGlassesUI();
   gameActive = true;
   currentStage = getStartStage();
   useCoupon();
@@ -1954,6 +2029,19 @@ function animate() {
   updateParticles();
   updateCamera();
   updateScoreUI();
+
+  // 안경 타이머
+  if (glassesActive) {
+    glassesTimer--;
+    const el = document.getElementById('glasses-ui');
+    if (glassesTimer <= 0) {
+      portalBlocks.forEach(b => { b.visible = false; b.material.opacity = 0; });
+      glassesActive = false;
+      updateGlassesUI();
+    } else if (el) {
+      el.textContent = `🥽 ${Math.ceil(glassesTimer / 60)}s`;
+    }
+  }
 
   // 깃발 애니메이션
   if (flagGroup) {
@@ -2196,6 +2284,7 @@ function gameClear() {
   document.getElementById('coin-ui').style.display = 'none';
   document.getElementById('shop-hud-btn').style.display = 'none';
   document.getElementById('teleport-ui').style.display = 'none';
+  document.getElementById('glasses-ui').style.display = 'none';
   SFX.gameClear();
   const finalScore = sessionScore;
   const rankings = addRanking(playerName, finalScore, 10);
@@ -2227,6 +2316,7 @@ function gameOver() {
   document.getElementById('coin-ui').style.display = 'none';
   document.getElementById('shop-hud-btn').style.display = 'none';
   document.getElementById('teleport-ui').style.display = 'none';
+  document.getElementById('glasses-ui').style.display = 'none';
   _shopOpenedDuringGame = false;
   SFX.gameOver();
   const finalScore = sessionScore + calcScore();
