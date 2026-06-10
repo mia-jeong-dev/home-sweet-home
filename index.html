@@ -1946,7 +1946,7 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false) {
   // Spike decoration on hazard — 가시만 빨간색, 가시 충돌로만 대미지
   if (isHazard) {
     const spikeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff2200, emissiveIntensity: 0.8 });
-    const spacing = 0.85;
+    const spacing = 1.1;
     const cols = Math.max(1, Math.floor(w / spacing));
     const rows = Math.max(1, Math.floor(d / spacing));
     for (let ci = 0; ci < cols; ci++) {
