@@ -192,6 +192,28 @@
       opacity: 0;
       transition: opacity 0.1s;
     }
+    #poison-flash {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,200,80,0.28);
+      pointer-events: none;
+      z-index: 51;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    #poison-indicator {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #44ff44;
+      font-size: 14px;
+      font-weight: bold;
+      pointer-events: none;
+      z-index: 55;
+      display: none;
+      text-shadow: 0 0 8px #00ff44;
+    }
 
     #level-banner {
       position: fixed;
@@ -273,6 +295,12 @@
     .rank-medal { font-size: 18px; }
     .score-val { color: #a78bfa; font-weight: bold; }
     .no-record { text-align:center; color:#555; padding: 20px 0; font-size:14px; }
+    .rank-tabs { display:flex; gap:6px; margin-bottom:8px; }
+    .rank-tab {
+      flex:1; padding:6px 0; border:1px solid #444; border-radius:8px;
+      background:rgba(255,255,255,0.05); color:#888; font-size:13px; cursor:pointer;
+    }
+    .rank-tab.active { background:rgba(124,58,237,0.3); border-color:#7c3aed; color:#c4b5fd; font-weight:bold; }
 
     #score-display {
       background: rgba(0,0,0,0.5);
@@ -379,6 +407,8 @@
 <div id="overlay"><!-- 내용은 JS로 렌더링 --></div>
 
 <div id="damage-flash"></div>
+<div id="poison-flash"></div>
+<div id="poison-indicator">☠ 독!</div>
 
 <div id="teleport-pw-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,5,20,0.97);border:2px solid #f59e0b;border-radius:16px;padding:24px 28px;z-index:200;text-align:center;min-width:260px;max-width:90vw;">
   <div style="color:#fcd34d;font-size:16px;font-weight:bold;margin-bottom:6px">⚡ 순간이동</div>
@@ -541,6 +571,10 @@ const SFX = (() => {
       osc(784, 'sine', 0.18, 0.18, 1047, ac().currentTime + 0.12);
       osc(1047, 'sine', 0.14, 0.2, null, ac().currentTime + 0.24);
     },
+    poison() {
+      osc(100, 'triangle', 0.18, 0.45, 60);
+      osc(240, 'sine', 0.09, 0.35, 120, ac().currentTime + 0.12);
+    },
   };
 })();
 
@@ -562,6 +596,13 @@ const goalPlatformPos = new THREE.Vector3();
 const preFinalPlatformPos = new THREE.Vector3();
 let animating = false;   // animate 루프 중복 방지
 let spikeDamageTimer = 0; // 가시 전용 틱 타이머 (60 = 1초)
+let poisonSpikePositions = [];
+let movingPlatforms = [];
+let playerOnMovingPlatform = null;
+let poisonActive = false;
+let poisonTicksRemaining = 0;
+let poisonTickTimer = 0;
+let poisonContactCooldown = 0;
 let keys = {};
 let velocity = new THREE.Vector3();
 let onGround = false;
@@ -585,42 +626,65 @@ let playerName = localStorage.getItem('ditto_player_name') || '';
 let sessionScore = 0;
 let stageStartTime = 0;
 
-const LS_KEY      = 'ditto_jump_rankings';
-const LS_RANK_DATE = 'ditto_jump_ranking_date';
+const LS_RANK_DAILY   = 'ditto_rank_daily';
+const LS_RANK_WEEKLY  = 'ditto_rank_weekly';
+const LS_RANK_MONTHLY = 'ditto_rank_monthly';
+const LS_DATE_DAILY   = 'ditto_date_daily';
+const LS_DATE_WEEKLY  = 'ditto_date_weekly';
+const LS_DATE_MONTHLY = 'ditto_date_monthly';
 
 function todayStr() {
   return new Date().toLocaleDateString('ko-KR');
 }
-function loadRankings() {
+function weekStr() {
+  const d = new Date();
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${week}`;
+}
+function monthStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}`;
+}
+function loadPeriodRankings(lsKey, lsDate, periodStr) {
   if (db) return globalRankings;
   try {
-    const saved = localStorage.getItem(LS_RANK_DATE);
-    if (saved !== todayStr()) {
-      localStorage.removeItem(LS_KEY);
-      localStorage.setItem(LS_RANK_DATE, todayStr());
+    if (localStorage.getItem(lsDate) !== periodStr) {
+      localStorage.removeItem(lsKey);
+      localStorage.setItem(lsDate, periodStr);
       return [];
     }
-    return JSON.parse(localStorage.getItem(LS_KEY)) || [];
+    return JSON.parse(localStorage.getItem(lsKey)) || [];
   } catch { return []; }
 }
-function saveRankings(list) {
-  if (db) return;
-  localStorage.setItem(LS_RANK_DATE, todayStr());
-  localStorage.setItem(LS_KEY, JSON.stringify(list));
+function savePeriodRankings(lsKey, lsDate, periodStr, list) {
+  localStorage.setItem(lsDate, periodStr);
+  localStorage.setItem(lsKey, JSON.stringify(list));
 }
+function loadDailyRankings()   { return loadPeriodRankings(LS_RANK_DAILY,   LS_DATE_DAILY,   todayStr()); }
+function loadWeeklyRankings()  { return loadPeriodRankings(LS_RANK_WEEKLY,  LS_DATE_WEEKLY,  weekStr()); }
+function loadMonthlyRankings() { return loadPeriodRankings(LS_RANK_MONTHLY, LS_DATE_MONTHLY, monthStr()); }
+
 function addRanking(name, score, stage) {
   const entry = { name, score, stage, date: new Date().toLocaleDateString('ko-KR') };
   if (db) {
     push(ref(db, 'rankings'), entry);
     globalRankings = [...globalRankings, entry].sort((a,b)=>b.score-a.score).slice(0,20);
-    return globalRankings;
+    return { daily: globalRankings, weekly: globalRankings, monthly: globalRankings };
   }
-  const list = loadRankings();
-  list.push(entry);
-  list.sort((a, b) => b.score - a.score);
-  if (list.length > 20) list.length = 20;
-  saveRankings(list);
-  return list;
+  function addToList(list) {
+    list.push(entry);
+    list.sort((a, b) => b.score - a.score);
+    if (list.length > 20) list.length = 20;
+    return list;
+  }
+  const daily   = addToList(loadDailyRankings());
+  const weekly  = addToList(loadWeeklyRankings());
+  const monthly = addToList(loadMonthlyRankings());
+  savePeriodRankings(LS_RANK_DAILY,   LS_DATE_DAILY,   todayStr(), daily);
+  savePeriodRankings(LS_RANK_WEEKLY,  LS_DATE_WEEKLY,  weekStr(),  weekly);
+  savePeriodRankings(LS_RANK_MONTHLY, LS_DATE_MONTHLY, monthStr(), monthly);
+  return { daily, weekly, monthly };
 }
 function calcScore() {
   const elapsed = Math.max(1, (Date.now() - stageStartTime) / 1000);
@@ -648,9 +712,44 @@ function rankingRows(list, highlightName) {
     </tr>`).join('');
 }
 
+function rankTabsHtml(daily, weekly, monthly, highlightName) {
+  return `
+    <div class="rank-tabs">
+      <button class="rank-tab active" id="rtab-daily"   onclick="switchRankTab('daily')">일일</button>
+      <button class="rank-tab"        id="rtab-weekly"  onclick="switchRankTab('weekly')">주간</button>
+      <button class="rank-tab"        id="rtab-monthly" onclick="switchRankTab('monthly')">월간</button>
+    </div>
+    <div id="rank-panel-daily">
+      <table class="ranking-table">
+        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+        ${rankingRows(daily, highlightName)}
+      </table>
+    </div>
+    <div id="rank-panel-weekly" style="display:none">
+      <table class="ranking-table">
+        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+        ${rankingRows(weekly, highlightName)}
+      </table>
+    </div>
+    <div id="rank-panel-monthly" style="display:none">
+      <table class="ranking-table">
+        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+        ${rankingRows(monthly, highlightName)}
+      </table>
+    </div>`;
+}
+window.switchRankTab = function(tab) {
+  ['daily','weekly','monthly'].forEach(t => {
+    document.getElementById('rank-panel-' + t).style.display = t === tab ? '' : 'none';
+    document.getElementById('rtab-' + t).classList.toggle('active', t === tab);
+  });
+};
+
 // ── 화면 렌더링 ──
 function showTitleScreen(forceNameInput = false) {
-  const rankings     = loadRankings();
+  const dailyRankings   = loadDailyRankings();
+  const weeklyRankings  = loadWeeklyRankings();
+  const monthlyRankings = loadMonthlyRankings();
   const coins        = loadCoins();
   const activeCoupon  = loadActiveCoupon();
   const couponCounts  = loadOwnedCoupons();
@@ -674,14 +773,10 @@ function showTitleScreen(forceNameInput = false) {
       ${couponInfo ? `<div style="color:#f59e0b;font-size:12px;text-align:center;margin-top:-4px;margin-bottom:6px">${couponInfo.icon} ${couponInfo.name} 사용중 — ${couponInfo.stage}단계부터 시작 (잔여 ${couponRemain}회)</div>` : ''}
       <button class="btn btn-gray" onclick="showShop()" style="margin-top:4px">🛒 상점</button>
       <a href="claw.html" style="display:block;text-align:center;margin-top:8px;padding:12px 0;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:30px;color:#ccc;font-size:15px;font-weight:bold;text-decoration:none;">🧸 인형뽑기</a>
-      ${rankings.length ? `
+      ${(dailyRankings.length || weeklyRankings.length || monthlyRankings.length) ? `
       <div style="margin-top:18px">
-        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:4px;letter-spacing:1px">${db ? '🌍 글로벌 랭킹' : '🏆 오늘의 랭킹'}</div>
-        <div style="color:#555;font-size:10px;margin-bottom:8px">${db ? '전체 기간 상위 20명' : todayStr() + ' · 매일 자정 초기화'}</div>
-        <table class="ranking-table">
-          <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
-          ${rankingRows(rankings, '')}
-        </table>
+        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">🏆 랭킹</div>
+        ${rankTabsHtml(dailyRankings, weeklyRankings, monthlyRankings, '')}
       </div>` : ''}
     </div>`;
   const inp = document.getElementById('name-input');
@@ -894,7 +989,7 @@ function applyCharacterColor(id) {
 }
 
 function showGameOverScreen(score, rankings) {
-  const myIdx = rankings.findIndex(r => r.name === playerName && r.score === score);
+  const myIdx = rankings.daily.findIndex(r => r.name === playerName && r.score === score);
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
@@ -910,10 +1005,9 @@ function showGameOverScreen(score, rankings) {
         </div>
       </div>
       ${myIdx >= 0 ? `<div style="color:#ffd700;text-align:center;margin-bottom:14px;font-size:14px">🎉 ${myIdx+1}위 등록!</div>` : ''}
-      <table class="ranking-table" style="margin-bottom:18px">
-        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
-        ${rankingRows(rankings, playerName)}
-      </table>
+      <div style="margin-bottom:18px">
+        ${rankTabsHtml(rankings.daily, rankings.weekly, rankings.monthly, playerName)}
+      </div>
       <button class="btn btn-red" onclick="onClickRestart()">다시 시작</button>
       <button class="btn btn-gray" onclick="showShop()">🛒 상점</button>
       <button class="btn btn-gray" onclick="onClickChangeName()">이름 변경</button>
@@ -963,6 +1057,11 @@ window.onClickRestart = function() {
   player.position.set(0, 2, 0);
   velocity.set(0, 0, 0);
   invincibleTimer = 0;
+  spikeDamageTimer = 0;
+  poisonActive = false;
+  poisonTicksRemaining = 0;
+  poisonTickTimer = 0;
+  poisonContactCooldown = 0;
   stageStartTime = Date.now();
   document.getElementById('overlay').style.display = 'none';
   document.getElementById('score-ui').style.display = 'block';
@@ -1148,6 +1247,7 @@ const SHOP_COUPONS = [
   { id: 'stage2', name: '2단계 시작권', stage: 2, price: 25, icon: '🎟️' },
   { id: 'stage3', name: '3단계 시작권', stage: 3, price: 50, icon: '🎫' },
   { id: 'stage5', name: '5단계 시작권', stage: 5, price: 85, icon: '🏆' },
+  { id: 'stage8', name: '8단계 시작권', stage: 8, price: 100, icon: '💎' },
 ];
 
 function loadCoins()       { return parseInt(localStorage.getItem(LS_COINS) || '0'); }
@@ -1713,6 +1813,13 @@ function clearStage() {
   platforms = [];
   hazards = [];
   spikePositions = [];
+  poisonSpikePositions = [];
+  movingPlatforms = [];
+  playerOnMovingPlatform = null;
+  poisonActive = false;
+  poisonTicksRemaining = 0;
+  poisonTickTimer = 0;
+  poisonContactCooldown = 0;
   coinMeshes.forEach(c => scene.remove(c.mesh));
   coinMeshes = [];
   potionMeshes.forEach(p => scene.remove(p.group));
@@ -1737,10 +1844,11 @@ function buildStage(stage) {
   renderer.setClearColor(palette.sky2);
 
   const platformCount = 18 + stage * 2;
-  const hGap = 2.5 + stage * 0.25 - (stage > 5 ? 0.3 : 0) - (stage >= 7 ? 0.6 : 0);   // 수평 간격 (7단계~는 추가로 좁힘)
+  const hGap = 2.9 + stage * 0.25 - (stage > 5 ? 0.3 : 0) - (stage >= 7 ? 0.6 : 0);   // 수평 간격 (7단계~는 추가로 좁힘)
   const vStep = 1.2 + stage * 0.1;  // 높이 상승 (완만하게)
   const hazardChance = 0.15 + stage * 0.08;
-  const platformMinSize = Math.max(2.0, 4.0 - stage * 0.25);
+  const poisonChance = stage >= 4 ? Math.min(0.38, 0.08 * (stage - 1)) : 0;
+  const platformMinSize = Math.max(2.8, 4.8 - stage * 0.25);
 
   // Start platform
   addPlatform(0, 0, 0, 6, 0.5, 6, palette.platform, false);
@@ -1758,7 +1866,8 @@ function buildStage(stage) {
     const w = platformMinSize + Math.random() * 1.5;
     const d = platformMinSize + Math.random() * 1.5;
     const isHazard = Math.random() < hazardChance && i > 2;
-    addPlatform(x, y, z, w, 0.4, d, palette.platform, isHazard);
+    const isPoisonHazard = !isHazard && stage >= 4 && Math.random() < poisonChance && i > 2;
+    addPlatform(x, y, z, w, 0.4, d, palette.platform, isHazard, false, isPoisonHazard);
   }
 
   // Goal platform at top
@@ -1780,6 +1889,7 @@ function buildStage(stage) {
   } else {
     buildPotion(0.5);
   }
+  buildMovingPlatforms(stage);
   buildBackground(stage);
   if (stage === 1) buildSecretBlocks();
   updateStageUI(stage, palette);
@@ -1808,7 +1918,7 @@ function buildCoins() {
 }
 
 function buildPotion(fraction = 0.5) {
-  const eligible = platforms.filter(p => p.userData.w && p.userData.w >= 2 && !p.userData.isGoal && !p.userData.isHazard);
+  const eligible = platforms.filter(p => p.userData.w && p.userData.w >= 2 && !p.userData.isGoal && !p.userData.isHazard && !p.userData.isPoisonHazard);
   if (!eligible.length) return;
   const plat = eligible[Math.floor(eligible.length * fraction)];
 
@@ -1856,6 +1966,40 @@ function buildPotion(fraction = 0.5) {
   );
   scene.add(group);
   potionMeshes.push({ group, collected: false });
+}
+
+function buildMovingPlatforms(stage) {
+  const count = stage >= 5 ? Math.min(2, stage - 4) : 0;
+  if (count === 0) return;
+
+  const eligible = platforms.filter(p =>
+    p.userData.w && p.userData.w >= 2 &&
+    !p.userData.isGoal && !p.userData.isHazard &&
+    !p.userData.isPoisonHazard && !p.userData.isSpinning
+  );
+  if (eligible.length < 3) return;
+
+  for (let i = 0; i < count; i++) {
+    const fraction = (i + 1) / (count + 1);
+    const plat = eligible[Math.floor(fraction * eligible.length)];
+    const speed = 0.016 + i * 0.003;
+
+    // 기존 플랫폼을 눈에 띄는 색으로 바꾸고 회전 표시
+    plat.material = new THREE.MeshStandardMaterial({
+      color: 0x00ccff, emissive: 0x0077cc, emissiveIntensity: 0.5,
+      roughness: 0.3, metalness: 0.3,
+    });
+    plat.userData.isSpinning = true;
+
+    movingPlatforms.push({ mesh: plat, speed, angle: Math.random() * Math.PI * 2 });
+  }
+}
+
+function updateMovingPlatforms() {
+  for (const mp of movingPlatforms) {
+    mp.angle += mp.speed;
+    mp.mesh.rotation.z = mp.angle; // Z축 기준 위→아래 회전
+  }
 }
 
 function buildSecretBlocks() {
@@ -1913,7 +2057,7 @@ function spawnHealParticles(pos) {
   }
 }
 
-function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false) {
+function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoisonHazard = false) {
   const geo = new THREE.BoxGeometry(w, h, d);
 
   let mat;
@@ -1937,13 +2081,13 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false) {
   mesh.position.set(x, y, z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.userData = { w, h, d, isHazard, isGoal };
+  mesh.userData = { w, h, d, isHazard, isGoal, isPoisonHazard };
   scene.add(mesh);
 
   // hazard 블록도 밟을 수 있는 일반 플랫폼처럼 등록 (대미지는 가시로만)
   platforms.push(mesh);
 
-  // Spike decoration on hazard — 가시만 빨간색, 가시 충돌로만 대미지
+  // 일반 가시 (빨간)
   if (isHazard) {
     const spikeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff2200, emissiveIntensity: 0.8 });
     const spacing = 1.1;
@@ -1958,8 +2102,29 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false) {
         const spike = new THREE.Mesh(spikeGeo, spikeMat);
         spike.position.set(sx, sy, sz);
         scene.add(spike);
-        platforms.push(spike); // 씬 정리용
+        platforms.push(spike);
         spikePositions.push(new THREE.Vector3(sx, sy, sz));
+      }
+    }
+  }
+
+  // 독 가시 (초록) — 닿으면 10 즉시 + 초당 3씩 4초 독
+  if (isPoisonHazard) {
+    const poisonMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x00cc22, emissiveIntensity: 1.0 });
+    const spacing = 1.1;
+    const cols = Math.max(1, Math.floor(w / spacing));
+    const rows = Math.max(1, Math.floor(d / spacing));
+    for (let ci = 0; ci < cols; ci++) {
+      for (let ri = 0; ri < rows; ri++) {
+        const sx = x - w / 2 + (ci + 0.5) * (w / cols);
+        const sy = y + h / 2 + 0.225;
+        const sz = z - d / 2 + (ri + 0.5) * (d / rows);
+        const spikeGeo = new THREE.ConeGeometry(0.15, 0.45, 6);
+        const spike = new THREE.Mesh(spikeGeo, poisonMat);
+        spike.position.set(sx, sy, sz);
+        scene.add(spike);
+        platforms.push(spike);
+        poisonSpikePositions.push(new THREE.Vector3(sx, sy, sz));
       }
     }
   }
@@ -2029,6 +2194,10 @@ function startGame() {
   sessionScore = 0;
   sessionCoins = 0;
   spikeDamageTimer = 0;
+  poisonActive = false;
+  poisonTicksRemaining = 0;
+  poisonTickTimer = 0;
+  poisonContactCooldown = 0;
   hp = maxHp;
   updateHpBar();
   buildStage(currentStage);
@@ -2071,6 +2240,7 @@ function animate() {
   }
 
   updatePlayer();
+  updateMovingPlatforms();
   updateCoins();
   updatePotions();
   updateBgAnimations();
@@ -2155,6 +2325,7 @@ function updatePlayer() {
   // Platform collision
   const wasOnGround = onGround;
   onGround = false;
+  playerOnMovingPlatform = null;
   const pBox = new THREE.Box3().setFromCenterAndSize(
     player.position,
     new THREE.Vector3(0.9, 1.0, 0.9)
@@ -2162,10 +2333,10 @@ function updatePlayer() {
 
   for (const plat of platforms) {
     if (!plat.userData.w) continue; // 가시 메시 등 userData 없는 것 스킵
+    if (plat.userData.isSpinning) continue; // 회전 플랫폼은 별도 처리
     const { w, h, d } = plat.userData;
     const platBox = new THREE.Box3().setFromCenterAndSize(
-      plat.position,
-      new THREE.Vector3(w, h, d)
+      plat.position, new THREE.Vector3(w, h, d)
     );
 
     if (pBox.intersectsBox(platBox)) {
@@ -2178,6 +2349,9 @@ function updatePlayer() {
         velocity.y = 0;
         onGround = true;
         if (!wasOnGround) SFX.land();
+        if (plat.userData.isMoving) {
+          playerOnMovingPlatform = movingPlatforms.find(m => m.mesh === plat) || null;
+        }
 
         if (plat.userData.isGoal) {
           nextStage();
@@ -2196,6 +2370,38 @@ function updatePlayer() {
           return;
         }
       }
+    }
+  }
+
+  // 회전 플랫폼 전용 충돌 — 기울어진 면의 실제 높이를 수학적으로 계산
+  for (const plat of platforms) {
+    if (!plat.userData.isSpinning) continue;
+    const angle = plat.rotation.z;
+    const cosA = Math.cos(angle);
+    if (Math.abs(cosA) < 0.4) continue; // 너무 가파르면 스킵
+
+    const { w, h, d } = plat.userData;
+    const relX = player.position.x - plat.position.x;
+    const relZ = player.position.z - plat.position.z;
+
+    // Z 범위 체크
+    if (Math.abs(relZ) > d / 2 + 0.45) continue;
+
+    // 플레이어가 플랫폼의 로컬 X 범위 안에 있는지 확인
+    const sinA = Math.sin(angle);
+    const localX = (relX + h / 2 * sinA) / cosA;
+    if (Math.abs(localX) > w / 2 + 0.45) continue;
+
+    // 플레이어 X 위치에서 기울어진 표면의 실제 Y 높이
+    const surfaceY = plat.position.y + relX * (sinA / cosA) + h / (2 * cosA);
+    const playerBottom = player.position.y - 0.5;
+    const overlapY = surfaceY - playerBottom;
+
+    if (overlapY > 0 && overlapY < 0.9 && velocity.y <= 0) {
+      player.position.y = surfaceY + 0.5;
+      velocity.y = 0;
+      onGround = true;
+      if (!wasOnGround) SFX.land();
     }
   }
 
@@ -2234,6 +2440,48 @@ function updatePlayer() {
     spikeDamageTimer = 0;
   }
 
+  // 독 가시 충돌 — 접촉 시 즉시 10 대미지 + 4초 독 (초당 3)
+  let onPoisonSpike = false;
+  for (const sp of poisonSpikePositions) {
+    const dx = player.position.x - sp.x;
+    const dy = player.position.y - sp.y;
+    const dz = player.position.z - sp.z;
+    if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) { onPoisonSpike = true; break; }
+  }
+  if (onPoisonSpike && poisonContactCooldown <= 0) {
+    hp = Math.max(0, hp - 10);
+    updateHpBar();
+    showDamageFlash();
+    spawnPoisonParticles();
+    SFX.damage();
+    poisonActive = true;
+    poisonTicksRemaining = 4;
+    poisonTickTimer = 60;
+    poisonContactCooldown = 90;
+    updatePoisonIndicator();
+    if (hp <= 0) { gameOver(); return; }
+  }
+  if (poisonContactCooldown > 0) poisonContactCooldown--;
+
+  // 독 지속 틱 대미지
+  if (poisonActive) {
+    poisonTickTimer--;
+    if (poisonTickTimer <= 0) {
+      poisonTickTimer = 60;
+      hp = Math.max(0, hp - 3);
+      updateHpBar();
+      showPoisonFlash();
+      spawnPoisonParticles();
+      SFX.poison();
+      poisonTicksRemaining--;
+      if (poisonTicksRemaining <= 0) {
+        poisonActive = false;
+        updatePoisonIndicator();
+      }
+      if (hp <= 0) { gameOver(); return; }
+    }
+  }
+
   // Fall death
   if (player.position.y < MAX_FALL) {
     SFX.damage();
@@ -2245,6 +2493,11 @@ function updatePlayer() {
 function respawn() {
   player.position.set(0, 2, 0);
   velocity.set(0, 0, 0);
+  poisonActive = false;
+  poisonTicksRemaining = 0;
+  poisonTickTimer = 0;
+  poisonContactCooldown = 0;
+  updatePoisonIndicator();
 }
 
 function takeDamage(amount) {
@@ -2273,6 +2526,33 @@ function showDamageFlash() {
   flash.style.opacity = '1';
   clearTimeout(damageFlashTimeout);
   damageFlashTimeout = setTimeout(() => { flash.style.opacity = '0'; }, 150);
+}
+
+function showPoisonFlash() {
+  const flash = document.getElementById('poison-flash');
+  flash.style.opacity = '1';
+  setTimeout(() => { flash.style.opacity = '0'; }, 200);
+}
+
+function updatePoisonIndicator() {
+  const el = document.getElementById('poison-indicator');
+  if (!el) return;
+  el.style.display = poisonActive ? 'block' : 'none';
+}
+
+function spawnPoisonParticles() {
+  for (let i = 0; i < 8; i++) {
+    const geo = new THREE.SphereGeometry(0.07, 6, 6);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x44ff44 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(player.position);
+    scene.add(mesh);
+    particles.push({
+      mesh,
+      vel: new THREE.Vector3((Math.random() - 0.5) * 0.25, Math.random() * 0.25 + 0.05, (Math.random() - 0.5) * 0.25),
+      life: 45,
+    });
+  }
 }
 
 function spawnDamageParticles() {
@@ -2337,7 +2617,7 @@ function gameClear() {
   saveCoins(loadCoins() + 15);
   const finalScore = sessionScore;
   const rankings = addRanking(playerName, finalScore, 10);
-  const myIdx = rankings.findIndex(r => r.name === playerName && r.score === finalScore);
+  const myIdx = rankings.daily.findIndex(r => r.name === playerName && r.score === finalScore);
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
@@ -2350,10 +2630,9 @@ function gameClear() {
         <div class="score-breakdown">최종 점수</div>
       </div>
       ${myIdx >= 0 ? `<div style="color:#ffd700;text-align:center;margin-bottom:14px;font-size:14px">🏆 ${myIdx+1}위 등록!</div>` : ''}
-      <table class="ranking-table" style="margin-bottom:18px">
-        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
-        ${rankingRows(rankings, playerName)}
-      </table>
+      <div style="margin-bottom:18px">
+        ${rankTabsHtml(rankings.daily, rankings.weekly, rankings.monthly, playerName)}
+      </div>
       <button class="btn btn-purple" onclick="onClickRestart()">다시 도전</button>
       <button class="btn btn-gray" onclick="onClickChangeName()">이름 변경</button>
     </div>`;
