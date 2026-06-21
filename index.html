@@ -468,27 +468,9 @@
 <script type="module">
 import * as THREE from 'three';
 
-// ── Firebase 글로벌 랭킹 ──
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, push, query, orderByChild, limitToLast, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
-
-const FIREBASE_CONFIG = {
-  apiKey: "FILL_IN",
-  authDomain: "FILL_IN.firebaseapp.com",
-  databaseURL: "https://FILL_IN-default-rtdb.firebaseio.com",
-  projectId: "FILL_IN",
-};
-let db = null, globalRankings = [];
-if (!FIREBASE_CONFIG.databaseURL.includes('FILL_IN')) {
-  try {
-    const fbApp = initializeApp(FIREBASE_CONFIG);
-    db = getDatabase(fbApp);
-    onValue(query(ref(db, 'rankings'), orderByChild('score'), limitToLast(20)), snap => {
-      const d = snap.val();
-      globalRankings = d ? Object.values(d).sort((a,b)=>b.score-a.score).slice(0,20) : [];
-    });
-  } catch(e) { console.warn('Firebase 오류:', e); }
-}
+// ── 공유 랭킹 (Google Sheets) ──
+const SHEET_API = 'https://script.google.com/macros/s/AKfycbxFyl1lKgcoQXmlrJYdc58sBUmI0Y8fEu0Zc284MKHuzDsnwqbcCWzeN4jsHrDHcMat/exec';
+let sharedRankings = [];
 
 // ─────────────────────────────────────────────
 // SOUND ENGINE (Web Audio API 합성음)
@@ -627,64 +609,36 @@ let sessionScore = 0;
 let stageStartTime = 0;
 
 const LS_RANK_DAILY   = 'ditto_rank_daily';
-const LS_RANK_WEEKLY  = 'ditto_rank_weekly';
-const LS_RANK_MONTHLY = 'ditto_rank_monthly';
-const LS_DATE_DAILY   = 'ditto_date_daily';
-const LS_DATE_WEEKLY  = 'ditto_date_weekly';
-const LS_DATE_MONTHLY = 'ditto_date_monthly';
-
-function todayStr() {
-  return new Date().toLocaleDateString('ko-KR');
-}
-function weekStr() {
-  const d = new Date();
-  const jan1 = new Date(d.getFullYear(), 0, 1);
-  const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
-  return `${d.getFullYear()}-W${week}`;
-}
-function monthStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth() + 1}`;
-}
-function loadPeriodRankings(lsKey, lsDate, periodStr) {
-  if (db) return globalRankings;
+async function fetchSharedRankings() {
   try {
-    if (localStorage.getItem(lsDate) !== periodStr) {
-      localStorage.removeItem(lsKey);
-      localStorage.setItem(lsDate, periodStr);
-      return [];
-    }
-    return JSON.parse(localStorage.getItem(lsKey)) || [];
-  } catch { return []; }
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(SHEET_API, { signal: ctrl.signal });
+    clearTimeout(tid);
+    sharedRankings = await res.json();
+  } catch(e) { console.warn('랭킹 불러오기 실패', e); }
 }
-function savePeriodRankings(lsKey, lsDate, periodStr, list) {
-  localStorage.setItem(lsDate, periodStr);
-  localStorage.setItem(lsKey, JSON.stringify(list));
+function getDailyRankings() {
+  const start = new Date(); start.setHours(0,0,0,0);
+  return sharedRankings.filter(r => r.ts >= start.getTime()).sort((a,b)=>b.score-a.score).slice(0,20);
 }
-function loadDailyRankings()   { return loadPeriodRankings(LS_RANK_DAILY,   LS_DATE_DAILY,   todayStr()); }
-function loadWeeklyRankings()  { return loadPeriodRankings(LS_RANK_WEEKLY,  LS_DATE_WEEKLY,  weekStr()); }
-function loadMonthlyRankings() { return loadPeriodRankings(LS_RANK_MONTHLY, LS_DATE_MONTHLY, monthStr()); }
-
-function addRanking(name, score, stage) {
-  const entry = { name, score, stage, date: new Date().toLocaleDateString('ko-KR') };
-  if (db) {
-    push(ref(db, 'rankings'), entry);
-    globalRankings = [...globalRankings, entry].sort((a,b)=>b.score-a.score).slice(0,20);
-    return { daily: globalRankings, weekly: globalRankings, monthly: globalRankings };
-  }
-  function addToList(list) {
-    list.push(entry);
-    list.sort((a, b) => b.score - a.score);
-    if (list.length > 20) list.length = 20;
-    return list;
-  }
-  const daily   = addToList(loadDailyRankings());
-  const weekly  = addToList(loadWeeklyRankings());
-  const monthly = addToList(loadMonthlyRankings());
-  savePeriodRankings(LS_RANK_DAILY,   LS_DATE_DAILY,   todayStr(), daily);
-  savePeriodRankings(LS_RANK_WEEKLY,  LS_DATE_WEEKLY,  weekStr(),  weekly);
-  savePeriodRankings(LS_RANK_MONTHLY, LS_DATE_MONTHLY, monthStr(), monthly);
-  return { daily, weekly, monthly };
+function getWeeklyRankings() {
+  const start = new Date(); start.setDate(start.getDate() - start.getDay()); start.setHours(0,0,0,0);
+  return sharedRankings.filter(r => r.ts >= start.getTime()).sort((a,b)=>b.score-a.score).slice(0,20);
+}
+function getMonthlyRankings() {
+  const start = new Date(); start.setDate(1); start.setHours(0,0,0,0);
+  return sharedRankings.filter(r => r.ts >= start.getTime()).sort((a,b)=>b.score-a.score).slice(0,20);
+}
+async function addRanking(name, score, stage) {
+  const ts = Date.now();
+  const date = new Date().toLocaleDateString('ko-KR');
+  sharedRankings = [...sharedRankings, { name, score, stage, date, ts }];
+  try {
+    const params = new URLSearchParams({ action: 'add', name, score, stage, date, ts });
+    await fetch(SHEET_API + '?' + params);
+  } catch(e) { console.warn('랭킹 저장 실패', e); }
+  return { daily: getDailyRankings(), weekly: getWeeklyRankings(), monthly: getMonthlyRankings() };
 }
 function calcScore() {
   const elapsed = Math.max(1, (Date.now() - stageStartTime) / 1000);
@@ -746,10 +700,11 @@ window.switchRankTab = function(tab) {
 };
 
 // ── 화면 렌더링 ──
-function showTitleScreen(forceNameInput = false) {
-  const dailyRankings   = loadDailyRankings();
-  const weeklyRankings  = loadWeeklyRankings();
-  const monthlyRankings = loadMonthlyRankings();
+async function showTitleScreen(forceNameInput = false) {
+  await fetchSharedRankings();
+  const dailyRankings   = getDailyRankings();
+  const weeklyRankings  = getWeeklyRankings();
+  const monthlyRankings = getMonthlyRankings();
   const coins        = loadCoins();
   const activeCoupon  = loadActiveCoupon();
   const couponCounts  = loadOwnedCoupons();
@@ -973,10 +928,10 @@ function applyCharacterColor(id) {
   if (id === 'ghost') {
     playerBody.material.transparent = true;
     playerBody.material.depthWrite = false;
-    playerBody.material.opacity = 0.12;
-    playerBody.material.color.setHex(0xccffff);
-    playerBody.material.emissive.setHex(0x00aaaa);
-    playerBody.material.emissiveIntensity = 0.8;
+    playerBody.material.opacity = 0.13;
+    playerBody.material.color.setHex(0xffffff);
+    playerBody.material.emissive.setHex(0x000000);
+    playerBody.material.emissiveIntensity = 0;
   } else {
     const col = SHOP_COLORS.find(c => c.id === id) || SHOP_COLORS[0];
     playerBody.material.transparent = false;
@@ -2604,7 +2559,7 @@ function nextStage() {
   showLevelBanner(currentStage, palette);
 }
 
-function gameClear() {
+async function gameClear() {
   gameActive = false;
   _shopOpenedDuringGame = false;
   document.exitPointerLock();
@@ -2616,7 +2571,7 @@ function gameClear() {
   SFX.gameClear();
   saveCoins(loadCoins() + 15);
   const finalScore = sessionScore;
-  const rankings = addRanking(playerName, finalScore, 10);
+  const rankings = await addRanking(playerName, finalScore, 10);
   const myIdx = rankings.daily.findIndex(r => r.name === playerName && r.score === finalScore);
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
@@ -2638,7 +2593,7 @@ function gameClear() {
     </div>`;
 }
 
-function gameOver() {
+async function gameOver() {
   gameActive = false;
   document.exitPointerLock();
   document.getElementById('score-ui').style.display = 'none';
@@ -2649,7 +2604,7 @@ function gameOver() {
   _shopOpenedDuringGame = false;
   SFX.gameOver();
   const finalScore = sessionScore + calcScore();
-  const rankings = addRanking(playerName, finalScore, currentStage);
+  const rankings = await addRanking(playerName, finalScore, currentStage);
   showGameOverScreen(finalScore, rankings);
 }
 
