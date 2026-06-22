@@ -1813,7 +1813,7 @@ function buildStage(stage) {
   const vStep = 1.2 + stage * 0.1;  // 높이 상승 (완만하게)
   const hazardChance = 0.15 + stage * 0.08;
   const poisonChance = stage >= 4 ? Math.min(0.38, 0.08 * (stage - 1)) : 0;
-  const flipChance   = stage >= 4 ? Math.min(0.15, 0.03 * (stage - 1)) : 0;
+  const flipChance   = stage >= 4 ? Math.min(0.35, 0.08 * (stage - 1)) : 0;
   const platformMinSize = Math.max(2.8, 4.8 - stage * 0.25);
 
   // Start platform
