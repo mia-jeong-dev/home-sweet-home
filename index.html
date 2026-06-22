@@ -864,10 +864,10 @@ function useGlasses() {
   // 숨겨진 블록 X선 효과로 표시
   portalBlocks.forEach(b => {
     b.visible = true;
-    b.material.color.setHex(b.userData.isPortal ? 0xff6600 : 0x00e5ff);
-    b.material.emissive.setHex(b.userData.isPortal ? 0xff3300 : 0x00aacc);
+    b.material.color.setHex(b.userData.isPortal ? 0xff6600 : b.userData.isHidden ? 0xffffff : 0x00e5ff);
+    b.material.emissive.setHex(b.userData.isPortal ? 0xff3300 : b.userData.isHidden ? 0xaaaaaa : 0x00aacc);
     b.material.emissiveIntensity = 1.0;
-    b.material.opacity = 0.5;
+    b.material.opacity = b.userData.isHidden ? 0.35 : 0.5;
   });
   const el = document.getElementById('glasses-ui');
   if (el) { el.style.color = '#ffffff'; }
@@ -1815,6 +1815,8 @@ function buildStage(stage) {
   const poisonChance = stage >= 4 ? Math.min(0.38, 0.08 * (stage - 1)) : 0;
   const flipChance   = stage >= 4 ? Math.min(0.35, 0.08 * (stage - 1)) : 0;
   const platformMinSize = Math.max(2.8, 4.8 - stage * 0.25);
+  const hiddenTotal  = stage >= 3 && stage < 10 ? 1 + (stage - 3) * 3 : 0;
+  let   hiddenPlaced = 0;
 
   // Start platform
   addPlatform(0, 0, 0, 6, 0.5, 6, palette.platform, false);
@@ -1831,10 +1833,18 @@ function buildStage(stage) {
 
     const w = platformMinSize + Math.random() * 1.5;
     const d = platformMinSize + Math.random() * 1.5;
-    const isHazard = Math.random() < hazardChance && i > 2;
-    const isPoisonHazard = !isHazard && stage >= 4 && Math.random() < poisonChance && i > 2;
-    const isFlipHazard = !isHazard && !isPoisonHazard && stage >= 4 && Math.random() < flipChance && i > 2;
-    addPlatform(x, y, z, w, 0.4, d, palette.platform, isHazard, false, isPoisonHazard, isFlipHazard);
+    // 10단계: 짝수 인덱스=보이는 플랫폼, 홀수 인덱스=투명 플랫폼(번갈아 배치)
+    const isHidden10 = stage === 10 && i > 2 && i % 2 === 1;
+    const isHazard = !isHidden10 && Math.random() < hazardChance && i > 2;
+    const isPoisonHazard = !isHazard && !isHidden10 && stage >= 4 && Math.random() < poisonChance && i > 2;
+    const isFlipHazard = !isHazard && !isPoisonHazard && !isHidden10 && stage >= 4 && Math.random() < flipChance && i > 2;
+    // 3~9단계: 목표 개수만큼 안전 플랫폼을 투명으로 전환
+    const needHidden = hiddenTotal - hiddenPlaced;
+    const hiddenChance = needHidden > 0 && !isHazard && !isPoisonHazard && !isFlipHazard && i > 2
+      ? needHidden / Math.max(1, platformCount - i) : 0;
+    const isHidden = isHidden10 || (stage < 10 && stage >= 3 && Math.random() < hiddenChance);
+    if (isHidden && stage < 10) hiddenPlaced++;
+    addPlatform(x, y, z, w, 0.4, d, palette.platform, isHazard, false, isPoisonHazard, isFlipHazard, isHidden);
   }
 
   // Goal platform at top
@@ -2024,7 +2034,7 @@ function spawnHealParticles(pos) {
   }
 }
 
-function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoisonHazard = false, isFlipHazard = false) {
+function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoisonHazard = false, isFlipHazard = false, isHidden = false) {
   const geo = new THREE.BoxGeometry(w, h, d);
 
   let mat;
@@ -2048,7 +2058,13 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoison
   mesh.position.set(x, y, z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.userData = { w, h, d, isHazard, isGoal, isPoisonHazard, isFlipHazard };
+  mesh.userData = { w, h, d, isHazard, isGoal, isPoisonHazard, isFlipHazard, isHidden };
+  if (isHidden) {
+    mat.transparent = true;
+    mat.opacity = 0;
+    mesh.visible = false;
+    portalBlocks.push(mesh);
+  }
   scene.add(mesh);
 
   // hazard 블록도 밟을 수 있는 일반 플랫폼처럼 등록 (대미지는 가시로만)
