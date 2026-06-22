@@ -730,7 +730,7 @@ async function showTitleScreen(forceNameInput = false) {
       <a href="claw.html" style="display:block;text-align:center;margin-top:8px;padding:12px 0;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:30px;color:#ccc;font-size:15px;font-weight:bold;text-decoration:none;">🧸 인형뽑기</a>
       ${(dailyRankings.length || weeklyRankings.length || monthlyRankings.length) ? `
       <div style="margin-top:18px">
-        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">🏆 랭킹</div>
+        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">📋 나의 점수 기록표</div>
         ${rankTabsHtml(dailyRankings, weeklyRankings, monthlyRankings, '')}
       </div>` : ''}
     </div>`;
