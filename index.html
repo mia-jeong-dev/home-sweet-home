@@ -1952,7 +1952,7 @@ function buildMovingPlatforms(stage) {
   const eligible = platforms.filter(p =>
     p.userData.w && p.userData.w >= 2 &&
     !p.userData.isGoal && !p.userData.isHazard &&
-    !p.userData.isPoisonHazard && !p.userData.isFlipHazard && !p.userData.isSpinning
+    !p.userData.isPoisonHazard && !p.userData.isFlipHazard && !p.userData.isHidden && !p.userData.isSpinning
   );
   if (eligible.length < 3) return;
 
