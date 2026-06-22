@@ -579,12 +579,17 @@ const preFinalPlatformPos = new THREE.Vector3();
 let animating = false;   // animate 루프 중복 방지
 let spikeDamageTimer = 0; // 가시 전용 틱 타이머 (60 = 1초)
 let poisonSpikePositions = [];
+let flipSpikePositions = [];
 let movingPlatforms = [];
 let playerOnMovingPlatform = null;
 let poisonActive = false;
 let poisonTicksRemaining = 0;
 let poisonTickTimer = 0;
 let poisonContactCooldown = 0;
+let flipActive = false;
+let flipTimer = 0;
+let flipContactCooldown = 0;
+const FLIP_DURATION = Math.round(6.7 * 60);
 let keys = {};
 let velocity = new THREE.Vector3();
 let onGround = false;
@@ -1017,6 +1022,8 @@ window.onClickRestart = function() {
   poisonTicksRemaining = 0;
   poisonTickTimer = 0;
   poisonContactCooldown = 0;
+  flipActive = false; flipTimer = 0; flipContactCooldown = 0;
+  setFlipScreen(false);
   stageStartTime = Date.now();
   document.getElementById('overlay').style.display = 'none';
   document.getElementById('score-ui').style.display = 'block';
@@ -1769,12 +1776,15 @@ function clearStage() {
   hazards = [];
   spikePositions = [];
   poisonSpikePositions = [];
+  flipSpikePositions = [];
   movingPlatforms = [];
   playerOnMovingPlatform = null;
   poisonActive = false;
   poisonTicksRemaining = 0;
   poisonTickTimer = 0;
   poisonContactCooldown = 0;
+  flipActive = false; flipTimer = 0; flipContactCooldown = 0;
+  setFlipScreen(false);
   coinMeshes.forEach(c => scene.remove(c.mesh));
   coinMeshes = [];
   potionMeshes.forEach(p => scene.remove(p.group));
@@ -1803,6 +1813,7 @@ function buildStage(stage) {
   const vStep = 1.2 + stage * 0.1;  // 높이 상승 (완만하게)
   const hazardChance = 0.15 + stage * 0.08;
   const poisonChance = stage >= 4 ? Math.min(0.38, 0.08 * (stage - 1)) : 0;
+  const flipChance   = stage >= 4 ? Math.min(0.15, 0.03 * (stage - 1)) : 0;
   const platformMinSize = Math.max(2.8, 4.8 - stage * 0.25);
 
   // Start platform
@@ -1822,7 +1833,8 @@ function buildStage(stage) {
     const d = platformMinSize + Math.random() * 1.5;
     const isHazard = Math.random() < hazardChance && i > 2;
     const isPoisonHazard = !isHazard && stage >= 4 && Math.random() < poisonChance && i > 2;
-    addPlatform(x, y, z, w, 0.4, d, palette.platform, isHazard, false, isPoisonHazard);
+    const isFlipHazard = !isHazard && !isPoisonHazard && stage >= 4 && Math.random() < flipChance && i > 2;
+    addPlatform(x, y, z, w, 0.4, d, palette.platform, isHazard, false, isPoisonHazard, isFlipHazard);
   }
 
   // Goal platform at top
@@ -1930,7 +1942,7 @@ function buildMovingPlatforms(stage) {
   const eligible = platforms.filter(p =>
     p.userData.w && p.userData.w >= 2 &&
     !p.userData.isGoal && !p.userData.isHazard &&
-    !p.userData.isPoisonHazard && !p.userData.isSpinning
+    !p.userData.isPoisonHazard && !p.userData.isFlipHazard && !p.userData.isSpinning
   );
   if (eligible.length < 3) return;
 
@@ -2012,7 +2024,7 @@ function spawnHealParticles(pos) {
   }
 }
 
-function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoisonHazard = false) {
+function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoisonHazard = false, isFlipHazard = false) {
   const geo = new THREE.BoxGeometry(w, h, d);
 
   let mat;
@@ -2036,7 +2048,7 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoison
   mesh.position.set(x, y, z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.userData = { w, h, d, isHazard, isGoal, isPoisonHazard };
+  mesh.userData = { w, h, d, isHazard, isGoal, isPoisonHazard, isFlipHazard };
   scene.add(mesh);
 
   // hazard 블록도 밟을 수 있는 일반 플랫폼처럼 등록 (대미지는 가시로만)
@@ -2059,6 +2071,27 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoison
         scene.add(spike);
         platforms.push(spike);
         spikePositions.push(new THREE.Vector3(sx, sy, sz));
+      }
+    }
+  }
+
+  // 반전 가시 (핑크) — 닿으면 5 즉시 + 6.7초 화면 반전
+  if (isFlipHazard) {
+    const flipMat = new THREE.MeshStandardMaterial({ color: 0xff69b4, emissive: 0xff1493, emissiveIntensity: 1.0 });
+    const spacing = 1.1;
+    const cols = Math.max(1, Math.floor(w / spacing));
+    const rows = Math.max(1, Math.floor(d / spacing));
+    for (let ci = 0; ci < cols; ci++) {
+      for (let ri = 0; ri < rows; ri++) {
+        const sx = x - w / 2 + (ci + 0.5) * (w / cols);
+        const sy = y + h / 2 + 0.225;
+        const sz = z - d / 2 + (ri + 0.5) * (d / rows);
+        const spikeGeo = new THREE.ConeGeometry(0.15, 0.45, 6);
+        const spike = new THREE.Mesh(spikeGeo, flipMat);
+        spike.position.set(sx, sy, sz);
+        scene.add(spike);
+        platforms.push(spike);
+        flipSpikePositions.push(new THREE.Vector3(sx, sy, sz));
       }
     }
   }
@@ -2153,6 +2186,8 @@ function startGame() {
   poisonTicksRemaining = 0;
   poisonTickTimer = 0;
   poisonContactCooldown = 0;
+  flipActive = false; flipTimer = 0; flipContactCooldown = 0;
+  setFlipScreen(false);
   hp = maxHp;
   updateHpBar();
   buildStage(currentStage);
@@ -2418,6 +2453,34 @@ function updatePlayer() {
   }
   if (poisonContactCooldown > 0) poisonContactCooldown--;
 
+  // 반전 가시 충돌 — 닿으면 5 대미지 + 6.7초 화면 반전
+  let onFlipSpike = false;
+  for (const sp of flipSpikePositions) {
+    const dx = player.position.x - sp.x;
+    const dy = player.position.y - sp.y;
+    const dz = player.position.z - sp.z;
+    if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) { onFlipSpike = true; break; }
+  }
+  if (onFlipSpike && flipContactCooldown <= 0) {
+    hp = Math.max(0, hp - 5);
+    updateHpBar();
+    showDamageFlash();
+    SFX.damage();
+    flipActive = true;
+    flipTimer = FLIP_DURATION;
+    flipContactCooldown = 90;
+    setFlipScreen(true);
+    if (hp <= 0) { gameOver(); return; }
+  }
+  if (flipContactCooldown > 0) flipContactCooldown--;
+  if (flipActive) {
+    flipTimer--;
+    if (flipTimer <= 0) {
+      flipActive = false;
+      setFlipScreen(false);
+    }
+  }
+
   // 독 지속 틱 대미지
   if (poisonActive) {
     poisonTickTimer--;
@@ -2452,6 +2515,8 @@ function respawn() {
   poisonTicksRemaining = 0;
   poisonTickTimer = 0;
   poisonContactCooldown = 0;
+  flipActive = false; flipTimer = 0; flipContactCooldown = 0;
+  setFlipScreen(false);
   updatePoisonIndicator();
 }
 
@@ -2493,6 +2558,15 @@ function updatePoisonIndicator() {
   const el = document.getElementById('poison-indicator');
   if (!el) return;
   el.style.display = poisonActive ? 'block' : 'none';
+}
+
+function setFlipScreen(on) {
+  renderer.domElement.style.transform = on ? 'rotate(180deg)' : '';
+  renderer.domElement.style.transformOrigin = '50% 50%';
+  const hud = document.getElementById('score-ui');
+  if (hud) hud.style.transform = on ? 'rotate(180deg)' : '';
+  const coinUi = document.getElementById('coin-ui');
+  if (coinUi) coinUi.style.transform = on ? 'rotate(180deg)' : '';
 }
 
 function spawnPoisonParticles() {
