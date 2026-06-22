@@ -1959,7 +1959,7 @@ function buildMovingPlatforms(stage) {
   for (let i = 0; i < count; i++) {
     const fraction = (i + 1) / (count + 1);
     const plat = eligible[Math.floor(fraction * eligible.length)];
-    const speed = 0.035 + i * 0.006;
+    const speed = (0.035 + i * 0.006) * 0.25;
 
     // 기존 플랫폼을 눈에 띄는 색으로 바꾸고 회전 표시
     plat.material = new THREE.MeshStandardMaterial({
