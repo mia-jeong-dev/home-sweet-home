@@ -2031,11 +2031,11 @@ function updateSlidingPlatforms() {
   }
 }
 
-// 유성 지오메트리·재질 미리 생성 (셰이더 재컴파일 방지)
+// 유성 지오메트리·재질 미리 생성 — 공유해서 clone() 금지
 const _meteorGeo  = new THREE.SphereGeometry(0.55, 8, 6);
 const _meteorMat  = new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff1100, emissiveIntensity: 2.0, roughness: 0.8 });
 const _warnGeo    = new THREE.RingGeometry(0.3, 2.2, 24);
-const _warnMat    = new THREE.MeshBasicMaterial({ color: 0xff2200, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+const _warnMat    = new THREE.MeshBasicMaterial({ color: 0xff2200, side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
 const _partGeo    = new THREE.SphereGeometry(0.1, 4, 4);
 const _partMat    = new THREE.MeshBasicMaterial({ color: 0xff4400 });
 
@@ -2044,16 +2044,16 @@ function spawnMeteor() {
   const tz = player.position.z;
   const landY = player.position.y;
 
-  const mesh = new THREE.Mesh(_meteorGeo, _meteorMat.clone());
+  const mesh = new THREE.Mesh(_meteorGeo, _meteorMat); // 재질 공유
   mesh.position.set(tx, landY + 28, tz);
   scene.add(mesh);
 
-  const warnMesh = new THREE.Mesh(_warnGeo, _warnMat.clone());
+  const warnMesh = new THREE.Mesh(_warnGeo, _warnMat); // 재질 공유
   warnMesh.rotation.x = -Math.PI / 2;
   warnMesh.position.set(tx, landY + 0.05, tz);
   scene.add(warnMesh);
 
-  meteors.push({ mesh, warnMesh, tx, tz, landY, vy: -0.1 });
+  meteors.push({ mesh, warnMesh, tx, tz, landY, vy: -0.22 }); // 등속 낙하
 }
 
 function updateMeteors() {
@@ -2064,10 +2064,8 @@ function updateMeteors() {
   }
   for (let i = meteors.length - 1; i >= 0; i--) {
     const m = meteors[i];
-    m.vy -= 0.002;
-    m.mesh.position.y += m.vy;
+    m.mesh.position.y += m.vy; // 가속 없음 — 등속
     m.mesh.rotation.x += 0.05;
-    m.warnMesh.material.opacity = 0.35 + 0.45 * Math.abs(Math.sin(Date.now() * 0.008));
     if (m.mesh.position.y <= m.landY + 0.5) {
       scene.remove(m.mesh);
       scene.remove(m.warnMesh);
