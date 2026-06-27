@@ -2707,7 +2707,7 @@ async function gameClear() {
   document.getElementById('teleport-ui').style.display = 'none';
   document.getElementById('glasses-ui').style.display = 'none';
   SFX.gameClear();
-  saveCoins(loadCoins() + 15);
+  saveCoins(loadCoins() + 50);
   const finalScore = sessionScore;
   const rankings = await addRanking(playerName, finalScore, 10);
   const myIdx = rankings.daily.findIndex(r => r.name === playerName && r.score === finalScore);
@@ -2717,7 +2717,7 @@ async function gameClear() {
     <div class="panel">
       <h2 style="color:#ffd700">🎉 게임 클리어! 🎉</h2>
       <p class="sub">모든 10단계를 완주했습니다! · ${playerName}</p>
-      <div style="background:rgba(245,158,11,0.15);border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;color:#fcd34d;font-size:14px;font-weight:bold;text-align:center;margin-bottom:12px">🎁 완주 보상 +15 코인 획득!</div>
+      <div style="background:rgba(245,158,11,0.15);border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;color:#fcd34d;font-size:14px;font-weight:bold;text-align:center;margin-bottom:12px">🎁 완주 보상 +50 코인 획득!</div>
       <div id="score-display">
         <div class="score-big">${finalScore.toLocaleString()}</div>
         <div class="score-breakdown">최종 점수</div>
