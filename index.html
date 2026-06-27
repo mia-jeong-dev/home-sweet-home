@@ -1401,16 +1401,7 @@ function init() {
   buildPlayer();
   buildStage(1);
 
-  // 유성 셰이더 사전 컴파일 — 게임 중 freeze 방지
-  const _pwMeteor = new THREE.Mesh(_meteorGeo, _meteorMat);
-  const _pwWarn   = new THREE.Mesh(_warnGeo,   _warnMat);
-  _pwMeteor.frustumCulled = false;
-  _pwWarn.frustumCulled   = false;
-  scene.add(_pwMeteor);
-  scene.add(_pwWarn);
-  renderer.compile(scene, camera);
-  scene.remove(_pwMeteor);
-  scene.remove(_pwWarn);
+  initMeteorPool();
 
   window.addEventListener('keydown', e => {
     keys[e.code] = true;
@@ -1814,9 +1805,9 @@ function clearStage() {
   potionMeshes = [];
   particles.forEach(p => scene.remove(p.mesh));
   particles = [];
-  meteors.forEach(m => { scene.remove(m.mesh); scene.remove(m.warnMesh); });
   meteors = [];
   meteorTimer = 0;
+  _meteorPool.forEach(s => { s.mesh.visible = false; s.warnMesh.visible = false; s.inUse = false; });
   if (flagGroup) { scene.remove(flagGroup); flagGroup = null; flagBanner = null; }
   portalBlocks.forEach(b => scene.remove(b));
   portalBlocks = [];
@@ -2042,44 +2033,51 @@ function updateSlidingPlatforms() {
   }
 }
 
-// 유성 지오메트리·재질 미리 생성 — 공유해서 clone() 금지
-const _meteorGeo  = new THREE.SphereGeometry(0.55, 8, 6);
-const _meteorMat  = new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff1100, emissiveIntensity: 2.0, roughness: 0.8 });
-const _warnGeo    = new THREE.RingGeometry(0.3, 2.2, 24);
-const _warnMat    = new THREE.MeshBasicMaterial({ color: 0xff2200, side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
-const _partGeo    = new THREE.SphereGeometry(0.1, 4, 4);
-const _partMat    = new THREE.MeshBasicMaterial({ color: 0xff4400 });
+// ── 유성 풀 (scene.add/remove 없이 재사용) ──
+const METEOR_POOL_SIZE = 3;
+const _meteorPool = [];  // { mesh, warnMesh, inUse }
+// 풀은 init() 안에서 initMeteorPool()로 초기화
+
+function initMeteorPool() {
+  const mGeo = new THREE.SphereGeometry(0.55, 8, 6);
+  const mMat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
+  const wGeo = new THREE.RingGeometry(0.3, 2.2, 24);
+  const wMat = new THREE.MeshBasicMaterial({ color: 0xff2200, side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
+  for (let i = 0; i < METEOR_POOL_SIZE; i++) {
+    const mesh = new THREE.Mesh(mGeo, mMat);
+    mesh.visible = false;
+    scene.add(mesh);
+    const warnMesh = new THREE.Mesh(wGeo, wMat);
+    warnMesh.visible = false;
+    warnMesh.rotation.x = -Math.PI / 2;
+    scene.add(warnMesh);
+    _meteorPool.push({ mesh, warnMesh, inUse: false });
+  }
+}
 
 function spawnMeteor() {
-  const tx = player.position.x;
-  const tz = player.position.z;
-  const landY = player.position.y;
-
-  const mesh = new THREE.Mesh(_meteorGeo, _meteorMat); // 재질 공유
-  mesh.position.set(tx, landY + 28, tz);
-  scene.add(mesh);
-
-  const warnMesh = new THREE.Mesh(_warnGeo, _warnMat); // 재질 공유
-  warnMesh.rotation.x = -Math.PI / 2;
-  warnMesh.position.set(tx, landY + 0.05, tz);
-  scene.add(warnMesh);
-
-  meteors.push({ mesh, warnMesh, tx, tz, landY, vy: -0.22 }); // 등속 낙하
+  const slot = _meteorPool.find(s => !s.inUse);
+  if (!slot) return;
+  slot.inUse = true;
+  slot.mesh.position.set(player.position.x, player.position.y + 28, player.position.z);
+  slot.mesh.rotation.set(0, 0, 0);
+  slot.mesh.visible = true;
+  slot.warnMesh.position.set(player.position.x, player.position.y + 0.05, player.position.z);
+  slot.warnMesh.visible = true;
+  meteors.push({ slot, tx: player.position.x, tz: player.position.z, landY: player.position.y, vy: -0.22 });
 }
 
 function updateMeteors() {
   meteorTimer++;
-  if (meteorTimer >= METEOR_INTERVAL) {
-    meteorTimer = 0;
-    spawnMeteor();
-  }
+  if (meteorTimer >= METEOR_INTERVAL) { meteorTimer = 0; spawnMeteor(); }
   for (let i = meteors.length - 1; i >= 0; i--) {
     const m = meteors[i];
-    m.mesh.position.y += m.vy; // 가속 없음 — 등속
-    m.mesh.rotation.x += 0.05;
-    if (m.mesh.position.y <= m.landY + 0.5) {
-      scene.remove(m.mesh);
-      scene.remove(m.warnMesh);
+    m.slot.mesh.position.y += m.vy;
+    m.slot.mesh.rotation.x += 0.05;
+    if (m.slot.mesh.position.y <= m.landY + 0.5) {
+      m.slot.mesh.visible = false;
+      m.slot.warnMesh.visible = false;
+      m.slot.inUse = false;
       meteors.splice(i, 1);
       const dx = player.position.x - m.tx;
       const dz = player.position.z - m.tz;
@@ -2090,7 +2088,6 @@ function updateMeteors() {
         SFX.damage();
         if (hp <= 0) { gameOver(); return; }
       }
-      // 착지 위치 플랫폼을 visible=false 만으로 투명 처리 (재질 변경 없음)
       for (const plat of platforms) {
         if (!plat.userData.w || plat.userData.isHidden) continue;
         const { w, h, d } = plat.userData;
@@ -2101,12 +2098,6 @@ function updateMeteors() {
           plat.userData.isHidden = true;
           if (!portalBlocks.includes(plat)) portalBlocks.push(plat);
         }
-      }
-      for (let p = 0; p < 6; p++) {
-        const pm = new THREE.Mesh(_partGeo, _partMat);
-        pm.position.set(m.tx, m.landY + 0.5, m.tz);
-        scene.add(pm);
-        particles.push({ mesh: pm, vx: (Math.random()-0.5)*0.3, vy: Math.random()*0.3, vz: (Math.random()-0.5)*0.3, life: 30 });
       }
     }
   }
