@@ -603,6 +603,9 @@ let mouseX = 0, mouseY = 0;
 let cameraYaw = 0, cameraPitch = 0.3;
 let lastDamageTime = 0;
 let particles = [];
+let meteors = [];
+let meteorTimer = 0;
+const METEOR_INTERVAL = 420; // 7초 (60fps)
 let portalBlocks = [];
 let portalTriggered = false;
 let dittoWobble = 0;
@@ -1798,6 +1801,9 @@ function clearStage() {
   potionMeshes = [];
   particles.forEach(p => scene.remove(p.mesh));
   particles = [];
+  meteors.forEach(m => { scene.remove(m.mesh); scene.remove(m.warnMesh); });
+  meteors = [];
+  meteorTimer = 0;
   if (flagGroup) { scene.remove(flagGroup); flagGroup = null; flagBanner = null; }
   portalBlocks.forEach(b => scene.remove(b));
   portalBlocks = [];
@@ -2019,6 +2025,65 @@ function updateSlidingPlatforms() {
     sp.mesh.position.x = newX;
     if (playerOnMovingPlatform === sp) {
       player.position.x += deltaX;
+    }
+  }
+}
+
+function spawnMeteor() {
+  const tx = player.position.x;
+  const tz = player.position.z;
+  const landY = player.position.y;
+
+  const geo = new THREE.SphereGeometry(0.55, 8, 6);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff1100, emissiveIntensity: 2.0, roughness: 0.8 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(tx, landY + 28, tz);
+  scene.add(mesh);
+
+  const warnGeo = new THREE.RingGeometry(0.3, 2.2, 24);
+  const warnMat = new THREE.MeshBasicMaterial({ color: 0xff2200, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+  const warnMesh = new THREE.Mesh(warnGeo, warnMat);
+  warnMesh.rotation.x = -Math.PI / 2;
+  warnMesh.position.set(tx, landY + 0.05, tz);
+  scene.add(warnMesh);
+
+  meteors.push({ mesh, warnMesh, tx, tz, landY, vy: -0.1 });
+}
+
+function updateMeteors() {
+  meteorTimer++;
+  if (meteorTimer >= METEOR_INTERVAL) {
+    meteorTimer = 0;
+    spawnMeteor();
+  }
+  for (let i = meteors.length - 1; i >= 0; i--) {
+    const m = meteors[i];
+    m.vy -= 0.002;
+    m.mesh.position.y += m.vy;
+    m.mesh.rotation.x += 0.05;
+    m.warnMesh.material.opacity = 0.35 + 0.45 * Math.abs(Math.sin(Date.now() * 0.008));
+    if (m.mesh.position.y <= m.landY + 0.5) {
+      scene.remove(m.mesh);
+      scene.remove(m.warnMesh);
+      meteors.splice(i, 1);
+      const dx = player.position.x - m.tx;
+      const dz = player.position.z - m.tz;
+      if (dx * dx + dz * dz < 2.5 * 2.5) {
+        hp = Math.max(0, hp - 35);
+        updateHpBar();
+        showDamageFlash();
+        SFX.damage();
+        if (hp <= 0) { gameOver(); return; }
+      }
+      for (let p = 0; p < 10; p++) {
+        const pm = new THREE.Mesh(
+          new THREE.SphereGeometry(0.1, 4, 4),
+          new THREE.MeshBasicMaterial({ color: 0xff4400 })
+        );
+        pm.position.set(m.tx, m.landY + 0.5, m.tz);
+        scene.add(pm);
+        particles.push({ mesh: pm, vx: (Math.random()-0.5)*0.3, vy: Math.random()*0.3, vz: (Math.random()-0.5)*0.3, life: 30 });
+      }
     }
   }
 }
@@ -2292,6 +2357,7 @@ function animate() {
   updatePlayer();
   updateMovingPlatforms();
   updateSlidingPlatforms();
+  updateMeteors();
   updateCoins();
   updatePotions();
   updateBgAnimations();
