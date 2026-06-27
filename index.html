@@ -781,8 +781,7 @@ async function showTitleScreen(forceNameInput = false) {
       }
       ${couponInfo ? `<div style="color:#f59e0b;font-size:12px;text-align:center;margin-top:-4px;margin-bottom:6px">${couponInfo.icon} ${couponInfo.name} 사용중 — ${couponInfo.stage}단계부터 시작 (잔여 ${couponRemain}회)</div>` : ''}
       <button class="btn btn-gray" onclick="showShop()" style="margin-top:4px">🛒 상점</button>
-      <a href="claw.html" style="display:block;text-align:center;margin-top:8px;padding:12px 0;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:30px;color:#ccc;font-size:15px;font-weight:bold;text-decoration:none;">🧸 인형뽑기</a>
-      <div style="margin-top:18px">
+<div style="margin-top:18px">
         <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">📋 나의 점수 기록표</div>
         ${playerName ? myScoresHtml(playerName) : `<div style="color:#666;font-size:13px;text-align:center;padding:10px 0">이름을 입력하면 기록이 표시됩니다</div>`}
       </div>
