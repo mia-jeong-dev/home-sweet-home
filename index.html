@@ -2000,7 +2000,7 @@ function buildSlidingPlatforms(stage) {
     const fraction = (i + 1) / (count + 1);
     const plat = eligible[Math.floor(fraction * eligible.length)];
     if (plat.userData.isSliding) continue;
-    const speed = 0.012 + i * 0.004 + stage * 0.001;
+    const speed = 0.025 + i * 0.008 + stage * 0.002;
     const range = 2.5 + Math.random() * 1.5;
     plat.material = new THREE.MeshStandardMaterial({
       color: 0xff8800, emissive: 0xcc4400, emissiveIntensity: 0.5,
