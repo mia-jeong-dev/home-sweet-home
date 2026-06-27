@@ -693,6 +693,25 @@ function medal(rank) {
   return `${rank + 1}.`;
 }
 
+function myScoresHtml(name) {
+  const all = loadLocalScores();
+  const mine = name ? all.filter(r => r.name === name).slice(0, 10) : [];
+  const rows = mine.length
+    ? mine.map((r, i) => `
+        <tr>
+          <td><span class="rank-medal">${medal(i)}</span></td>
+          <td class="score-val">${r.score.toLocaleString()}</td>
+          <td style="color:#a78bfa">${r.stage}단계</td>
+          <td style="color:#666;font-size:12px">${r.date}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="4" class="no-record">아직 기록이 없어요</td></tr>`;
+  return `
+    <table class="ranking-table">
+      <tr><th></th><th>점수</th><th>도달 단계</th><th>날짜</th></tr>
+      ${rows}
+    </table>`;
+}
+
 function rankingRows(list, highlightName) {
   if (!list.length) return `<tr><td colspan="4" class="no-record">기록 없음</td></tr>`;
   return list.map((r, i) => `
@@ -739,10 +758,7 @@ window.switchRankTab = function(tab) {
 
 // ── 화면 렌더링 ──
 async function showTitleScreen(forceNameInput = false) {
-  await fetchSharedRankings();
-  const dailyRankings   = getDailyRankings();
-  const weeklyRankings  = getWeeklyRankings();
-  const monthlyRankings = getMonthlyRankings();
+  fetchSharedRankings();
   const coins        = loadCoins();
   const activeCoupon  = loadActiveCoupon();
   const couponCounts  = loadOwnedCoupons();
@@ -766,11 +782,10 @@ async function showTitleScreen(forceNameInput = false) {
       ${couponInfo ? `<div style="color:#f59e0b;font-size:12px;text-align:center;margin-top:-4px;margin-bottom:6px">${couponInfo.icon} ${couponInfo.name} 사용중 — ${couponInfo.stage}단계부터 시작 (잔여 ${couponRemain}회)</div>` : ''}
       <button class="btn btn-gray" onclick="showShop()" style="margin-top:4px">🛒 상점</button>
       <a href="claw.html" style="display:block;text-align:center;margin-top:8px;padding:12px 0;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:30px;color:#ccc;font-size:15px;font-weight:bold;text-decoration:none;">🧸 인형뽑기</a>
-      ${(dailyRankings.length || weeklyRankings.length || monthlyRankings.length) ? `
       <div style="margin-top:18px">
         <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">📋 나의 점수 기록표</div>
-        ${rankTabsHtml(dailyRankings, weeklyRankings, monthlyRankings, '')}
-      </div>` : ''}
+        ${playerName ? myScoresHtml(playerName) : `<div style="color:#666;font-size:13px;text-align:center;padding:10px 0">이름을 입력하면 기록이 표시됩니다</div>`}
+      </div>
     </div>`;
   const inp = document.getElementById('name-input');
   if (inp) {
