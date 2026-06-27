@@ -1401,6 +1401,17 @@ function init() {
   buildPlayer();
   buildStage(1);
 
+  // 유성 셰이더 사전 컴파일 — 게임 중 freeze 방지
+  const _pwMeteor = new THREE.Mesh(_meteorGeo, _meteorMat);
+  const _pwWarn   = new THREE.Mesh(_warnGeo,   _warnMat);
+  _pwMeteor.frustumCulled = false;
+  _pwWarn.frustumCulled   = false;
+  scene.add(_pwMeteor);
+  scene.add(_pwWarn);
+  renderer.compile(scene, camera);
+  scene.remove(_pwMeteor);
+  scene.remove(_pwWarn);
+
   window.addEventListener('keydown', e => {
     keys[e.code] = true;
     if (e.code === 'KeyT' && gameActive) { e.preventDefault(); useTeleportCoupon(); }
