@@ -617,15 +617,37 @@ let playerName = localStorage.getItem('ditto_player_name') || '';
 let sessionScore = 0;
 let stageStartTime = 0;
 
-const LS_RANK_DAILY   = 'ditto_rank_daily';
+const LS_LOCAL_SCORES = 'ditto_local_scores';
+
+function loadLocalScores() {
+  try { return JSON.parse(localStorage.getItem(LS_LOCAL_SCORES)) || []; } catch { return []; }
+}
+function saveLocalScore(entry) {
+  const list = loadLocalScores();
+  list.push(entry);
+  list.sort((a, b) => b.score - a.score);
+  if (list.length > 100) list.length = 100;
+  localStorage.setItem(LS_LOCAL_SCORES, JSON.stringify(list));
+}
+function mergeScores(remote, local) {
+  const all = [...remote];
+  for (const l of local) {
+    if (!all.some(r => r.name === l.name && r.score === l.score && r.ts === l.ts))
+      all.push(l);
+  }
+  return all;
+}
+
 async function fetchSharedRankings() {
+  sharedRankings = loadLocalScores(); // 즉시 로컬 기록 표시
   try {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 5000);
     const res = await fetch(SHEET_API, { signal: ctrl.signal });
     clearTimeout(tid);
-    sharedRankings = await res.json();
-  } catch(e) { console.warn('랭킹 불러오기 실패', e); }
+    const remote = await res.json();
+    sharedRankings = mergeScores(remote, loadLocalScores());
+  } catch(e) { console.warn('랭킹 불러오기 실패 — 로컬 기록 사용', e); }
 }
 function getDailyRankings() {
   const start = new Date(); start.setHours(0,0,0,0);
@@ -642,11 +664,13 @@ function getMonthlyRankings() {
 async function addRanking(name, score, stage) {
   const ts = Date.now();
   const date = new Date().toLocaleDateString('ko-KR');
-  sharedRankings = [...sharedRankings, { name, score, stage, date, ts }];
+  const entry = { name, score, stage, date, ts };
+  saveLocalScore(entry); // 로컬에 즉시 저장
+  sharedRankings = mergeScores(sharedRankings, [entry]);
   try {
     const params = new URLSearchParams({ action: 'add', name, score, stage, date, ts });
     await fetch(SHEET_API + '?' + params);
-  } catch(e) { console.warn('랭킹 저장 실패', e); }
+  } catch(e) { console.warn('랭킹 서버 저장 실패 — 로컬에만 저장됨', e); }
   return { daily: getDailyRankings(), weekly: getWeeklyRankings(), monthly: getMonthlyRankings() };
 }
 function calcScore() {
