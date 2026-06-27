@@ -2075,6 +2075,20 @@ function updateMeteors() {
         SFX.damage();
         if (hp <= 0) { gameOver(); return; }
       }
+      // 착지 위치 아래 플랫폼을 투명하게
+      for (const plat of platforms) {
+        if (!plat.userData.w) continue;
+        const { w, h, d } = plat.userData;
+        if (Math.abs(plat.position.x - m.tx) < w / 2 &&
+            Math.abs(plat.position.z - m.tz) < d / 2 &&
+            Math.abs(plat.position.y + h / 2 - m.landY) < 1.2) {
+          plat.material.transparent = true;
+          plat.material.opacity = 0;
+          plat.visible = false;
+          plat.userData.isHidden = true;
+          if (!portalBlocks.includes(plat)) portalBlocks.push(plat);
+        }
+      }
       for (let p = 0; p < 10; p++) {
         const pm = new THREE.Mesh(
           new THREE.SphereGeometry(0.1, 4, 4),
