@@ -382,6 +382,161 @@
       .color-name { font-size: 10px; }
     }
 
+    /* ── 도박 모달 ── */
+    #gamble-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 24px 16px;
+      padding-top: calc(24px + env(safe-area-inset-top));
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      z-index: 150;
+      color: #fff;
+    }
+    .gamble-coin-display {
+      background: rgba(245,158,11,0.15);
+      border: 2px solid #f59e0b;
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #fcd34d;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .gamble-presets {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      margin-bottom: 12px;
+    }
+    .gamble-preset {
+      padding: 9px 0;
+      border: 1px solid #555;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      color: #ccc;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color 0.1s, color 0.1s;
+    }
+    .gamble-preset:hover { border-color: #f59e0b; color: #fcd34d; }
+    .gamble-bet-input {
+      width: 100%;
+      background: rgba(255,255,255,0.07);
+      border: 2px solid #f59e0b;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 26px;
+      padding: 12px 14px;
+      outline: none;
+      margin-bottom: 14px;
+      text-align: center;
+      letter-spacing: 2px;
+      font-weight: bold;
+    }
+    .gamble-bet-input:focus { box-shadow: 0 0 12px rgba(245,158,11,0.4); }
+    .btn-gamble {
+      background: linear-gradient(135deg, #d97706, #f59e0b);
+      color: #1c0f00;
+      font-weight: bold;
+      box-shadow: 0 4px 20px rgba(245,158,11,0.5);
+    }
+    .btn-gamble:hover { box-shadow: 0 6px 28px rgba(245,158,11,0.75); }
+    @keyframes coinFlip {
+      0%   { transform: scale(1) rotateY(0deg); }
+      30%  { transform: scale(1.5) rotateY(540deg); }
+      70%  { transform: scale(1.5) rotateY(1080deg); }
+      100% { transform: scale(1) rotateY(1800deg); }
+    }
+    .gamble-spinning {
+      font-size: 72px;
+      display: block;
+      text-align: center;
+      margin: 28px 0;
+      animation: coinFlip 1.5s ease-in-out forwards;
+    }
+    .gamble-result-win {
+      text-align: center;
+      padding: 20px 16px;
+      background: rgba(0,200,80,0.12);
+      border: 2px solid #22c55e;
+      border-radius: 14px;
+      margin-bottom: 14px;
+    }
+    .gamble-result-lose {
+      text-align: center;
+      padding: 20px 16px;
+      background: rgba(220,38,38,0.12);
+      border: 2px solid #ef4444;
+      border-radius: 14px;
+      margin-bottom: 14px;
+    }
+
+    /* ── 도움말 버튼 ── */
+    #help-btn {
+      background: rgba(0,0,0,0.6);
+      border: 2px solid #555;
+      border-radius: 50%;
+      width: 34px; height: 34px;
+      color: #ccc;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+      pointer-events: all;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    #help-btn:hover { border-color: #a78bfa; color: #a78bfa; }
+
+    /* ── 도움말 모달 ── */
+    #help-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 24px 16px;
+      padding-top: calc(24px + env(safe-area-inset-top));
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      z-index: 150;
+      color: #fff;
+    }
+    .help-title {
+      color: #a78bfa;
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      margin: 14px 0 7px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 4px;
+    }
+    .help-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .help-icon { font-size: 18px; flex-shrink: 0; width: 26px; text-align: center; }
+    .help-desc { font-size: 13px; color: #ccc; line-height: 1.55; }
+    .help-desc b { color: #e2e8f0; }
+
     .coupon-section-title {
       color: #f59e0b; font-size: 13px; font-weight: bold;
       letter-spacing: 1px; margin: 18px 0 10px;
@@ -428,6 +583,57 @@
   <p id="level-banner-sub"></p>
 </div>
 
+<div id="gamble-modal">
+  <div class="panel">
+    <h2>🎲 도박의 방</h2>
+    <p class="sub">50% 확률로 2배! 아니면 꽝 😈</p>
+    <div id="gamble-body"></div>
+  </div>
+</div>
+
+<div id="help-modal">
+  <div class="panel">
+    <h2>❓ 게임 도움말</h2>
+    <p class="sub">동글이의 점프맵 어드벤처</p>
+
+    <div class="help-title">🎮 조작법</div>
+    <div class="help-row"><span class="help-icon">⌨️</span><span class="help-desc"><b>WASD / 방향키</b> — 이동<br><b>Space</b> — 점프<br><b>마우스 드래그</b> — 카메라 회전</span></div>
+    <div class="help-row"><span class="help-icon">📱</span><span class="help-desc"><b>조이스틱</b> — 이동 (모바일)<br><b>⬆ 버튼</b> — 점프 (모바일)<br><b>화면 스와이프</b> — 카메라 회전</span></div>
+    <div class="help-row"><span class="help-icon">⌨️</span><span class="help-desc"><b>T</b> — 순간이동 &nbsp;·&nbsp; <b>G</b> — 안경 &nbsp;·&nbsp; <b>M</b> — 상점</span></div>
+
+    <div class="help-title">🎯 게임 목표</div>
+    <div class="help-row"><span class="help-icon">🏆</span><span class="help-desc">함정을 피해 <b>황금 플랫폼</b>에 도달하면 다음 단계로! 총 <b>10단계</b>까지 있어요.</span></div>
+    <div class="help-row"><span class="help-icon">🌟</span><span class="help-desc"><b>히든 스테이지</b> — 10단계 비밀 포탈을 찾아라! 코인 산더미와 특별 클리어 플랫폼이 숨어있어요.</span></div>
+
+    <div class="help-title">🟦 플랫폼 종류</div>
+    <div class="help-row"><span class="help-icon">🟩</span><span class="help-desc"><b>일반 플랫폼</b> — 안전하게 착지할 수 있어요</span></div>
+    <div class="help-row"><span class="help-icon">🔵</span><span class="help-desc"><b>회전 플랫폼</b> (파랑) — 빙글빙글 돌아요! 5단계부터 등장</span></div>
+    <div class="help-row"><span class="help-icon">🟠</span><span class="help-desc"><b>슬라이딩 플랫폼</b> (주황) — 좌우로 미끄러져요</span></div>
+    <div class="help-row"><span class="help-icon">👻</span><span class="help-desc"><b>투명 플랫폼</b> — 보이지 않지만 밟을 수 있어요 (3단계~)<br>🥽 안경을 사용하면 10초간 보여요</span></div>
+    <div class="help-row"><span class="help-icon">🏅</span><span class="help-desc"><b>황금 플랫폼</b> — 목표 지점! 도달하면 스테이지 클리어</span></div>
+
+    <div class="help-title">⚠️ 위험 요소</div>
+    <div class="help-row"><span class="help-icon">🔴</span><span class="help-desc"><b>일반 가시</b> — 닿으면 HP가 깎여요 (1초당 1회)</span></div>
+    <div class="help-row"><span class="help-icon">🟢</span><span class="help-desc"><b>독 가시</b> — 독 상태이상! 시간이 지나며 지속 데미지 (4단계~)</span></div>
+    <div class="help-row"><span class="help-icon">🔵</span><span class="help-desc"><b>반전 가시</b> — 화면이 뒤집혀요! 약 7초 지속 (5단계~)</span></div>
+    <div class="help-row"><span class="help-icon">☄️</span><span class="help-desc"><b>유성</b> — 7초마다 하늘에서 낙하해요. 빨간 원형 경고를 피하세요!</span></div>
+    <div class="help-row"><span class="help-icon">💀</span><span class="help-desc"><b>낙사</b> — 발판 밖으로 떨어지면 큰 데미지를 받아요</span></div>
+
+    <div class="help-title">🎁 아이템</div>
+    <div class="help-row"><span class="help-icon">🪙</span><span class="help-desc"><b>코인</b> — 플랫폼 위에 떠 있어요. 상점에서 스킨·아이템 구매에 사용!</span></div>
+    <div class="help-row"><span class="help-icon">🧪</span><span class="help-desc"><b>초록 물약</b> — 먹으면 HP 회복! (6단계부터 3개 등장)</span></div>
+    <div class="help-row"><span class="help-icon">🥽</span><span class="help-desc"><b>이상한 안경</b> — 상점에서 구매. 투명 블록을 10초간 볼 수 있어요</span></div>
+    <div class="help-row"><span class="help-icon">⚡</span><span class="help-desc"><b>순간이동권</b> — 암호를 알면 10단계 직전으로 순간이동!</span></div>
+
+    <div class="help-title">📊 점수 계산</div>
+    <div class="help-row"><span class="help-icon">📈</span><span class="help-desc"><b>스테이지 보너스</b>: (도달 단계 - 1) × 1,000점<br><b>HP 보너스</b>: 잔여 HP × 5점<br><b>시간 보너스</b>: 빠를수록 높은 점수 (최대 900점)</span></div>
+
+    <div class="help-title">💡 힌트</div>
+    <div class="help-row"><span class="help-icon">🥽</span><span class="help-desc">처음의 처음과 마지막의 마지막에서 이상한 안경을 써라</span></div>
+    <button class="btn btn-purple" onclick="closeHelp()" style="margin-top:10px">✓ 알겠어요!</button>
+  </div>
+</div>
+
 <div id="ui">
   <div id="hp-container">
     <div id="hp-label">HP</div>
@@ -449,6 +655,7 @@
       SPACE: 점프<br>
       마우스: 카메라
     </div>
+    <button id="help-btn" onclick="showHelp()">?</button>
   </div>
 </div>
 
@@ -580,8 +787,21 @@ let flagBanner = null;
 const flagBasePos = new THREE.Vector3();
 const goalPlatformPos = new THREE.Vector3();
 const preFinalPlatformPos = new THREE.Vector3();
+const prePreFinalPlatformPos = new THREE.Vector3();
 let animating = false;   // animate 루프 중복 방지
 let spikeDamageTimer = 0; // 가시 전용 틱 타이머 (60 = 1초)
+
+// ── 매 프레임 재사용 scratch 객체 (GC 부하 방지) ──
+const _fwd   = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _move  = new THREE.Vector3();
+const _pSize = new THREE.Vector3(0.9, 1.0, 0.9);
+const _pBox  = new THREE.Box3();
+const _platBox  = new THREE.Box3();
+const _platSize = new THREE.Vector3();
+let _scoreUITick = 0;
+let _bgAnimTick = 0;
+let _cachedActiveColorId = '';
 let poisonSpikePositions = [];
 let flipSpikePositions = [];
 let movingPlatforms = [];
@@ -612,6 +832,9 @@ let meteorTimer = 0;
 const METEOR_INTERVAL = 420; // 7초 (60fps)
 let portalBlocks = [];
 let portalTriggered = false;
+let secretPortalTriggered = false;
+let secretAreaPlatforms = [];
+const secretAreaStartPos = new THREE.Vector3();
 let dittoWobble = 0;
 let glassesTimer = 0;
 let glassesActive = false;
@@ -784,7 +1007,11 @@ async function showTitleScreen(forceNameInput = false) {
            <button class="btn btn-purple" onclick="onClickStart()">게임 시작!</button>`
       }
       ${couponInfo ? `<div style="color:#f59e0b;font-size:12px;text-align:center;margin-top:-4px;margin-bottom:6px">${couponInfo.icon} ${couponInfo.name} 사용중 — ${couponInfo.stage}단계부터 시작 (잔여 ${couponRemain}회)</div>` : ''}
-      <button class="btn btn-gray" onclick="showShop()" style="margin-top:4px">🛒 상점</button>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-gray" onclick="showShop()" style="margin:0;flex:1">🛒 상점</button>
+        <button class="btn" onclick="showGamble()" style="margin:0;flex:1;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;box-shadow:0 3px 14px rgba(217,119,6,0.5)">🎲 도박</button>
+      </div>
+      <button class="btn btn-gray" onclick="showHelp()" style="margin-top:4px;font-size:13px">❓ 게임 방법</button>
 <div style="margin-top:18px">
         <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">📋 나의 점수 기록표</div>
         ${playerName ? myScoresHtml(playerName) : `<div style="color:#666;font-size:13px;text-align:center;padding:10px 0">이름을 입력하면 기록이 표시됩니다</div>`}
@@ -916,8 +1143,9 @@ function useGlasses() {
   portalBlocks.forEach(b => {
     b.visible = true;
     if (!b.userData.isHidden) {
-      b.material.color.setHex(b.userData.isPortal ? 0xff6600 : 0x00e5ff);
-      b.material.emissive.setHex(b.userData.isPortal ? 0xff3300 : 0x00aacc);
+      const anyPortal = b.userData.isPortal || b.userData.isSecretPortal;
+      b.material.color.setHex(anyPortal ? 0xff6600 : 0x00e5ff);
+      b.material.emissive.setHex(anyPortal ? 0xff3300 : 0x00aacc);
       b.material.emissiveIntensity = 1.0;
       b.material.opacity = 0.5;
     }
@@ -983,6 +1211,7 @@ window.onShopClick = function(id, price) {
 
 function applyCharacterColor(id) {
   if (!playerBody) return;
+  _cachedActiveColorId = id;
   if (id === 'ghost') {
     playerBody.material.transparent = true;
     playerBody.material.depthWrite = false;
@@ -1049,6 +1278,113 @@ window.resumeFromShop = resumeFromShop;
 window.showTitleScreen = showTitleScreen;
 window.showShop = showShop;
 
+let _helpPausedGame = false;
+window.showHelp = function() {
+  if (gameActive) {
+    _helpPausedGame = true;
+    gameActive = false;
+    document.exitPointerLock();
+  } else {
+    _helpPausedGame = false;
+  }
+  document.getElementById('help-modal').style.display = 'flex';
+};
+window.closeHelp = function() {
+  document.getElementById('help-modal').style.display = 'none';
+  if (_helpPausedGame) {
+    _helpPausedGame = false;
+    gameActive = true;
+    if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+  }
+};
+
+// ── 도박 ──
+let _gambleFromGame = false;
+
+window.showGamble = function() {
+  if (gameActive) {
+    _gambleFromGame = true;
+    gameActive = false;
+    document.exitPointerLock();
+  } else {
+    _gambleFromGame = false;
+  }
+  _renderGambleIdle();
+  document.getElementById('gamble-modal').style.display = 'flex';
+};
+
+window.closeGamble = function() {
+  document.getElementById('gamble-modal').style.display = 'none';
+  if (_gambleFromGame) {
+    _gambleFromGame = false;
+    gameActive = true;
+    if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+  } else {
+    showTitleScreen();
+  }
+};
+
+window._renderGambleIdle = function() {
+  const coins = loadCoins();
+  const p25 = Math.max(1, Math.floor(coins * 0.25));
+  const p50 = Math.max(1, Math.floor(coins * 0.5));
+  const p75 = Math.max(1, Math.floor(coins * 0.75));
+  document.getElementById('gamble-body').innerHTML = `
+    <div class="gamble-coin-display">🪙 보유 코인: ${coins}</div>
+    <div style="color:#aaa;font-size:13px;margin-bottom:8px;text-align:center">베팅할 코인 수를 입력하세요</div>
+    <input id="gamble-bet-input" class="gamble-bet-input" type="number" min="1" max="${coins}" placeholder="0" />
+    <div class="gamble-presets">
+      <button class="gamble-preset" onclick="document.getElementById('gamble-bet-input').value=${p25}">25%</button>
+      <button class="gamble-preset" onclick="document.getElementById('gamble-bet-input').value=${p50}">50%</button>
+      <button class="gamble-preset" onclick="document.getElementById('gamble-bet-input').value=${p75}">75%</button>
+      <button class="gamble-preset" onclick="document.getElementById('gamble-bet-input').value=${coins}">전부!</button>
+    </div>
+    ${coins <= 0
+      ? `<div style="color:#ef4444;text-align:center;font-size:14px;padding:16px 0">코인이 없어요 😢</div>`
+      : `<button class="btn btn-gamble" onclick="doGamble()">🎲 도박!</button>`
+    }
+    <button class="btn btn-gray" onclick="closeGamble()">← 뒤로</button>`;
+};
+
+window.doGamble = function() {
+  const coins = loadCoins();
+  const inp = document.getElementById('gamble-bet-input');
+  const bet = parseInt(inp?.value) || 0;
+  if (bet <= 0 || bet > coins) {
+    if (inp) { inp.style.borderColor = '#ef4444'; setTimeout(() => { if (inp) inp.style.borderColor = ''; }, 600); }
+    return;
+  }
+  const body = document.getElementById('gamble-body');
+  body.innerHTML = `<span class="gamble-spinning">🪙</span>`;
+  const win = Math.random() < 0.5;
+  setTimeout(() => {
+    if (win) {
+      saveCoins(coins + bet);
+      SFX.stageClear();
+      body.innerHTML = `
+        <div class="gamble-result-win">
+          <div style="font-size:48px;margin-bottom:8px">🎉</div>
+          <div style="font-size:22px;font-weight:bold;color:#22c55e">대박! +${bet.toLocaleString()} 코인!</div>
+          <div style="font-size:13px;color:#aaa;margin-top:6px">${coins.toLocaleString()} → ${(coins+bet).toLocaleString()} 🪙</div>
+        </div>
+        <button class="btn btn-gamble" onclick="_renderGambleIdle()">한번 더!</button>
+        <button class="btn btn-gray" onclick="closeGamble()">← 뒤로</button>`;
+    } else {
+      saveCoins(coins - bet);
+      SFX.gameOver();
+      body.innerHTML = `
+        <div class="gamble-result-lose">
+          <div style="font-size:48px;margin-bottom:8px">💀</div>
+          <div style="font-size:22px;font-weight:bold;color:#ef4444">꽝! -${bet.toLocaleString()} 코인 잃었다!</div>
+          <div style="font-size:13px;color:#aaa;margin-top:6px">${coins.toLocaleString()} → ${(coins-bet).toLocaleString()} 🪙</div>
+        </div>
+        <button class="btn btn-gamble" onclick="_renderGambleIdle()">한번 더!</button>
+        <button class="btn btn-gray" onclick="closeGamble()">← 뒤로</button>`;
+    }
+    updateCoinUI();
+  }, 1550);
+};
+
 window.onClickStart = function() {
   const inp = document.getElementById('name-input');
   const name = inp ? inp.value.trim() : playerName;
@@ -1105,7 +1441,7 @@ function updateCoins() {
       c.collected = true;
       scene.remove(c.mesh);
       sessionCoins++;
-      const total = loadCoins() + 1;
+      const total = loadCoins() + (c.value || 1);
       saveCoins(total);
       updateCoinUI();
       SFX.coin();
@@ -1214,8 +1550,8 @@ function updateScoreUI() {
   document.addEventListener('touchmove', e => {
     for (const t of e.changedTouches) {
       if (t.identifier !== camId) continue;
-      cameraYaw   -= (t.clientX - camPrev.x) * 0.004;
-      cameraPitch -= (t.clientY - camPrev.y) * 0.004;
+      cameraYaw   -= (t.clientX - camPrev.x) * 0.006;
+      cameraPitch -= (t.clientY - camPrev.y) * 0.006;
       cameraPitch = Math.max(-0.8, Math.min(1.0, cameraPitch));
       camPrev = { x: t.clientX, y: t.clientY };
     }
@@ -1227,9 +1563,9 @@ function updateScoreUI() {
   });
 })();
 
-const GRAVITY = -0.012;
+const GRAVITY = -0.018;
 const JUMP_FORCE = 0.30;
-const MOVE_SPEED = 0.07;
+const MOVE_SPEED = 0.18;
 const MAX_FALL = -60;
 
 // ── 상점 색상 목록 ──
@@ -1271,7 +1607,7 @@ function saveCoins(n)      { localStorage.setItem(LS_COINS, String(n)); }
 function loadOwned()       { try { return JSON.parse(localStorage.getItem(LS_OWNED)) || ['purple']; } catch { return ['purple']; } }
 function saveOwned(arr)    { localStorage.setItem(LS_OWNED, JSON.stringify(arr)); }
 function loadActiveColor() { return localStorage.getItem(LS_ACTIVE) || 'purple'; }
-function saveActiveColor(id){ localStorage.setItem(LS_ACTIVE, id); }
+function saveActiveColor(id){ localStorage.setItem(LS_ACTIVE, id); _cachedActiveColorId = id; }
 
 // 쿠폰 잔여 횟수 저장 형식: { stage2: 2, stage5: 3, ... }
 function loadOwnedCoupons()    { try { return JSON.parse(localStorage.getItem(LS_COUPONS)) || {}; } catch { return {}; } }
@@ -1404,6 +1740,7 @@ const STAGE_COLORS = [
 // INIT
 // ─────────────────────────────────────────────
 function init() {
+  _cachedActiveColorId = loadActiveColor();
   scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x0f172a, 0.018);
 
@@ -1463,8 +1800,8 @@ function init() {
   });
   document.addEventListener('mousemove', e => {
     if (document.pointerLockElement === renderer.domElement) {
-      cameraYaw -= e.movementX * 0.003;
-      cameraPitch -= e.movementY * 0.003;
+      cameraYaw -= e.movementX * 0.005;
+      cameraPitch -= e.movementY * 0.005;
       cameraPitch = Math.max(-0.8, Math.min(1.0, cameraPitch));
     }
   });
@@ -1854,6 +2191,8 @@ function clearStage() {
   portalBlocks.forEach(b => scene.remove(b));
   portalBlocks = [];
   portalTriggered = false;
+  secretPortalTriggered = false;
+  secretAreaPlatforms = [];
   glassesActive = false;
   glassesTimer = 0;
   clearBackground();
@@ -1872,7 +2211,7 @@ function buildStage(stage) {
   const vStep = 1.2 + stage * 0.1;  // 높이 상승 (완만하게)
   const hazardChance = 0.15 + stage * 0.08;
   const poisonChance = stage >= 4 ? Math.min(0.38, 0.08 * (stage - 1)) : 0;
-  const flipChance   = stage >= 4 ? Math.min(0.35, 0.08 * (stage - 1)) : 0;
+  const flipChance   = stage >= 5 ? Math.min(0.35, 0.08 * (stage - 1)) : 0;
   const platformMinSize = Math.max(2.8, 4.8 - stage * 0.25);
   const hiddenTotal  = stage >= 3 && stage < 10 ? 1 + (stage - 3) * 3 : 0;
   let   hiddenPlaced = 0;
@@ -1909,6 +2248,7 @@ function buildStage(stage) {
   // Goal platform at top
   const goalY = y + vStep * 2;
   preFinalPlatformPos.set(prevX, prevY + 0.75, prevZ); // 순간이동 목적지: 골 2칸 전 블록
+  prePreFinalPlatformPos.set(prevX, prevY, prevZ);     // 히든 포탈 기준점: 클리어 전전 플랫폼
   goalPlatformPos.set(x, goalY, z);
   if (stage === 10) {
     addPlatform(x, goalY, z, 8, 0.5, 8, 0xffd700, false, false);
@@ -1929,11 +2269,12 @@ function buildStage(stage) {
   buildSlidingPlatforms(stage);
   buildBackground(stage);
   if (stage === 1) buildSecretBlocks();
+  if (stage === 10) buildStage10SecretBlocks();
   updateStageUI(stage, palette);
 }
 
 function buildCoins() {
-  const coinGeo  = new THREE.CylinderGeometry(0.28, 0.28, 0.12, 16);
+  const coinGeo  = new THREE.CylinderGeometry(0.28, 0.28, 0.12, 8);
   const coinMat  = new THREE.MeshStandardMaterial({
     color: 0xffd700, emissive: 0xffa500, emissiveIntensity: 0.6,
     roughness: 0.2, metalness: 0.8,
@@ -1948,7 +2289,7 @@ function buildCoins() {
       plat.position.y + plat.userData.h / 2 + 0.5,
       plat.position.z + (Math.random() - 0.5) * (plat.userData.d * 0.4)
     );
-    mesh.castShadow = false;
+    mesh.castShadow = true;
     scene.add(mesh);
     coinMeshes.push({ mesh, collected: false });
   });
@@ -2161,6 +2502,126 @@ function buildSecretBlocks() {
     platforms.push(mesh);
     portalBlocks.push(mesh);
   });
+}
+
+function buildStage10SecretBlocks() {
+  const bx0 = prePreFinalPlatformPos.x;
+  const by  = prePreFinalPlatformPos.y;
+  const bz  = prePreFinalPlatformPos.z;
+  const geo = new THREE.BoxGeometry(2.5, 0.5, 2.5);
+  for (let i = 0; i < 5; i++) {
+    const isPortal = i === 4;
+    const mat = new THREE.MeshStandardMaterial({ transparent: true, opacity: 0 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(bx0 - (i + 1) * 4, by, bz);
+    mesh.visible = false;
+    mesh.userData = { w: 2.5, h: 0.5, d: 2.5, isHazard: false, isGoal: false, isSecretPortal: isPortal };
+    scene.add(mesh);
+    platforms.push(mesh);
+    portalBlocks.push(mesh);
+  }
+}
+
+function buildCoinMountain(platX, platY, platZ) {
+  const coinGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.12, 16);
+  const coinMat = new THREE.MeshStandardMaterial({
+    color: 0xffd700, emissive: 0xffa500, emissiveIntensity: 0.6,
+    roughness: 0.2, metalness: 0.8,
+  });
+  const platTop = platY + 0.25;
+  // 4×4(16개) + 3×3(9개) = 25개 피라미드
+  const layers = [
+    { size: 4, yOff: 0.5 },
+    { size: 3, yOff: 0.9 },
+  ];
+  for (const { size, yOff } of layers) {
+    const offset = (size - 1) * 0.4;
+    for (let xi = 0; xi < size; xi++) {
+      for (let zi = 0; zi < size; zi++) {
+        const mesh = new THREE.Mesh(coinGeo, coinMat);
+        mesh.position.set(
+          platX - offset + xi * 0.8,
+          platTop + yOff,
+          platZ - offset + zi * 0.8
+        );
+        scene.add(mesh);
+        coinMeshes.push({ mesh, collected: false });
+      }
+    }
+  }
+}
+
+function buildSecretArea() {
+  // 기존 스테이지 오브젝트 전부 제거해 렌더링 부하 해소
+  platforms.forEach(p => scene.remove(p));
+  platforms = [];
+  hazards.forEach(h => scene.remove(h));
+  hazards = [];
+  spikePositions = [];
+  poisonSpikePositions = [];
+  flipSpikePositions = [];
+  movingPlatforms = [];
+  slidingPlatforms = [];
+  playerOnMovingPlatform = null;
+  coinMeshes.forEach(c => scene.remove(c.mesh));
+  coinMeshes = [];
+  potionMeshes.forEach(p => scene.remove(p.group));
+  potionMeshes = [];
+  portalBlocks.forEach(b => scene.remove(b));
+  portalBlocks = [];
+  if (flagGroup) { scene.remove(flagGroup); flagGroup = null; flagBanner = null; }
+  clearBackground();
+
+  const portalX = prePreFinalPlatformPos.x - 5 * 4;
+  const portalY = prePreFinalPlatformPos.y;
+  const portalZ = prePreFinalPlatformPos.z;
+  const platColor = STAGE_COLORS[9].platform;
+
+  const platsData = [
+    { dx: -6,  dy: 2,   dz: 0, w: 7, h: 0.5, d: 7, goal: false },
+    { dx: -15, dy: 3.5, dz: 0, w: 9, h: 0.5, d: 9, goal: false },
+    { dx: -24, dy: 5,   dz: 0, w: 7, h: 0.5, d: 7, goal: false },
+    { dx: -33, dy: 6.5, dz: 0, w: 9, h: 0.5, d: 9, goal: true  },
+  ];
+
+  secretAreaStartPos.set(
+    portalX + platsData[0].dx,
+    portalY + platsData[0].dy + 0.5,
+    portalZ + platsData[0].dz
+  );
+
+  platsData.forEach(({ dx, dy, dz, w, h, d, goal }, i) => {
+    const bx = portalX + dx;
+    const by = portalY + dy;
+    const bz = portalZ + dz;
+    let mat;
+    if (goal) {
+      mat = new THREE.MeshStandardMaterial({
+        color: 0xffd700, emissive: 0xffa500, emissiveIntensity: 0.8,
+        roughness: 0.2, metalness: 0.5,
+      });
+    } else {
+      mat = new THREE.MeshStandardMaterial({ color: platColor, roughness: 0.6, metalness: 0.1 });
+    }
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    mesh.position.set(bx, by, bz);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData = { w, h, d, isHazard: false, isGoal: goal };
+    scene.add(mesh);
+    platforms.push(mesh);
+    secretAreaPlatforms.push(mesh);
+
+    if (i === 1) buildCoinMountain(bx, by, bz);
+  });
+
+  // 히든 스테이지 배너 표시
+  const banner = document.getElementById('level-banner');
+  document.getElementById('level-banner-title').textContent = '🌟 히든 스테이지';
+  document.getElementById('level-banner-title').style.color = '#ffd700';
+  document.getElementById('level-banner-sub').textContent = '비밀의 방 — 코인을 모아 클리어하라!';
+  banner.style.display = 'block';
+  setTimeout(() => { banner.style.display = 'none'; }, 2800);
 }
 
 function updatePotions() {
@@ -2402,12 +2863,12 @@ function animate() {
   playerBody.scale.x = 1 - Math.sin(dittoWobble) * 0.02;
 
   // 레인보우 색상 순환
-  if (loadActiveColor() === 'rainbow') {
+  if (_cachedActiveColorId === 'rainbow') {
     const hue = (Date.now() * 0.1) % 360;
     playerBody.material.color.setHSL(hue / 360, 1, 0.55);
     playerBody.material.emissive.setHSL(hue / 360, 1, 0.2);
   }
-  if (loadActiveColor() === 'ghost') {
+  if (_cachedActiveColorId === 'ghost') {
     playerBody.material.opacity = 0.07 + Math.abs(Math.sin(Date.now() * 0.002)) * 0.1;
   }
 
@@ -2420,7 +2881,7 @@ function animate() {
   updateBgAnimations();
   updateParticles();
   updateCamera();
-  updateScoreUI();
+  if (++_scoreUITick >= 30) { _scoreUITick = 0; updateScoreUI(); }
 
   // 안경 타이머
   if (glassesActive) {
@@ -2457,24 +2918,24 @@ function animate() {
 function updatePlayer() {
   if (invincibleTimer > 0) invincibleTimer--;
 
-  // Input direction in camera space
-  const forward = new THREE.Vector3(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
-  const right = new THREE.Vector3(Math.cos(cameraYaw), 0, -Math.sin(cameraYaw));
+  // Input direction in camera space (scratch 객체 재사용으로 GC 없음)
+  _fwd.set(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
+  _right.set(Math.cos(cameraYaw), 0, -Math.sin(cameraYaw));
 
-  let move = new THREE.Vector3();
-  if (keys['KeyW'] || keys['ArrowUp']) move.add(forward);
-  if (keys['KeyS'] || keys['ArrowDown']) move.sub(forward);
-  if (keys['KeyA'] || keys['ArrowLeft']) move.sub(right);
-  if (keys['KeyD'] || keys['ArrowRight']) move.add(right);
+  _move.set(0, 0, 0);
+  if (keys['KeyW'] || keys['ArrowUp'])    _move.add(_fwd);
+  if (keys['KeyS'] || keys['ArrowDown'])  _move.sub(_fwd);
+  if (keys['KeyA'] || keys['ArrowLeft'])  _move.sub(_right);
+  if (keys['KeyD'] || keys['ArrowRight']) _move.add(_right);
   // 터치 조이스틱
   if (window._touchMove) {
-    move.add(forward.clone().multiplyScalar(-window._touchMove.y));
-    move.add(right.clone().multiplyScalar(window._touchMove.x));
+    _move.addScaledVector(_fwd,   -window._touchMove.y);
+    _move.addScaledVector(_right,  window._touchMove.x);
   }
-  if (move.lengthSq() > 0) move.normalize().multiplyScalar(MOVE_SPEED);
+  if (_move.lengthSq() > 0) _move.normalize().multiplyScalar(MOVE_SPEED);
 
-  velocity.x = move.x;
-  velocity.z = move.z;
+  velocity.x = _move.x;
+  velocity.z = _move.z;
 
   // Gravity
   velocity.y += GRAVITY;
@@ -2491,29 +2952,25 @@ function updatePlayer() {
   player.position.add(velocity);
 
   // Face direction
-  if (move.lengthSq() > 0) {
-    const angle = Math.atan2(move.x, move.z);
+  if (_move.lengthSq() > 0) {
+    const angle = Math.atan2(_move.x, _move.z);
     player.rotation.y = angle;
   }
 
-  // Platform collision
+  // Platform collision (Box3 scratch 재사용)
   const wasOnGround = onGround;
   onGround = false;
   playerOnMovingPlatform = null;
-  const pBox = new THREE.Box3().setFromCenterAndSize(
-    player.position,
-    new THREE.Vector3(0.9, 1.0, 0.9)
-  );
+  _pBox.setFromCenterAndSize(player.position, _pSize);
 
   for (const plat of platforms) {
     if (!plat.userData.w) continue; // 가시 메시 등 userData 없는 것 스킵
     if (plat.userData.isSpinning) continue; // 회전 플랫폼은 별도 처리
     const { w, h, d } = plat.userData;
-    const platBox = new THREE.Box3().setFromCenterAndSize(
-      plat.position, new THREE.Vector3(w, h, d)
-    );
+    _platSize.set(w, h, d);
+    _platBox.setFromCenterAndSize(plat.position, _platSize);
 
-    if (pBox.intersectsBox(platBox)) {
+    if (_pBox.intersectsBox(_platBox)) {
       const playerBottom = player.position.y - 0.5;
       const platTop = plat.position.y + h / 2;
       const overlapY = platTop - playerBottom;
@@ -2541,6 +2998,15 @@ function updatePlayer() {
           applyCharacterColor(loadActiveColor());
           updateTeleportUI();
           player.position.set(preFinalPlatformPos.x, preFinalPlatformPos.y, preFinalPlatformPos.z);
+          velocity.set(0, 0, 0);
+          SFX.stageClear();
+          showDamageFlash();
+          return;
+        }
+        if (plat.userData.isSecretPortal && !secretPortalTriggered) {
+          secretPortalTriggered = true;
+          buildSecretArea();
+          player.position.set(secretAreaStartPos.x, secretAreaStartPos.y, secretAreaStartPos.z);
           velocity.set(0, 0, 0);
           SFX.stageClear();
           showDamageFlash();
@@ -2696,7 +3162,11 @@ function updatePlayer() {
 }
 
 function respawn() {
-  player.position.set(0, 2, 0);
+  if (secretPortalTriggered) {
+    player.position.set(secretAreaStartPos.x, secretAreaStartPos.y, secretAreaStartPos.z);
+  } else {
+    player.position.set(0, 2, 0);
+  }
   velocity.set(0, 0, 0);
   poisonActive = false;
   poisonTicksRemaining = 0;
