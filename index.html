@@ -988,7 +988,7 @@ window.switchRankTab = function(tab) {
 
 // ── 화면 렌더링 ──
 async function showTitleScreen(forceNameInput = false) {
-  fetchSharedRankings();
+  await fetchSharedRankings();
   const coins        = loadCoins();
   const activeCoupon  = loadActiveCoupon();
   const couponCounts  = loadOwnedCoupons();
@@ -1016,8 +1016,8 @@ async function showTitleScreen(forceNameInput = false) {
       </div>
       <button class="btn btn-gray" onclick="showHelp()" style="margin-top:4px;font-size:13px">❓ 게임 방법</button>
 <div style="margin-top:18px">
-        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">📋 나의 점수 기록표</div>
-        ${playerName ? myScoresHtml(playerName) : `<div style="color:#666;font-size:13px;text-align:center;padding:10px 0">이름을 입력하면 기록이 표시됩니다</div>`}
+        <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">🏆 랭킹보드</div>
+        ${rankTabsHtml(getDailyRankings(), getWeeklyRankings(), getMonthlyRankings(), playerName)}
       </div>
     </div>`;
   const inp = document.getElementById('name-input');
