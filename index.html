@@ -2246,6 +2246,14 @@ function clearStage() {
 }
 
 function buildStage(stage) {
+  // 스테이지 번호로 시드를 고정해 항상 같은 레이아웃 생성
+  let _s = stage * 73856093 ^ 19349663;
+  const _origRandom = Math.random;
+  Math.random = () => { _s = (Math.imul(_s, 1664525) + 1013904223) | 0; return (_s >>> 0) / 4294967296; };
+  _buildStage(stage);
+  Math.random = _origRandom;
+}
+function _buildStage(stage) {
   clearStage();
   const s = stage - 1;
   const palette = STAGE_COLORS[Math.min(s, STAGE_COLORS.length - 1)];
