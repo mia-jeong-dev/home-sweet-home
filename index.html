@@ -953,12 +953,17 @@ function rankingRows(list, highlightName) {
     </tr>`).join('');
 }
 
+function getAllTimeRankings() {
+  return [...sharedRankings].sort((a, b) => b.score - a.score).slice(0, 20);
+}
 function rankTabsHtml(daily, weekly, monthly, highlightName) {
+  const allTime = getAllTimeRankings();
   return `
     <div class="rank-tabs">
       <button class="rank-tab active" id="rtab-daily"   onclick="switchRankTab('daily')">일일</button>
       <button class="rank-tab"        id="rtab-weekly"  onclick="switchRankTab('weekly')">주간</button>
       <button class="rank-tab"        id="rtab-monthly" onclick="switchRankTab('monthly')">월간</button>
+      <button class="rank-tab"        id="rtab-all"     onclick="switchRankTab('all')">전체</button>
     </div>
     <div id="rank-panel-daily">
       <table class="ranking-table">
@@ -977,18 +982,23 @@ function rankTabsHtml(daily, weekly, monthly, highlightName) {
         <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
         ${rankingRows(monthly, highlightName)}
       </table>
+    </div>
+    <div id="rank-panel-all" style="display:none">
+      <table class="ranking-table">
+        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+        ${rankingRows(allTime, highlightName)}
+      </table>
     </div>`;
 }
 window.switchRankTab = function(tab) {
-  ['daily','weekly','monthly'].forEach(t => {
+  ['daily','weekly','monthly','all'].forEach(t => {
     document.getElementById('rank-panel-' + t).style.display = t === tab ? '' : 'none';
     document.getElementById('rtab-' + t).classList.toggle('active', t === tab);
   });
 };
 
 // ── 화면 렌더링 ──
-async function showTitleScreen(forceNameInput = false) {
-  await fetchSharedRankings();
+function _renderTitleScreen(forceNameInput) {
   const coins        = loadCoins();
   const activeCoupon  = loadActiveCoupon();
   const couponCounts  = loadOwnedCoupons();
@@ -1015,9 +1025,11 @@ async function showTitleScreen(forceNameInput = false) {
         <button class="btn" onclick="showGamble()" style="margin:0;flex:1;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;box-shadow:0 3px 14px rgba(217,119,6,0.5)">🎲 도박</button>
       </div>
       <button class="btn btn-gray" onclick="showHelp()" style="margin-top:4px;font-size:13px">❓ 게임 방법</button>
-<div style="margin-top:18px">
+      <div style="margin-top:18px">
         <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin-bottom:8px;letter-spacing:1px">🏆 랭킹보드</div>
-        ${rankTabsHtml(getDailyRankings(), getWeeklyRankings(), getMonthlyRankings(), playerName)}
+        <div id="title-ranking-board">
+          ${rankTabsHtml(getDailyRankings(), getWeeklyRankings(), getMonthlyRankings(), playerName)}
+        </div>
       </div>
     </div>`;
   const inp = document.getElementById('name-input');
@@ -1026,6 +1038,15 @@ async function showTitleScreen(forceNameInput = false) {
     inp.focus();
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') onClickStart(); });
   }
+}
+
+async function showTitleScreen(forceNameInput = false) {
+  _renderTitleScreen(forceNameInput);
+  try {
+    await fetchSharedRankings();
+    const board = document.getElementById('title-ranking-board');
+    if (board) board.innerHTML = rankTabsHtml(getDailyRankings(), getWeeklyRankings(), getMonthlyRankings(), playerName);
+  } catch(e) { console.warn('랭킹 로드 실패', e); }
 }
 
 function showShop() {
