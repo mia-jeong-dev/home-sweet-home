@@ -2875,6 +2875,7 @@ function startGame() {
   updateGlassesUI();
   _gameOverCalled = false;
   gameActive = true;
+  if ('ontouchstart' in window) document.getElementById('touch-controls').style.display = 'flex';
   currentStage = getStartStage();
   useCoupon();
   sessionScore = 0;
@@ -3354,6 +3355,7 @@ async function gameClear() {
   document.getElementById('shop-hud-btn').style.display = 'none';
   document.getElementById('teleport-ui').style.display = 'none';
   document.getElementById('glasses-ui').style.display = 'none';
+  document.getElementById('touch-controls').style.display = 'none';
   SFX.gameClear();
   saveCoins(loadCoins() + 50);
   const finalScore = sessionScore;
@@ -3399,6 +3401,7 @@ async function gameOver() {
   document.getElementById('shop-hud-btn').style.display = 'none';
   document.getElementById('teleport-ui').style.display = 'none';
   document.getElementById('glasses-ui').style.display = 'none';
+  document.getElementById('touch-controls').style.display = 'none';
   _shopOpenedDuringGame = false;
   SFX.gameOver();
   const finalScore = sessionScore + calcScore();
