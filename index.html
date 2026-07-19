@@ -1254,8 +1254,7 @@ function applyCharacterColor(id) {
   }
 }
 
-function showGameOverScreen(score, rankings) {
-  const myIdx = rankings.daily.findIndex(r => r.name === playerName && r.score === score);
+function showGameOverScreen(score) {
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
@@ -1270,9 +1269,8 @@ function showGameOverScreen(score, rankings) {
           + 시간 보너스 포함
         </div>
       </div>
-      ${myIdx >= 0 ? `<div style="color:#ffd700;text-align:center;margin-bottom:14px;font-size:14px">🎉 ${rankLabel(myIdx)}!</div>` : ''}
-      <div style="margin-bottom:18px">
-        ${rankTabsHtml(rankings.daily, rankings.weekly, rankings.monthly, playerName)}
+      <div id="gameover-ranking" style="margin-bottom:18px">
+        <div style="color:#666;font-size:13px;text-align:center;padding:14px 0">랭킹 불러오는 중...</div>
       </div>
       <button class="btn btn-red" onclick="onClickRestart()">다시 시작</button>
       <button class="btn btn-gray" onclick="showShop()">🛒 상점</button>
@@ -3357,8 +3355,6 @@ async function gameClear() {
   SFX.gameClear();
   saveCoins(loadCoins() + 50);
   const finalScore = sessionScore;
-  const rankings = await addRanking(playerName, finalScore, 10);
-  const myIdx = rankings.daily.findIndex(r => r.name === playerName && r.score === finalScore);
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
@@ -3370,13 +3366,25 @@ async function gameClear() {
         <div class="score-big">${finalScore.toLocaleString()}</div>
         <div class="score-breakdown">최종 점수</div>
       </div>
-      ${myIdx >= 0 ? `<div style="color:#ffd700;text-align:center;margin-bottom:14px;font-size:14px">🏆 ${rankLabel(myIdx)}!</div>` : ''}
-      <div style="margin-bottom:18px">
-        ${rankTabsHtml(rankings.daily, rankings.weekly, rankings.monthly, playerName)}
+      <div id="clear-ranking" style="margin-bottom:18px">
+        <div style="color:#666;font-size:13px;text-align:center;padding:14px 0">랭킹 불러오는 중...</div>
       </div>
       <button class="btn btn-purple" onclick="onClickRestart()">다시 도전</button>
       <button class="btn btn-gray" onclick="onClickChangeName()">이름 변경</button>
     </div>`;
+  try {
+    const rankings = await addRanking(playerName, finalScore, 10);
+    const board = document.getElementById('clear-ranking');
+    if (board) {
+      const myIdx = rankings.daily.findIndex(r => r.name === playerName && r.score === finalScore);
+      board.innerHTML = `
+        ${myIdx >= 0 ? `<div style="color:#ffd700;text-align:center;margin-bottom:10px;font-size:14px">🏆 ${rankLabel(myIdx)}!</div>` : ''}
+        ${rankTabsHtml(rankings.daily, rankings.weekly, rankings.monthly, playerName)}`;
+    }
+  } catch(e) {
+    const board = document.getElementById('clear-ranking');
+    if (board) board.innerHTML = `<div style="color:#666;font-size:12px;text-align:center;padding:8px 0">랭킹 불러오기 실패</div>`;
+  }
 }
 
 async function gameOver() {
@@ -3390,8 +3398,20 @@ async function gameOver() {
   _shopOpenedDuringGame = false;
   SFX.gameOver();
   const finalScore = sessionScore + calcScore();
-  const rankings = await addRanking(playerName, finalScore, currentStage);
-  showGameOverScreen(finalScore, rankings);
+  showGameOverScreen(finalScore);
+  try {
+    const rankings = await addRanking(playerName, finalScore, currentStage);
+    const board = document.getElementById('gameover-ranking');
+    if (board) {
+      const myIdx = rankings.daily.findIndex(r => r.name === playerName && r.score === finalScore);
+      board.innerHTML = `
+        ${myIdx >= 0 ? `<div style="color:#ffd700;text-align:center;margin-bottom:10px;font-size:14px">🎉 ${rankLabel(myIdx)}!</div>` : ''}
+        ${rankTabsHtml(rankings.daily, rankings.weekly, rankings.monthly, playerName)}`;
+    }
+  } catch(e) {
+    const board = document.getElementById('gameover-ranking');
+    if (board) board.innerHTML = `<div style="color:#666;font-size:12px;text-align:center;padding:8px 0">랭킹 불러오기 실패</div>`;
+  }
 }
 
 // ─────────────────────────────────────────────
