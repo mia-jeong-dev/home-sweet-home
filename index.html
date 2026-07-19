@@ -2491,6 +2491,7 @@ function spawnMeteor() {
 }
 
 function updateMeteors() {
+  if (secretPortalTriggered || hiddenHiddenTriggered) return;
   meteorTimer++;
   if (meteorTimer >= METEOR_INTERVAL) { meteorTimer = 0; spawnMeteor(); }
   for (let i = meteors.length - 1; i >= 0; i--) {
@@ -2780,6 +2781,25 @@ function buildSecretArea() {
 
     if (i === 1) buildCoinMountain(bx, by, bz);
   });
+
+  // 팻말: 운석 없음 안내 (첫 번째 플랫폼 위)
+  const signCanvas = document.createElement('canvas');
+  signCanvas.width = 512; signCanvas.height = 128;
+  const sCtx = signCanvas.getContext('2d');
+  sCtx.fillStyle = 'rgba(0,0,0,0.75)';
+  roundRect(sCtx, 0, 0, 512, 128, 16);
+  sCtx.fillStyle = '#ffd700';
+  sCtx.font = 'bold 36px Arial';
+  sCtx.textAlign = 'center';
+  sCtx.textBaseline = 'middle';
+  sCtx.fillText('☄ 여기선 운석이 안 떨어져요!', 256, 64);
+  function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r); ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r); ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r); ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath(); ctx.fill(); }
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  const signSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: signTex, transparent: true }));
+  signSprite.scale.set(6, 1.5, 1);
+  const fp = platsData[0];
+  signSprite.position.set(portalX + fp.dx, portalY + fp.dy + 2.5, portalZ + fp.dz);
+  addBg(signSprite);
 
   // 2번째 플랫폼 옆 투명 플랫폼 3개 (Z+ 방향)
   const p1x = portalX - 15, p1y = portalY + 3.5, p1z = portalZ;
@@ -3360,7 +3380,9 @@ function updatePlayer() {
 }
 
 function respawn() {
-  if (secretPortalTriggered) {
+  if (hiddenHiddenTriggered) {
+    player.position.set(hiddenHiddenStartPos.x, hiddenHiddenStartPos.y, hiddenHiddenStartPos.z);
+  } else if (secretPortalTriggered) {
     player.position.set(secretAreaStartPos.x, secretAreaStartPos.y, secretAreaStartPos.z);
   } else {
     player.position.set(0, 2, 0);
