@@ -2784,9 +2784,9 @@ function buildSecretArea() {
   // 2번째 플랫폼 옆 투명 플랫폼 3개 (Z+ 방향)
   const p1x = portalX - 15, p1y = portalY + 3.5, p1z = portalZ;
   const transDefs = [
-    { dz: 9,  dy: 0.5, trigger: false, coins: false },
-    { dz: 16, dy: 1.0, trigger: false, coins: false },
-    { dz: 23, dy: 1.5, trigger: true,  coins: false },
+    { dz: 7,  dy: 0.5, trigger: false, coins: false },
+    { dz: 13, dy: 1.0, trigger: false, coins: false },
+    { dz: 19, dy: 1.5, trigger: true,  coins: false },
   ];
   const transMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0, roughness: 0.1, metalness: 0.3 });
   transDefs.forEach(({ dz, dy, trigger, coins }) => {
