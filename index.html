@@ -823,6 +823,7 @@ let onGround = false;
 let hp = 100, maxHp = 100;
 let currentStage = 1;
 let gameActive = false;
+let _gameOverCalled = false;
 let damageFlashTimeout = null;
 let invincibleTimer = 0;
 let mouseX = 0, mouseY = 0;
@@ -2872,6 +2873,7 @@ function startGame() {
   document.getElementById('shop-hud-btn').style.display = 'block';
   updateCoinUI();
   updateGlassesUI();
+  _gameOverCalled = false;
   gameActive = true;
   currentStage = getStartStage();
   useCoupon();
@@ -3388,6 +3390,8 @@ async function gameClear() {
 }
 
 async function gameOver() {
+  if (_gameOverCalled) return;
+  _gameOverCalled = true;
   gameActive = false;
   document.exitPointerLock();
   document.getElementById('score-ui').style.display = 'none';
