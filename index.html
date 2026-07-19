@@ -1683,6 +1683,7 @@ function useTeleportCoupon() {
   // T키: 암호 모달 표시 (소유/활성화 무관하게 항상 사용 가능)
   gameActive = false;
   document.exitPointerLock();
+  renderer.domElement.style.display = 'none';
   const modal = document.getElementById('teleport-pw-modal');
   const inp   = document.getElementById('teleport-pw-input');
   inp.value = '';
@@ -1704,6 +1705,7 @@ window.confirmTeleport = function() {
   }
   // 암호 일치 → 순간이동
   document.getElementById('teleport-pw-modal').style.display = 'none';
+  renderer.domElement.style.display = 'block';
   gameActive = true;
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
   // 스테이지 10으로 이동 후 골 직전 블록에 배치
@@ -1720,6 +1722,7 @@ window.confirmTeleport = function() {
 
 window.cancelTeleport = function() {
   document.getElementById('teleport-pw-modal').style.display = 'none';
+  renderer.domElement.style.display = 'block';
   gameActive = true;
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
 };
