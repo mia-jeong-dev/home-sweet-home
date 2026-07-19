@@ -2660,16 +2660,15 @@ function buildHiddenHiddenArea() {
   }
 
   const hhPlats = [
-    { x:  0, y:  0, z: 0, w: 6, h: 0.5, d: 6, goal: false },
-    { x: -9, y:  2, z: 4, w: 5, h: 0.5, d: 5, goal: false },
-    { x:-18, y:  4, z: 0, w: 6, h: 0.5, d: 6, goal: false },
-    { x:-27, y:  6, z:-4, w: 5, h: 0.5, d: 5, goal: false },
-    { x:-36, y:  8, z: 0, w: 7, h: 0.5, d: 7, goal: true  },
+    { x:  0, y:  0, z:  0, w: 6, h: 0.5, d: 6, goal: false },
+    { x:-10, y:  2, z:  4, w: 7, h: 0.5, d: 7, goal: false },
+    { x:-20, y:  4, z:  0, w: 6, h: 0.5, d: 6, goal: false },
+    { x:-30, y:  6, z: -4, w: 8, h: 0.5, d: 8, goal: true  },
   ];
 
   hiddenHiddenStartPos.set(hhPlats[0].x, hhPlats[0].y + 1, hhPlats[0].z);
 
-  hhPlats.forEach(({ x, y, z, w, h, d, goal }) => {
+  hhPlats.forEach(({ x, y, z, w, h, d, goal }, i) => {
     const mat = goal
       ? new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff2200, emissiveIntensity: 1.0, roughness: 0.2, metalness: 0.5 })
       : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0.1 });
@@ -2680,6 +2679,7 @@ function buildHiddenHiddenArea() {
     mesh.userData = { w, h, d, isHazard: false, isGoal: goal };
     scene.add(mesh);
     platforms.push(mesh);
+    if (i === 1) buildCoinPyramid55(x, y, z);
   });
 
   const banner = document.getElementById('level-banner');
@@ -2784,9 +2784,9 @@ function buildSecretArea() {
   // 2번째 플랫폼 옆 투명 플랫폼 3개 (Z+ 방향)
   const p1x = portalX - 15, p1y = portalY + 3.5, p1z = portalZ;
   const transDefs = [
-    { dz: 9,  dy: 0.5,  trigger: false, coins: false },
-    { dz: 16, dy: 1.0,  trigger: false, coins: true  },
-    { dz: 23, dy: 1.5,  trigger: true,  coins: false },
+    { dz: 9,  dy: 0.5, trigger: false, coins: false },
+    { dz: 16, dy: 1.0, trigger: false, coins: false },
+    { dz: 23, dy: 1.5, trigger: true,  coins: false },
   ];
   const transMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, roughness: 0.1, metalness: 0.3 });
   transDefs.forEach(({ dz, dy, trigger, coins }) => {
