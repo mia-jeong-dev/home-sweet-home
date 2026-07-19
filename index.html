@@ -603,7 +603,6 @@
 
     <div class="help-title">🎯 게임 목표</div>
     <div class="help-row"><span class="help-icon">🏆</span><span class="help-desc">함정을 피해 <b>황금 플랫폼</b>에 도달하면 다음 단계로! 총 <b>10단계</b>까지 있어요.</span></div>
-    <div class="help-row"><span class="help-icon">🌟</span><span class="help-desc"><b>히든 스테이지</b> — 10단계 비밀 포탈을 찾아라! 코인 산더미와 특별 클리어 플랫폼이 숨어있어요.</span></div>
 
     <div class="help-title">🟦 플랫폼 종류</div>
     <div class="help-row"><span class="help-icon">🟩</span><span class="help-desc"><b>일반 플랫폼</b> — 안전하게 착지할 수 있어요</span></div>
@@ -678,9 +677,12 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm';
 
-// ── 공유 랭킹 (Google Sheets) ──
-const SHEET_API = 'https://script.google.com/macros/s/AKfycbxFyl1lKgcoQXmlrJYdc58sBUmI0Y8fEu0Zc284MKHuzDsnwqbcCWzeN4jsHrDHcMat/exec';
+// ── 공유 랭킹 (Supabase) ──
+const SUPABASE_URL = 'https://lmohyechrbqkwdkdkszi.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JhovzDNw4apyiTjOY0D0SQ_FEVG64oX';
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 let sharedRankings = [];
 
 // ─────────────────────────────────────────────
@@ -866,14 +868,15 @@ function mergeScores(remote, local) {
 }
 
 async function fetchSharedRankings() {
-  sharedRankings = loadLocalScores(); // 즉시 로컬 기록 표시
+  sharedRankings = loadLocalScores();
   try {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 5000);
-    const res = await fetch(SHEET_API, { signal: ctrl.signal });
-    clearTimeout(tid);
-    const remote = await res.json();
-    sharedRankings = mergeScores(remote, loadLocalScores());
+    const { data, error } = await db
+      .from('rankings')
+      .select('name, score, stage, date, ts')
+      .order('score', { ascending: false })
+      .limit(500);
+    if (!error && data) sharedRankings = mergeScores(data, loadLocalScores());
+    else console.warn('랭킹 불러오기 실패 — 로컬 기록 사용', error);
   } catch(e) { console.warn('랭킹 불러오기 실패 — 로컬 기록 사용', e); }
 }
 function getDailyRankings() {
@@ -892,11 +895,11 @@ async function addRanking(name, score, stage) {
   const ts = Date.now();
   const date = new Date().toLocaleDateString('ko-KR');
   const entry = { name, score, stage, date, ts };
-  saveLocalScore(entry); // 로컬에 즉시 저장
+  saveLocalScore(entry);
   sharedRankings = mergeScores(sharedRankings, [entry]);
   try {
-    const params = new URLSearchParams({ action: 'add', name, score, stage, date, ts });
-    await fetch(SHEET_API + '?' + params);
+    const { error } = await db.from('rankings').insert([{ name, score, stage, date, ts }]);
+    if (error) console.warn('랭킹 서버 저장 실패 — 로컬에만 저장됨', error);
   } catch(e) { console.warn('랭킹 서버 저장 실패 — 로컬에만 저장됨', e); }
   return { daily: getDailyRankings(), weekly: getWeeklyRankings(), monthly: getMonthlyRankings() };
 }
@@ -1253,6 +1256,7 @@ function showGameOverScreen(score, rankings) {
       <button class="btn btn-red" onclick="onClickRestart()">다시 시작</button>
       <button class="btn btn-gray" onclick="showShop()">🛒 상점</button>
       <button class="btn btn-gray" onclick="onClickChangeName()">이름 변경</button>
+      <button class="btn btn-gray" onclick="showTitleScreen()">처음 화면으로</button>
     </div>`;
 }
 
@@ -1564,8 +1568,8 @@ function updateScoreUI() {
 })();
 
 const GRAVITY = -0.018;
-const JUMP_FORCE = 0.30;
-const MOVE_SPEED = 0.18;
+const JUMP_FORCE = 0.26;
+const MOVE_SPEED = 0.09;
 const MAX_FALL = -60;
 
 // ── 상점 색상 목록 ──
@@ -1680,6 +1684,8 @@ window.confirmTeleport = function() {
   updateTeleportUI();
   player.position.set(preFinalPlatformPos.x, preFinalPlatformPos.y, preFinalPlatformPos.z);
   velocity.set(0, 0, 0);
+  hp = maxHp;
+  updateHpBar();
   SFX.stageClear();
   showDamageFlash();
 };
@@ -2210,8 +2216,8 @@ function buildStage(stage) {
   const hGap = 2.9 + stage * 0.25 - (stage > 5 ? 0.3 : 0) - (stage >= 7 ? 0.6 : 0);   // 수평 간격 (7단계~는 추가로 좁힘)
   const vStep = 1.2 + stage * 0.1;  // 높이 상승 (완만하게)
   const hazardChance = 0.15 + stage * 0.08;
-  const poisonChance = stage >= 4 ? Math.min(0.38, 0.08 * (stage - 1)) : 0;
-  const flipChance   = stage >= 5 ? Math.min(0.35, 0.08 * (stage - 1)) : 0;
+  const poisonChance = stage >= 4 ? Math.min(0.22, 0.05 * (stage - 1)) : 0;
+  const flipChance   = stage >= 5 ? Math.min(0.20, 0.05 * (stage - 1)) : 0;
   const platformMinSize = Math.max(2.8, 4.8 - stage * 0.25);
   const hiddenTotal  = stage >= 3 && stage < 10 ? 1 + (stage - 3) * 3 : 0;
   let   hiddenPlaced = 0;
@@ -2246,7 +2252,7 @@ function buildStage(stage) {
   }
 
   // Goal platform at top
-  const goalY = y + vStep * 2;
+  const goalY = y + vStep * 1.3;
   preFinalPlatformPos.set(prevX, prevY + 0.75, prevZ); // 순간이동 목적지: 골 2칸 전 블록
   prePreFinalPlatformPos.set(prevX, prevY, prevZ);     // 히든 포탈 기준점: 클리어 전전 플랫폼
   goalPlatformPos.set(x, goalY, z);
@@ -2529,10 +2535,12 @@ function buildCoinMountain(platX, platY, platZ) {
     roughness: 0.2, metalness: 0.8,
   });
   const platTop = platY + 0.25;
-  // 4×4(16개) + 3×3(9개) = 25개 피라미드
+  // 4×4(16개) + 3×3(9개) + 2×2(4개) + 1×1(1개) = 30개 피라미드
   const layers = [
     { size: 4, yOff: 0.5 },
     { size: 3, yOff: 0.9 },
+    { size: 2, yOff: 1.3 },
+    { size: 1, yOff: 1.7 },
   ];
   for (const { size, yOff } of layers) {
     const offset = (size - 1) * 0.4;
@@ -2575,7 +2583,33 @@ function buildSecretArea() {
   const portalX = prePreFinalPlatformPos.x - 5 * 4;
   const portalY = prePreFinalPlatformPos.y;
   const portalZ = prePreFinalPlatformPos.z;
-  const platColor = STAGE_COLORS[9].platform;
+  const platColor = 0xffffff;
+
+  // 배경: 빨간 물음표 스프라이트
+  const qCanvas = document.createElement('canvas');
+  qCanvas.width = 128; qCanvas.height = 128;
+  const qCtx = qCanvas.getContext('2d');
+  qCtx.fillStyle = 'rgba(0,0,0,0)';
+  qCtx.fillRect(0, 0, 128, 128);
+  qCtx.fillStyle = '#ff2222';
+  qCtx.font = 'bold 100px Arial';
+  qCtx.textAlign = 'center';
+  qCtx.textBaseline = 'middle';
+  qCtx.fillText('?', 64, 64);
+  const qTex = new THREE.CanvasTexture(qCanvas);
+  const qMat = new THREE.SpriteMaterial({ map: qTex, transparent: true, opacity: 0.85 });
+  for (let i = 0; i < 30; i++) {
+    const sp = new THREE.Sprite(qMat.clone());
+    const side = Math.random() > 0.5 ? 1 : -1;
+    const scale = 3 + Math.random() * 5;
+    sp.scale.set(scale, scale, 1);
+    sp.position.set(
+      portalX + side * (12 + Math.random() * 25),
+      portalY + Math.random() * 20,
+      portalZ - Math.random() * 50
+    );
+    addBg(sp);
+  }
 
   const platsData = [
     { dx: -6,  dy: 2,   dz: 0, w: 7, h: 0.5, d: 7, goal: false },
@@ -2721,7 +2755,7 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoison
   // 반전 가시 (핑크) — 닿으면 5 즉시 + 6.7초 화면 반전
   if (isFlipHazard) {
     const flipMat = new THREE.MeshStandardMaterial({ color: 0xff69b4, emissive: 0xff1493, emissiveIntensity: 1.0 });
-    const spacing = 1.1;
+    const spacing = 2.0;
     const cols = Math.max(1, Math.floor(w / spacing));
     const rows = Math.max(1, Math.floor(d / spacing));
     for (let ci = 0; ci < cols; ci++) {
@@ -2742,7 +2776,7 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoison
   // 독 가시 (초록) — 닿으면 10 즉시 + 초당 3씩 4초 독
   if (isPoisonHazard) {
     const poisonMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x00cc22, emissiveIntensity: 1.0 });
-    const spacing = 1.1;
+    const spacing = 2.0;
     const cols = Math.max(1, Math.floor(w / spacing));
     const rows = Math.max(1, Math.floor(d / spacing));
     for (let ci = 0; ci < cols; ci++) {
