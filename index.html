@@ -840,6 +840,7 @@ let secretAreaPlatforms = [];
 const secretAreaStartPos = new THREE.Vector3();
 let hiddenHiddenTriggered = false;
 const hiddenHiddenStartPos = new THREE.Vector3();
+let secretTransPlatforms = [];
 let dittoWobble = 0;
 let glassesTimer = 0;
 let glassesActive = false;
@@ -1184,6 +1185,12 @@ function useGlasses() {
       b.material.emissiveIntensity = 1.0;
       b.material.opacity = 0.5;
     }
+  });
+  secretTransPlatforms.forEach(b => {
+    b.material.color.setHex(0x00ffcc);
+    b.material.emissive = new THREE.Color(0x00ccaa);
+    b.material.emissiveIntensity = 0.8;
+    b.material.opacity = 0.5;
   });
   const el = document.getElementById('glasses-ui');
   if (el) { el.style.color = '#ffffff'; }
@@ -2693,6 +2700,7 @@ function buildHiddenHiddenArea() {
 
 function buildSecretArea() {
   hiddenHiddenTriggered = false;
+  secretTransPlatforms = [];
   // 기존 스테이지 오브젝트 전부 제거해 렌더링 부하 해소
   platforms.forEach(p => scene.remove(p));
   platforms = [];
@@ -2818,6 +2826,7 @@ function buildSecretArea() {
     scene.add(mesh);
     platforms.push(mesh);
     secretAreaPlatforms.push(mesh);
+    secretTransPlatforms.push(mesh);
     if (coins) buildCoinPyramid55(tx, ty, tz);
   });
 
@@ -3098,6 +3107,7 @@ function animate() {
     const el = document.getElementById('glasses-ui');
     if (glassesTimer <= 0) {
       portalBlocks.forEach(b => { b.visible = false; if (!b.userData.isHidden) b.material.opacity = 0; });
+      secretTransPlatforms.forEach(b => { b.material.opacity = 0; b.material.emissiveIntensity = 0; });
       glassesActive = false;
       updateGlassesUI();
     } else if (el) {
