@@ -2788,7 +2788,7 @@ function buildSecretArea() {
     { dz: 16, dy: 1.0, trigger: false, coins: false },
     { dz: 23, dy: 1.5, trigger: true,  coins: false },
   ];
-  const transMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, roughness: 0.1, metalness: 0.3 });
+  const transMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0, roughness: 0.1, metalness: 0.3 });
   transDefs.forEach(({ dz, dy, trigger, coins }) => {
     const tx = p1x, ty = p1y + dy, tz = p1z + dz;
     const w = 5, h = 0.5, d = 5;
