@@ -880,17 +880,24 @@ async function fetchSharedRankings() {
     else console.warn('랭킹 불러오기 실패 — 로컬 기록 사용', error);
   } catch(e) { console.warn('랭킹 불러오기 실패 — 로컬 기록 사용', e); }
 }
+function bestPerPlayer(list) {
+  const map = new Map();
+  for (const r of list) {
+    if (!map.has(r.name) || r.score > map.get(r.name).score) map.set(r.name, r);
+  }
+  return [...map.values()].sort((a, b) => b.score - a.score).slice(0, 20);
+}
 function getDailyRankings() {
   const start = new Date(); start.setHours(0,0,0,0);
-  return sharedRankings.filter(r => r.ts >= start.getTime()).sort((a,b)=>b.score-a.score).slice(0,20);
+  return bestPerPlayer(sharedRankings.filter(r => r.ts >= start.getTime()));
 }
 function getWeeklyRankings() {
   const start = new Date(); start.setDate(start.getDate() - start.getDay()); start.setHours(0,0,0,0);
-  return sharedRankings.filter(r => r.ts >= start.getTime()).sort((a,b)=>b.score-a.score).slice(0,20);
+  return bestPerPlayer(sharedRankings.filter(r => r.ts >= start.getTime()));
 }
 function getMonthlyRankings() {
   const start = new Date(); start.setDate(1); start.setHours(0,0,0,0);
-  return sharedRankings.filter(r => r.ts >= start.getTime()).sort((a,b)=>b.score-a.score).slice(0,20);
+  return bestPerPlayer(sharedRankings.filter(r => r.ts >= start.getTime()));
 }
 async function addRanking(name, score, stage) {
   const ts = Date.now();
@@ -955,7 +962,7 @@ function rankingRows(list, highlightName) {
 }
 
 function getAllTimeRankings() {
-  return [...sharedRankings].sort((a, b) => b.score - a.score).slice(0, 20);
+  return bestPerPlayer(sharedRankings);
 }
 function rankTabsHtml(daily, weekly, monthly, highlightName) {
   const allTime = getAllTimeRankings();
