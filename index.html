@@ -2236,8 +2236,8 @@ function buildStage(stage) {
   const hGap = 2.9 + stage * 0.25 - (stage > 5 ? 0.3 : 0) - (stage >= 7 ? 0.6 : 0);   // 수평 간격 (7단계~는 추가로 좁힘)
   const vStep = 1.2 + stage * 0.1;  // 높이 상승 (완만하게)
   const hazardChance = 0.15 + stage * 0.08;
-  const poisonChance = stage >= 4 ? Math.min(0.22, 0.05 * (stage - 1)) : 0;
-  const flipChance   = stage >= 5 ? Math.min(0.20, 0.05 * (stage - 1)) : 0;
+  const poisonChance = stage >= 4 ? Math.min(0.12, 0.03 * (stage - 1)) : 0;
+  const flipChance   = stage >= 5 ? Math.min(0.10, 0.03 * (stage - 1)) : 0;
   const platformMinSize = Math.max(2.8, 4.8 - stage * 0.25);
   const hiddenTotal  = stage >= 3 && stage < 10 ? 1 + (stage - 3) * 3 : 0;
   let   hiddenPlaced = 0;
