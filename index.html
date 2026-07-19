@@ -951,12 +951,13 @@ function myScoresHtml(name) {
 }
 
 function rankingRows(list, highlightName) {
-  if (!list.length) return `<tr><td colspan="4" class="no-record">기록 없음</td></tr>`;
+  if (!list.length) return `<tr><td colspan="5" class="no-record">기록 없음</td></tr>`;
   return list.map((r, i) => `
     <tr class="${r.name === highlightName && i === list.findIndex(x=>x.name===highlightName&&x.score===r.score) ? 'me' : ''}">
       <td><span class="rank-medal">${medal(i)}</span></td>
       <td>${r.name}</td>
       <td class="score-val">${r.score.toLocaleString()}</td>
+      <td style="color:#a78bfa;font-size:12px">${r.stage}단계</td>
       <td style="color:#666;font-size:12px">${r.date}</td>
     </tr>`).join('');
 }
@@ -975,25 +976,25 @@ function rankTabsHtml(daily, weekly, monthly, highlightName) {
     </div>
     <div id="rank-panel-daily">
       <table class="ranking-table">
-        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+        <tr><th></th><th>이름</th><th>점수</th><th>단계</th><th>날짜</th></tr>
         ${rankingRows(daily, highlightName)}
       </table>
     </div>
     <div id="rank-panel-weekly" style="display:none">
       <table class="ranking-table">
-        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+        <tr><th></th><th>이름</th><th>점수</th><th>단계</th><th>날짜</th></tr>
         ${rankingRows(weekly, highlightName)}
       </table>
     </div>
     <div id="rank-panel-monthly" style="display:none">
       <table class="ranking-table">
-        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+        <tr><th></th><th>이름</th><th>점수</th><th>단계</th><th>날짜</th></tr>
         ${rankingRows(monthly, highlightName)}
       </table>
     </div>
     <div id="rank-panel-all" style="display:none">
       <table class="ranking-table">
-        <tr><th></th><th>이름</th><th>점수</th><th>날짜</th></tr>
+        <tr><th></th><th>이름</th><th>점수</th><th>단계</th><th>날짜</th></tr>
         ${rankingRows(allTime, highlightName)}
       </table>
     </div>`;
