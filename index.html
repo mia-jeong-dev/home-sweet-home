@@ -3391,11 +3391,10 @@ async function gameClear() {
   }
 }
 
-async function gameOver() {
+function gameOver() {
   if (_gameOverCalled) return;
   _gameOverCalled = true;
   gameActive = false;
-  document.exitPointerLock();
   document.getElementById('score-ui').style.display = 'none';
   document.getElementById('coin-ui').style.display = 'none';
   document.getElementById('shop-hud-btn').style.display = 'none';
@@ -3403,22 +3402,24 @@ async function gameOver() {
   document.getElementById('glasses-ui').style.display = 'none';
   document.getElementById('touch-controls').style.display = 'none';
   _shopOpenedDuringGame = false;
-  SFX.gameOver();
   const finalScore = sessionScore + calcScore();
-  showGameOverScreen(finalScore);
-  try {
-    const rankings = await addRanking(playerName, finalScore, currentStage);
-    const board = document.getElementById('gameover-ranking');
-    if (board) {
-      const myIdx = rankings.daily.findIndex(r => r.name === playerName && r.score === finalScore);
-      board.innerHTML = `
-        ${myIdx >= 0 ? `<div style="color:#ffd700;text-align:center;margin-bottom:10px;font-size:14px">🎉 ${rankLabel(myIdx)}!</div>` : ''}
-        ${rankTabsHtml(rankings.daily, rankings.weekly, rankings.monthly, playerName)}`;
+  setTimeout(async () => {
+    try { SFX.gameOver(); } catch(e) {}
+    showGameOverScreen(finalScore);
+    try {
+      const rankings = await addRanking(playerName, finalScore, currentStage);
+      const board = document.getElementById('gameover-ranking');
+      if (board) {
+        const myIdx = rankings.daily.findIndex(r => r.name === playerName && r.score === finalScore);
+        board.innerHTML = `
+          ${myIdx >= 0 ? `<div style="color:#ffd700;text-align:center;margin-bottom:10px;font-size:14px">🎉 ${rankLabel(myIdx)}!</div>` : ''}
+          ${rankTabsHtml(rankings.daily, rankings.weekly, rankings.monthly, playerName)}`;
+      }
+    } catch(e) {
+      const board = document.getElementById('gameover-ranking');
+      if (board) board.innerHTML = `<div style="color:#666;font-size:12px;text-align:center;padding:8px 0">랭킹 불러오기 실패</div>`;
     }
-  } catch(e) {
-    const board = document.getElementById('gameover-ranking');
-    if (board) board.innerHTML = `<div style="color:#666;font-size:12px;text-align:center;padding:8px 0">랭킹 불러오기 실패</div>`;
-  }
+  }, 50);
 }
 
 // ─────────────────────────────────────────────
