@@ -2288,7 +2288,7 @@ function _buildStage(stage) {
     x += lateralJitter;
     // 낚시 플랫폼 앞뒤는 거리 좁힘
     const isFakeAdj = !fakePlaced && (i === fakeIdx - 1 || i === fakeIdx + 1);
-    const hGapMult = isFakeAdj ? 0.55 : (0.8 + Math.random() * 0.4);
+    const hGapMult = isFakeAdj ? 0.38 : (0.8 + Math.random() * 0.4);
     z -= hGap * hGapMult;
     y += vStep * (0.5 + Math.random() * 0.5);
 
