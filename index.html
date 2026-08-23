@@ -331,6 +331,38 @@
       white-space: nowrap;
     }
 
+    /* ── 퀘스트 ── */
+    .quest-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+    .quest-card.done { border-color: #34d399; background: rgba(52,211,153,0.07); }
+    .quest-card.inprog { border-color: #f59e0b; background: rgba(245,158,11,0.07); }
+    .quest-info { flex: 1; min-width: 0; }
+    .quest-title { font-size: 14px; font-weight: bold; color: #e2e8f0; margin-bottom: 2px; }
+    .quest-desc  { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+    .quest-prog-bar { background: rgba(255,255,255,0.1); border-radius: 999px; height: 6px; overflow: hidden; margin-bottom: 4px; }
+    .quest-prog-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg,#7c3aed,#a78bfa); transition: width 0.4s; }
+    .quest-prog-fill.done { background: linear-gradient(90deg,#059669,#34d399); }
+    .quest-meta { font-size: 11px; color: #64748b; display: flex; justify-content: space-between; }
+    .quest-reward { font-size: 11px; color: #fbbf24; font-weight: bold; }
+    /* 퀘스트 토스트 알림 */
+    #quest-toast {
+      position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+      background: rgba(30,20,50,0.95); border: 1.5px solid #a78bfa;
+      border-radius: 12px; padding: 10px 18px; color: #e2e8f0;
+      font-size: 13px; font-weight: bold; z-index: 9999;
+      pointer-events: none; opacity: 0; transition: opacity 0.3s;
+      white-space: nowrap; text-align: center;
+    }
     /* ── 상점 ── */
     .shop-grid {
       display: grid;
@@ -481,6 +513,49 @@
       margin-bottom: 14px;
     }
 
+    /* ── 돌림판 ── */
+    #spin-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 24px 16px;
+      padding-top: calc(24px + env(safe-area-inset-top));
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      z-index: 150;
+      color: #fff;
+    }
+    .spin-result-box {
+      text-align: center;
+      padding: 20px 16px;
+      background: rgba(167,139,250,0.12);
+      border: 2px solid #a78bfa;
+      border-radius: 14px;
+      margin-bottom: 14px;
+    }
+    .spin-free-banner {
+      background: rgba(34,197,94,0.15);
+      border: 2px solid #22c55e;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #4ade80;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .btn-spin {
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: #fff;
+      font-weight: bold;
+      box-shadow: 0 4px 20px rgba(167,139,250,0.5);
+    }
+    .btn-spin:hover { box-shadow: 0 6px 28px rgba(167,139,250,0.75); }
+
     /* ── 도움말 버튼 ── */
     #help-btn {
       background: rgba(0,0,0,0.6);
@@ -591,6 +666,14 @@
   </div>
 </div>
 
+<div id="spin-modal">
+  <div class="panel">
+    <h2>🎡 행운의 돌림판</h2>
+    <p class="sub">하루에 한 번 무료로 돌릴 수 있어요!</p>
+    <div id="spin-body"></div>
+  </div>
+</div>
+
 <div id="help-modal">
   <div class="panel">
     <h2>❓ 게임 도움말</h2>
@@ -599,7 +682,7 @@
     <div class="help-title">🎮 조작법</div>
     <div class="help-row"><span class="help-icon">⌨️</span><span class="help-desc"><b>WASD / 방향키</b> — 이동<br><b>Space</b> — 점프<br><b>마우스 드래그</b> — 카메라 회전</span></div>
     <div class="help-row"><span class="help-icon">📱</span><span class="help-desc"><b>조이스틱</b> — 이동 (모바일)<br><b>⬆ 버튼</b> — 점프 (모바일)<br><b>화면 스와이프</b> — 카메라 회전</span></div>
-    <div class="help-row"><span class="help-icon">⌨️</span><span class="help-desc"><b>T</b> — 순간이동 &nbsp;·&nbsp; <b>G</b> — 안경 &nbsp;·&nbsp; <b>M</b> — 상점</span></div>
+    <div class="help-row"><span class="help-icon">⌨️</span><span class="help-desc"><b>T</b> — 순간이동 &nbsp;·&nbsp; <b>G</b> — 안경 &nbsp;·&nbsp; <b>M</b> — 상점 &nbsp;·&nbsp; <b>I</b> — 인벤토리 &nbsp;·&nbsp; <b>Q</b> — 퀘스트</span></div>
 
     <div class="help-title">🎯 게임 목표</div>
     <div class="help-row"><span class="help-icon">🏆</span><span class="help-desc">함정을 피해 <b>황금 플랫폼</b>에 도달하면 다음 단계로! 총 <b>10단계</b>까지 있어요.</span></div>
@@ -612,7 +695,7 @@
     <div class="help-row"><span class="help-icon">🏅</span><span class="help-desc"><b>황금 플랫폼</b> — 목표 지점! 도달하면 스테이지 클리어</span></div>
 
     <div class="help-title">⚠️ 위험 요소</div>
-    <div class="help-row"><span class="help-icon">⬜</span><span class="help-desc"><b>어떤 블록은 낚시</b></span></div>
+    <div class="help-row"><span class="help-icon">⬜</span><span class="help-desc"><b>어떤 블록은 낚시</b> — 밟아도 통과되는 가짜 블록이 있어요 (7단계까지)<br>8단계부터는 낚시 블록이 없어요!</span></div>
     <div class="help-row"><span class="help-icon">🔴</span><span class="help-desc"><b>일반 가시</b> — 닿으면 HP가 깎여요 (1초당 1회)</span></div>
     <div class="help-row"><span class="help-icon">🟢</span><span class="help-desc"><b>독 가시</b> — 독 상태이상! 시간이 지나며 지속 데미지 (4단계~)</span></div>
     <div class="help-row"><span class="help-icon">🔵</span><span class="help-desc"><b>반전 가시</b> — 화면이 뒤집혀요! 약 7초 지속 (5단계~)</span></div>
@@ -624,6 +707,9 @@
     <div class="help-row"><span class="help-icon">🧪</span><span class="help-desc"><b>초록 물약</b> — 먹으면 HP 회복! (6단계부터 3개 등장)</span></div>
     <div class="help-row"><span class="help-icon">🥽</span><span class="help-desc"><b>이상한 안경</b> — 상점에서 구매. 투명 블록을 10초간 볼 수 있어요</span></div>
     <div class="help-row"><span class="help-icon">⚡</span><span class="help-desc"><b>순간이동권</b> — 암호를 알면 10단계 직전으로 순간이동!</span></div>
+    <div class="help-row"><span class="help-icon">🎒</span><span class="help-desc"><b>인벤토리</b> — 보유한 스킨·쿠폰·아이템을 확인해요. [I]키 또는 HUD 버튼으로 열기</span></div>
+    <div class="help-row"><span class="help-icon">📋</span><span class="help-desc"><b>퀘스트</b> — 각 퀘스트를 2번 달성하면 🪙 30 코인 보상! [Q]키 또는 HUD 버튼으로 확인<br>퀘스트 종류: 특정 스킨으로 플레이, N단계 이상 도달, 게임 클리어, HP 유지 클리어 등</span></div>
+    <div class="help-row"><span class="help-icon">🔥</span><span class="help-desc"><b>오늘의 할인</b> — 상점에서 매일 3개 아이템이 할인돼요 (10%~100%). 자정마다 갱신!</span></div>
 
     <div class="help-title">📊 점수 계산</div>
     <div class="help-row"><span class="help-icon">📈</span><span class="help-desc"><b>스테이지 보너스</b>: (도달 단계 - 1) × 1,000점<br><b>HP 보너스</b>: 잔여 HP × 5점<br><b>시간 보너스</b>: 빠를수록 높은 점수 (최대 900점)</span></div>
@@ -634,6 +720,7 @@
   </div>
 </div>
 
+<div id="quest-toast"></div>
 <div id="ui">
   <div id="hp-container">
     <div id="hp-label">HP</div>
@@ -650,6 +737,8 @@
     <div id="teleport-ui" onclick="useTeleportCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f59e0b;border-radius:10px;padding:7px 12px;color:#fcd34d;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">⚡ 순간이동 [T]</div>
     <div id="glasses-ui" onclick="useGlasses()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #00e5ff;border-radius:10px;padding:7px 12px;color:#67e8f9;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🥽 안경 [G]</div>
     <div id="shop-hud-btn" onclick="openShopDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🛒 상점</div>
+    <div id="inv-hud-btn" onclick="openInventoryDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #34d399;border-radius:10px;padding:7px 12px;color:#6ee7b7;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🎒 인벤토리 [I]</div>
+    <div id="quest-hud-btn" onclick="openQuestsDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f59e0b;border-radius:10px;padding:7px 12px;color:#fcd34d;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">📋 퀘스트 [Q]</div>
     <div id="controls-hint">
       WASD / 방향키: 이동<br>
       SPACE: 점프<br>
@@ -971,42 +1060,43 @@ function getAllTimeRankings() {
 }
 function rankTabsHtml(daily, weekly, monthly, highlightName) {
   const allTime = getAllTimeRankings();
+  const uid = Math.random().toString(36).slice(2);
   return `
     <div class="rank-tabs">
-      <button class="rank-tab active" id="rtab-daily"   onclick="switchRankTab('daily')">일일</button>
-      <button class="rank-tab"        id="rtab-weekly"  onclick="switchRankTab('weekly')">주간</button>
-      <button class="rank-tab"        id="rtab-monthly" onclick="switchRankTab('monthly')">월간</button>
-      <button class="rank-tab"        id="rtab-all"     onclick="switchRankTab('all')">전체</button>
+      <button class="rank-tab active" id="rtab-daily-${uid}"   onclick="switchRankTab('daily','${uid}')">일일</button>
+      <button class="rank-tab"        id="rtab-weekly-${uid}"  onclick="switchRankTab('weekly','${uid}')">주간</button>
+      <button class="rank-tab"        id="rtab-monthly-${uid}" onclick="switchRankTab('monthly','${uid}')">월간</button>
+      <button class="rank-tab"        id="rtab-all-${uid}"     onclick="switchRankTab('all','${uid}')">전체</button>
     </div>
-    <div id="rank-panel-daily">
+    <div id="rank-panel-daily-${uid}">
       <table class="ranking-table">
         <tr><th></th><th>이름</th><th>점수</th><th>단계</th><th>날짜</th></tr>
         ${rankingRows(daily, highlightName)}
       </table>
     </div>
-    <div id="rank-panel-weekly" style="display:none">
+    <div id="rank-panel-weekly-${uid}" style="display:none">
       <table class="ranking-table">
         <tr><th></th><th>이름</th><th>점수</th><th>단계</th><th>날짜</th></tr>
         ${rankingRows(weekly, highlightName)}
       </table>
     </div>
-    <div id="rank-panel-monthly" style="display:none">
+    <div id="rank-panel-monthly-${uid}" style="display:none">
       <table class="ranking-table">
         <tr><th></th><th>이름</th><th>점수</th><th>단계</th><th>날짜</th></tr>
         ${rankingRows(monthly, highlightName)}
       </table>
     </div>
-    <div id="rank-panel-all" style="display:none">
+    <div id="rank-panel-all-${uid}" style="display:none">
       <table class="ranking-table">
         <tr><th></th><th>이름</th><th>점수</th><th>단계</th><th>날짜</th></tr>
         ${rankingRows(allTime, highlightName)}
       </table>
     </div>`;
 }
-window.switchRankTab = function(tab) {
+window.switchRankTab = function(tab, uid) {
   ['daily','weekly','monthly','all'].forEach(t => {
-    document.getElementById('rank-panel-' + t).style.display = t === tab ? '' : 'none';
-    document.getElementById('rtab-' + t).classList.toggle('active', t === tab);
+    document.getElementById(`rank-panel-${t}-${uid}`).style.display = t === tab ? '' : 'none';
+    document.getElementById(`rtab-${t}-${uid}`).classList.toggle('active', t === tab);
   });
 };
 
@@ -1035,6 +1125,10 @@ function _renderTitleScreen(forceNameInput) {
       ${couponInfo ? `<div style="color:#f59e0b;font-size:12px;text-align:center;margin-top:-4px;margin-bottom:6px">${couponInfo.icon} ${couponInfo.name} 사용중 — ${couponInfo.stage}단계부터 시작 (잔여 ${couponRemain}회)</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="btn btn-gray" onclick="showShop()" style="margin:0;flex:1">🛒 상점</button>
+        <button class="btn btn-gray" onclick="showInventory()" style="margin:0;flex:1;border-color:#34d399;color:#6ee7b7">🎒 인벤토리</button>
+        <button class="btn btn-gray" onclick="showQuests()" style="margin:0;flex:1;border-color:#f59e0b;color:#fcd34d">📋 퀘스트</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
         <button class="btn" onclick="showGamble()" style="margin:0;flex:1;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;box-shadow:0 3px 14px rgba(217,119,6,0.5)">🎲 도박</button>
       </div>
       <button class="btn btn-gray" onclick="showHelp()" style="margin-top:4px;font-size:13px">❓ 게임 방법</button>
@@ -1066,15 +1160,46 @@ function showShop() {
   const coins        = loadCoins();
   const owned        = loadOwned();
   const activeId     = loadActiveColor();
-  const ownedCoupons = loadOwnedCoupons(); // { stage2: 2, ... }
+  const ownedCoupons = loadOwnedCoupons();
   const activeCoupon = loadActiveCoupon();
   const glassesCount = loadGlasses();
+  const freeCoupon   = loadFreeCoupon();
   const overlay      = document.getElementById('overlay');
+  const discounts    = getDailyDiscounts(owned, glassesCount > 0);
+  function dpct(key) { return discounts[key] || 0; }
+  function dprice(price, key) { return discountedPrice(price, dpct(key)); }
+  function discountBadge(key) {
+    if (_shopFreeMode && freeCoupon > 0) return '';
+    const p = dpct(key);
+    if (!p) return '';
+    const color = p === 100 ? '#22c55e' : p === 50 ? '#f59e0b' : p === 25 ? '#60a5fa' : '#a78bfa';
+    return `<span style="position:absolute;top:4px;right:4px;background:${color};color:#fff;font-size:10px;font-weight:bold;padding:2px 5px;border-radius:6px">🔥 -${p}%</span>`;
+  }
+  function priceHtml(price, key, isOwned) {
+    if (isOwned) return '';
+    if (_shopFreeMode && freeCoupon > 0) return `<span style="color:#4ade80;font-weight:bold">🎟️ 무료!</span>`;
+    const p = dpct(key);
+    if (!p) return `🪙 ${price}`;
+    const sale = dprice(price, key);
+    return `<span style="text-decoration:line-through;opacity:0.5;margin-right:3px">🪙${price}</span><span style="color:#fbbf24;font-weight:bold">🪙 ${sale}</span>`;
+  }
   overlay.innerHTML = `
     <div class="panel">
       <h2>🛒 캐릭터 상점</h2>
       <p class="sub">코인으로 동글이를 꾸미고 스테이지를 건너뛰세요!</p>
       <div class="shop-coin-bar">🪙 보유 코인: <span id="shop-coin-count">${coins}</span></div>
+      <div style="font-size:11px;color:#f59e0b;text-align:center;margin:-4px 0 8px">🔥 오늘의 할인 — 매일 자정 갱신</div>
+      ${freeCoupon > 0 ? `
+      <div class="${_shopFreeMode ? 'spin-free-banner' : ''}" style="${_shopFreeMode ? '' : 'background:rgba(34,197,94,0.08);border:1px solid #22c55e;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#4ade80;text-align:center'}">
+        🎟️ 무료 구매권 ${freeCoupon}개 보유
+        ${_shopFreeMode
+          ? ` — 아이템을 클릭해 무료 구매!<br><button class="btn btn-gray" style="margin-top:8px;font-size:12px;padding:4px 12px" onclick="toggleShopFreeMode()">취소</button>`
+          : ` <button class="btn btn-spin" style="font-size:11px;padding:4px 12px;margin-left:8px" onclick="toggleShopFreeMode()">무료 구매 모드</button>`
+        }
+      </div>` : ''}
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn btn-spin" style="flex:1;font-size:13px" onclick="openSpinFromShop()">🎡 행운의 돌림판${canSpinToday() ? ' (무료!)' : ''}</button>
+      </div>
 
       <div class="coupon-section-title">🎟️ 스타트 쿠폰</div>
       <div class="coupon-card owned active">
@@ -1089,31 +1214,35 @@ function showShop() {
         const remaining = ownedCoupons[c.id] || 0;
         const isOwned   = remaining > 0;
         const isActive  = activeCoupon === c.id && isOwned;
+        const key       = 'coupon_' + c.id;
+        const sale      = dprice(c.price, key);
         return `
-        <div class="coupon-card ${isOwned ? 'owned' : ''} ${isActive ? 'active' : ''}"
-             onclick="onCouponClick('${c.id}', ${c.price})">
+        <div class="coupon-card ${isOwned ? 'owned' : ''} ${isActive ? 'active' : ''}" style="position:relative"
+             onclick="onCouponClick('${c.id}', ${sale})">
           ${isActive ? '<span class="coupon-status-badge">사용중</span>' : ''}
+          ${!isOwned ? discountBadge(key) : ''}
           <span class="coupon-icon">${c.icon}</span>
           <div class="coupon-info">
             <div class="coupon-name">${c.name}</div>
             <div class="${isOwned ? 'color-owned' : 'color-price'}">
               ${isOwned
                 ? (isActive ? `✓ 사용중 — 잔여 ${remaining}회 (클릭하면 해제)` : `✓ 잔여 ${remaining}회 — 클릭하여 적용`)
-                : `🪙 ${c.price} · 3회 제공`}
+                : `${priceHtml(c.price, key, false)} · 3회 제공`}
             </div>
           </div>
         </div>`;
       }).join('')}
 
       <div class="coupon-section-title">🔭 특수 아이템</div>
-      <div class="coupon-card ${glassesCount > 0 ? 'owned' : ''}" onclick="onGlassesClick()">
+      <div class="coupon-card ${glassesCount > 0 ? 'owned' : ''}" style="position:relative" onclick="onGlassesClick()">
+        ${glassesCount === 0 ? discountBadge('glasses_glasses') : ''}
         <span class="coupon-icon">🥽</span>
         <div class="coupon-info">
           <div class="coupon-name">이상한 안경</div>
           <div class="${glassesCount > 0 ? 'color-owned' : 'color-price'}">
             ${glassesCount > 0
               ? `✓ 잔여 ${glassesCount}회 — 게임 중 [G]키로 사용 · 10초간 투명한 블록을 볼 수 있음`
-              : '🪙 80 · 3회 제공 — 투명한 블록을 10초간 볼 수 있음'}
+              : `${priceHtml(80, 'glasses_glasses', false)} · 3회 제공 — 투명한 블록을 10초간 볼 수 있음`}
           </div>
         </div>
       </div>
@@ -1123,14 +1252,17 @@ function showShop() {
         ${SHOP_COLORS.map(c => {
           const isOwned  = owned.includes(c.id);
           const isActive = c.id === activeId;
+          const key      = 'color_' + c.id;
+          const sale     = dprice(c.price, key);
           return `
-          <div class="color-card ${isOwned ? 'owned' : ''} ${isActive ? 'active' : ''}"
-               onclick="onShopClick('${c.id}', ${c.price})">
+          <div class="color-card ${isOwned ? 'owned' : ''} ${isActive ? 'active' : ''}" style="position:relative"
+               onclick="onShopClick('${c.id}', ${sale})">
             ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
+            ${!isOwned && c.price > 0 ? discountBadge(key) : ''}
             <div class="color-swatch" style="background:${c.hex === 'rainbow' ? 'linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0000ff,#8b00ff)' : c.hex === 'ghost' ? 'rgba(200,255,255,0.12)' : c.hex};${c.hex === 'ghost' ? 'border:2px dashed rgba(0,220,220,0.7)' : ''}"></div>
             <div class="color-name">${c.name}</div>
             <div class="${isOwned ? 'color-owned' : 'color-price'}">
-              ${isOwned ? (isActive ? '✓ 착용중' : '✓ 보유') : `🪙 ${c.price}`}
+              ${isOwned ? (isActive ? '✓ 착용중' : '✓ 보유') : priceHtml(c.price, key, false)}
             </div>
           </div>`;
         }).join('')}
@@ -1143,14 +1275,17 @@ function showShop() {
 
 window.onGlassesClick = function() {
   const count = loadGlasses();
-  if (count > 0) { SFX.coin(); return; } // 이미 보유
+  if (count > 0) { SFX.coin(); return; }
+  const usingFree = _shopFreeMode && loadFreeCoupon() > 0;
+  const price = usingFree ? 0 : discountedPrice(80, getDailyDiscounts()['glasses_glasses'] || 0);
   const coins = loadCoins();
-  if (coins < 80) {
+  if (coins < price) {
     document.getElementById('shop-coin-count').style.color = '#ef4444';
     setTimeout(() => { const el = document.getElementById('shop-coin-count'); if (el) el.style.color = ''; }, 600);
     return;
   }
-  saveCoins(coins - 80);
+  saveCoins(coins - price);
+  if (usingFree) { saveFreeCoupon(loadFreeCoupon() - 1); _shopFreeMode = false; }
   saveGlasses(3);
   showShop();
   SFX.stageClear();
@@ -1202,19 +1337,20 @@ window.useGlasses = useGlasses;
 window.onCouponClick = function(id, price) {
   const owned = loadOwnedCoupons();
   if ((owned[id] || 0) > 0) {
-    // 보유 — 토글 (적용/해제)
     saveActiveCoupon(loadActiveCoupon() === id ? null : id);
     showShop();
     SFX.coin();
   } else {
-    // 구매 → 3회 충전
+    const usingFree = _shopFreeMode && loadFreeCoupon() > 0;
+    const effectivePrice = usingFree ? 0 : price;
     const coins = loadCoins();
-    if (coins < price) {
+    if (coins < effectivePrice) {
       document.getElementById('shop-coin-count').style.color = '#ef4444';
-      setTimeout(() => { document.getElementById('shop-coin-count').style.color = ''; }, 600);
+      setTimeout(() => { const el = document.getElementById('shop-coin-count'); if (el) el.style.color = ''; }, 600);
       return;
     }
-    saveCoins(coins - price);
+    saveCoins(coins - effectivePrice);
+    if (usingFree) { saveFreeCoupon(loadFreeCoupon() - 1); _shopFreeMode = false; }
     owned[id] = 3;
     saveOwnedCoupons(owned);
     saveActiveCoupon(id);
@@ -1227,22 +1363,22 @@ window.onShopClick = function(id, price) {
   const owned = loadOwned();
   const activeId = loadActiveColor();
   if (owned.includes(id)) {
-    // 이미 보유 — 착용
     if (id === activeId) return;
     saveActiveColor(id);
     applyCharacterColor(id);
     showShop();
     SFX.coin();
   } else {
-    // 구매
+    const usingFree = _shopFreeMode && loadFreeCoupon() > 0;
+    const effectivePrice = usingFree ? 0 : price;
     const coins = loadCoins();
-    if (coins < price) {
-      // 코인 부족 — 버튼 흔들기
+    if (coins < effectivePrice) {
       document.getElementById('shop-coin-count').style.color = '#ef4444';
-      setTimeout(() => { document.getElementById('shop-coin-count').style.color = ''; }, 600);
+      setTimeout(() => { const el = document.getElementById('shop-coin-count'); if (el) el.style.color = ''; }, 600);
       return;
     }
-    saveCoins(coins - price);
+    saveCoins(coins - effectivePrice);
+    if (usingFree) { saveFreeCoupon(loadFreeCoupon() - 1); _shopFreeMode = false; }
     const newOwned = [...owned, id];
     saveOwned(newOwned);
     saveActiveColor(id);
@@ -1299,6 +1435,7 @@ function showGameOverScreen(score) {
 }
 
 let _shopOpenedDuringGame = false;
+let _shopFreeMode = false;
 
 function openShopDuringGame() {
   _shopOpenedDuringGame = true;
@@ -1316,6 +1453,116 @@ function resumeFromShop() {
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
 }
 window.resumeFromShop = resumeFromShop;
+
+let _invOpenedDuringGame = false;
+function showInventory() {
+  const owned        = loadOwned();
+  const ownedCoupons = loadOwnedCoupons();
+  const glassesCount = loadGlasses();
+  const coins        = loadCoins();
+  const overlay      = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+
+  const ownedColors = SHOP_COLORS.filter(c => owned.includes(c.id));
+  const ownedCouponList = SHOP_COUPONS.filter(c => (ownedCoupons[c.id] || 0) > 0);
+
+  overlay.innerHTML = `
+    <div class="panel">
+      <h2>🎒 인벤토리</h2>
+      <p class="sub">보유 중인 아이템 목록이에요</p>
+      <div class="shop-coin-bar">🪙 보유 코인: ${coins}</div>
+
+      <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin:14px 0 8px">🎨 보유 스킨 (${ownedColors.length}개)</div>
+      ${ownedColors.length === 0
+        ? `<p style="color:#666;font-size:13px;text-align:center">보유한 스킨이 없어요</p>`
+        : `<div class="shop-grid">
+          ${ownedColors.map(c => {
+            const isActive = c.id === loadActiveColor();
+            return `
+            <div class="color-card owned ${isActive ? 'active' : ''}" onclick="invEquipColor('${c.id}')">
+              ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
+              <div class="color-swatch" style="background:${c.hex === 'rainbow' ? 'linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0000ff,#8b00ff)' : c.hex === 'ghost' ? 'rgba(200,255,255,0.12)' : c.hex};${c.hex === 'ghost' ? 'border:2px dashed rgba(0,220,220,0.7)' : ''}"></div>
+              <div class="color-name">${c.name}</div>
+              <div class="color-owned">${isActive ? '✓ 착용중' : '✓ 보유'}</div>
+            </div>`;
+          }).join('')}
+          </div>`}
+
+      <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin:14px 0 8px">🎟️ 보유 쿠폰</div>
+      ${ownedCouponList.length === 0
+        ? `<p style="color:#666;font-size:13px;text-align:center">보유한 쿠폰이 없어요</p>`
+        : ownedCouponList.map(c => {
+            const remaining = ownedCoupons[c.id];
+            const isActive  = loadActiveCoupon() === c.id;
+            return `
+            <div class="coupon-card owned ${isActive ? 'active' : ''}" onclick="invToggleCoupon('${c.id}')">
+              ${isActive ? '<span class="coupon-status-badge">사용중</span>' : ''}
+              <span class="coupon-icon">${c.icon}</span>
+              <div class="coupon-info">
+                <div class="coupon-name">${c.name}</div>
+                <div class="color-owned">${isActive ? `✓ 사용중 — 잔여 ${remaining}회` : `✓ 잔여 ${remaining}회 — 클릭하여 적용`}</div>
+              </div>
+            </div>`;
+          }).join('')}
+
+      <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin:14px 0 8px">🔭 특수 아이템</div>
+      ${glassesCount > 0
+        ? `<div class="coupon-card owned">
+            <span class="coupon-icon">🥽</span>
+            <div class="coupon-info">
+              <div class="coupon-name">이상한 안경</div>
+              <div class="color-owned">✓ 잔여 ${glassesCount}회 — 게임 중 [G]키로 사용</div>
+            </div>
+          </div>`
+        : ''}
+      ${loadFreeCoupon() > 0
+        ? `<div class="coupon-card owned">
+            <span class="coupon-icon">🎟️</span>
+            <div class="coupon-info">
+              <div class="coupon-name">무료 구매권</div>
+              <div class="color-owned">✓ ${loadFreeCoupon()}개 — 상점에서 아이템 무료 구매 가능</div>
+            </div>
+          </div>`
+        : ''}
+      ${glassesCount === 0 && loadFreeCoupon() === 0
+        ? `<p style="color:#666;font-size:13px;text-align:center">보유한 특수 아이템이 없어요</p>`
+        : ''}
+
+      ${_invOpenedDuringGame
+        ? `<button class="btn btn-purple" onclick="resumeFromInventory()">▶ 게임으로 돌아가기</button>`
+        : `<button class="btn btn-gray" onclick="showTitleScreen()">← 뒤로</button>`}
+    </div>`;
+}
+window.showInventory = showInventory;
+
+window.invEquipColor = function(id) {
+  saveActiveColor(id);
+  applyCharacterColor(id);
+  showInventory();
+  SFX.coin();
+};
+window.invToggleCoupon = function(id) {
+  saveActiveCoupon(loadActiveCoupon() === id ? null : id);
+  showInventory();
+  SFX.coin();
+};
+
+function openInventoryDuringGame() {
+  _invOpenedDuringGame = true;
+  gameActive = false;
+  document.exitPointerLock();
+  document.getElementById('overlay').style.display = 'flex';
+  showInventory();
+}
+window.openInventoryDuringGame = openInventoryDuringGame;
+
+function resumeFromInventory() {
+  _invOpenedDuringGame = false;
+  document.getElementById('overlay').style.display = 'none';
+  gameActive = true;
+  if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+}
+window.resumeFromInventory = resumeFromInventory;
 
 window.showTitleScreen = showTitleScreen;
 window.showShop = showShop;
@@ -1427,16 +1674,231 @@ window.doGamble = function() {
   }, 1550);
 };
 
+// ── 돌림판 ──
+function loadSpinDate()    { return localStorage.getItem(LS_SPIN_DATE) || ''; }
+function saveSpinDate(s)   { localStorage.setItem(LS_SPIN_DATE, s); }
+function loadFreeCoupon()  { return parseInt(localStorage.getItem(LS_FREE_COUPON) || '0'); }
+function saveFreeCoupon(n) { localStorage.setItem(LS_FREE_COUPON, String(n)); }
+function getTodayStr()     { return new Date().toISOString().slice(0, 10); }
+function canSpinToday()    { return loadSpinDate() !== getTodayStr(); }
+
+function spinPickPrize() {
+  const r = Math.random();
+  let acc = 0;
+  for (const p of SPIN_PRIZES) { acc += p.chance; if (r < acc) return p; }
+  return SPIN_PRIZES[0];
+}
+
+function drawSpinWheel(canvas, rotOffset) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const r = Math.min(cx, cy) - 10;
+  ctx.clearRect(0, 0, W, H);
+
+  let startAngle = rotOffset - Math.PI / 2;
+  for (let i = 0; i < SPIN_PRIZES.length; i++) {
+    const p = SPIN_PRIZES[i];
+    const sweep = p.chance * Math.PI * 2;
+    const endAngle = startAngle + sweep;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.strokeStyle = '#0f0f1e';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    startAngle = endAngle;
+  }
+
+  // Center hub
+  ctx.beginPath();
+  ctx.arc(cx, cy, 16, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fill();
+  ctx.strokeStyle = '#a78bfa';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Pointer triangle at top
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r + 2);
+  ctx.lineTo(cx - 11, cy - r - 18);
+  ctx.lineTo(cx + 11, cy - r - 18);
+  ctx.closePath();
+  ctx.fillStyle = '#fbbf24';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+let _spinFromGame = false;
+let _spinAnimId   = null;
+let _spinFinalRot = 0;
+
+window.toggleShopFreeMode = function() {
+  _shopFreeMode = !_shopFreeMode;
+  showShop();
+};
+
+window.openSpinFromShop = function() {
+  _shopFreeMode = false;
+  document.getElementById('overlay').style.display = 'none';
+  _spinFromGame = false;
+  _renderSpinIdle();
+  document.getElementById('spin-modal').style.display = 'flex';
+};
+
+window.showSpin = function() {
+  if (gameActive) {
+    _spinFromGame = true;
+    gameActive = false;
+    document.exitPointerLock();
+  } else {
+    _spinFromGame = false;
+  }
+  _renderSpinIdle();
+  document.getElementById('spin-modal').style.display = 'flex';
+};
+
+window.closeSpin = function() {
+  if (_spinAnimId) { cancelAnimationFrame(_spinAnimId); _spinAnimId = null; }
+  document.getElementById('spin-modal').style.display = 'none';
+  if (_spinFromGame) {
+    _spinFromGame = false;
+    gameActive = true;
+    if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+  } else {
+    document.getElementById('overlay').style.display = 'flex';
+    showShop();
+  }
+};
+
+function _spinLegendHtml() {
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin:10px 0 14px;font-size:13px">
+    ${SPIN_PRIZES.map(p => `
+      <div style="display:flex;align-items:center;gap:7px">
+        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${p.color};flex-shrink:0"></span>
+        <span style="color:#ddd">${p.label}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function _renderSpinIdle() {
+  const body = document.getElementById('spin-body');
+  const fc = loadFreeCoupon();
+  body.innerHTML = `
+    <div class="gamble-coin-display">🪙 보유 코인: ${loadCoins()}</div>
+    ${fc > 0 ? `<div style="color:#4ade80;font-size:12px;text-align:center;margin-bottom:6px">🎟️ 무료 구매권 ${fc}개 보유</div>` : ''}
+    <div style="display:flex;align-items:center;justify-content:center;margin-bottom:8px">
+      <canvas id="spin-canvas" width="260" height="260" style="display:block"></canvas>
+    </div>
+    ${_spinLegendHtml()}
+    ${canSpinToday()
+      ? `<button class="btn btn-spin" onclick="doSpin()">🎡 돌리기!</button>`
+      : `<div style="color:#f59e0b;text-align:center;font-size:13px;padding:8px 0">오늘은 이미 돌렸어요 🌙<br><span style="font-size:11px;color:#888">내일 자정 이후 다시 이용 가능</span></div>`}
+    <button class="btn btn-gray" onclick="closeSpin()">← 뒤로</button>`;
+
+  const canvas = document.getElementById('spin-canvas');
+  if (canvas) drawSpinWheel(canvas, 0);
+}
+
+window.doSpin = function() {
+  if (!canSpinToday()) return;
+  const prize = spinPickPrize();
+  const prizeIdx = SPIN_PRIZES.indexOf(prize);
+  const prizeStart = SPIN_ANGLES[prizeIdx];
+  const prizeSweep = prize.chance * Math.PI * 2;
+  const landAngle = prizeStart + prizeSweep * (0.2 + Math.random() * 0.6);
+  const fullRotations = 5 + Math.floor(Math.random() * 3);
+  _spinFinalRot = fullRotations * Math.PI * 2 - landAngle;
+
+  const body = document.getElementById('spin-body');
+  body.innerHTML = `
+    <div class="gamble-coin-display">🪙 보유 코인: ${loadCoins()}</div>
+    <div style="display:flex;align-items:center;justify-content:center;margin-bottom:8px">
+      <canvas id="spin-canvas" width="260" height="260" style="display:block"></canvas>
+    </div>
+    ${_spinLegendHtml()}
+    <div style="color:#aaa;text-align:center;font-size:14px">돌리는 중...</div>`;
+
+  const canvas = document.getElementById('spin-canvas');
+  const duration = 3600;
+  const startTime = performance.now();
+  function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+
+  function animate(now) {
+    const t = Math.min((now - startTime) / duration, 1);
+    const curRot = easeOut(t) * _spinFinalRot;
+    if (canvas) drawSpinWheel(canvas, curRot % (Math.PI * 2));
+    if (t < 1) {
+      _spinAnimId = requestAnimationFrame(animate);
+    } else {
+      _spinAnimId = null;
+      saveSpinDate(getTodayStr());
+      _showSpinResult(prize);
+    }
+  }
+  _spinAnimId = requestAnimationFrame(animate);
+};
+
+function _showSpinResult(prize) {
+  let icon = '', title = '', sub = '';
+  if (prize.nothing) {
+    icon = '😢'; title = '<span style="color:#ef4444">꽝!</span>';
+    sub = '아쉽지만 다음에 다시 도전해 보세요';
+    SFX.gameOver();
+  } else if (prize.coupon) {
+    const fc = loadFreeCoupon() + 1;
+    saveFreeCoupon(fc);
+    icon = '🎟️'; title = '<span style="color:#22c55e">무료 구매권 획득!</span>';
+    sub = `상점에서 원하는 아이템을 무료로 구매하세요 (현재 ${fc}개)`;
+    SFX.stageClear();
+  } else {
+    const coins = loadCoins();
+    saveCoins(coins + prize.coins);
+    updateCoinUI();
+    icon = '🪙'; title = `<span style="color:#fbbf24">+${prize.coins} 코인!</span>`;
+    sub = `${coins} → ${coins + prize.coins} 🪙`;
+    SFX.stageClear();
+  }
+
+  const body = document.getElementById('spin-body');
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;margin-bottom:8px">
+      <canvas id="spin-canvas-done" width="260" height="260" style="display:block"></canvas>
+    </div>
+    ${_spinLegendHtml()}
+    <div class="spin-result-box">
+      <div style="font-size:48px;margin-bottom:8px">${icon}</div>
+      <div style="font-size:22px;font-weight:bold">${title}</div>
+      <div style="font-size:13px;color:#aaa;margin-top:6px">${sub}</div>
+    </div>
+    <div style="color:#f59e0b;font-size:12px;text-align:center;margin-bottom:10px">🌙 오늘의 돌림판 완료! 내일 다시 도전하세요</div>
+    <button class="btn btn-gray" onclick="closeSpin()">← 뒤로</button>`;
+
+  const canvas = document.getElementById('spin-canvas-done');
+  if (canvas) drawSpinWheel(canvas, _spinFinalRot % (Math.PI * 2));
+}
+
 window.onClickStart = function() {
   const inp = document.getElementById('name-input');
   const name = inp ? inp.value.trim() : playerName;
   if (!name) { if (inp) inp.style.borderColor='#ef4444'; return; }
   playerName = name;
   localStorage.setItem(LS_PLAYER_NAME, name);
+  checkQuestPlayGame();
+  checkQuestSkin(loadActiveColor());
   startGame();
 };
 
 window.onClickRestart = function() {
+  checkQuestPlayGame();
+  checkQuestSkin(loadActiveColor());
   sessionScore = 0;
   currentStage = getStartStage();
   useCoupon();
@@ -1460,6 +1922,8 @@ window.onClickRestart = function() {
   document.getElementById('score-ui').style.display = 'block';
   document.getElementById('coin-ui').style.display = 'block';
   document.getElementById('shop-hud-btn').style.display = 'block';
+  document.getElementById('inv-hud-btn').style.display = 'block';
+  document.getElementById('quest-hud-btn').style.display = 'block';
   updateCoinUI();
   updateGlassesUI();
   updateScoreUI();
@@ -1635,6 +2099,181 @@ const LS_COUPONS       = 'ditto_owned_coupons';
 const LS_ACTIVE_COUPON = 'ditto_active_coupon';
 const LS_PLAYER_NAME   = 'ditto_player_name';
 const LS_GLASSES       = 'ditto_glasses';
+const LS_SPIN_DATE     = 'ditto_spin_date';
+const LS_FREE_COUPON   = 'ditto_free_coupon';
+
+const SPIN_PRIZES = [
+  { label: '5코인',      coins: 5,          chance: 0.55, color: '#6d28d9' },
+  { label: '15코인',     coins: 15,         chance: 0.25, color: '#1d4ed8' },
+  { label: '25코인',     coins: 25,         chance: 0.10, color: '#065f46' },
+  { label: '50코인',     coins: 50,         chance: 0.05, color: '#92400e' },
+  { label: '무료구매권',  coupon: true,      chance: 0.025, color: '#991b1b' },
+  { label: '꽝',         nothing: true,     chance: 0.025, color: '#1f2937' },
+];
+// Cumulative start angles (radians) for each prize segment
+const SPIN_ANGLES = (() => {
+  let acc = 0;
+  return SPIN_PRIZES.map(p => { const s = acc; acc += p.chance * Math.PI * 2; return s; });
+})();
+
+// ── 퀘스트 ──
+const LS_QUESTS       = 'ditto_quests';
+const LS_QUEST_RESET  = 'ditto_quest_reset';
+const QUEST_REWARD    = 30;
+const QUEST_RESET_DAYS = 3;
+
+function checkQuestReset() {
+  const last = parseInt(localStorage.getItem(LS_QUEST_RESET) || '0');
+  const now  = Date.now();
+  if (now - last >= QUEST_RESET_DAYS * 86400000) {
+    localStorage.removeItem(LS_QUESTS);
+    localStorage.setItem(LS_QUEST_RESET, String(now));
+  }
+}
+checkQuestReset();
+
+const QUESTS = [
+  { id: 'q_reach3',   icon: '🏔️',  title: '3단계 도전자',   desc: '3단계 이상 도달하기',              type: 'reach_stage',    value: 3       },
+  { id: 'q_reach5',   icon: '⛰️',  title: '5단계 등반가',   desc: '5단계 이상 도달하기',              type: 'reach_stage',    value: 5       },
+  { id: 'q_reach8',   icon: '🗻',  title: '8단계 용사',     desc: '8단계 이상 도달하기',              type: 'reach_stage',    value: 8       },
+  { id: 'q_clear',    icon: '🏆',  title: '전설의 동글이', desc: '10단계를 완주하여 게임 클리어',     type: 'clear_game',     value: null    },
+  { id: 'q_skin_red', icon: '🔴',  title: '불꽃 전사',     desc: '빨강 스킨으로 게임 시작하기',       type: 'play_skin',      value: 'red'   },
+  { id: 'q_skin_gold',icon: '🌟',  title: '황금 동글이',   desc: '황금 골드 스킨으로 게임 시작하기', type: 'play_skin',      value: 'gold'  },
+  { id: 'q_skin_rainbow',icon:'🌈',title: '무지개 용사',   desc: '레인보우 스킨으로 게임 시작하기',   type: 'play_skin',      value: 'rainbow'},
+  { id: 'q_skin_ghost',icon:'👻',  title: '유령 동글이',   desc: '투명 스킨으로 게임 시작하기',       type: 'play_skin',      value: 'ghost' },
+  { id: 'q_survive',  icon: '🛡️',  title: '철벽 수비',     desc: 'HP 70 이상으로 스테이지 클리어',   type: 'stage_clear_hp', value: 70      },
+  { id: 'q_play',     icon: '🎮',  title: '꾸준한 동글이', desc: '게임을 시작하기',                   type: 'play_game',      value: null    },
+];
+function loadQuestProgress() { try { return JSON.parse(localStorage.getItem(LS_QUESTS)) || {}; } catch { return {}; } }
+function saveQuestProgress(o) { localStorage.setItem(LS_QUESTS, JSON.stringify(o)); }
+
+let _questToastTimer = null;
+function showQuestToast(msg) {
+  const el = document.getElementById('quest-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.opacity = '1';
+  if (_questToastTimer) clearTimeout(_questToastTimer);
+  _questToastTimer = setTimeout(() => { el.style.opacity = '0'; }, 2800);
+}
+
+function progressQuest(id) {
+  const q = QUESTS.find(x => x.id === id);
+  if (!q) return;
+  const prog = loadQuestProgress();
+  if ((prog[id] || 0) >= 2) return;
+  prog[id] = (prog[id] || 0) + 1;
+  saveQuestProgress(prog);
+  if (prog[id] >= 2) {
+    saveCoins(loadCoins() + QUEST_REWARD);
+    showQuestToast(`🏅 퀘스트 달성! [${q.title}] +${QUEST_REWARD} 코인`);
+  } else {
+    showQuestToast(`📋 퀘스트 진행 [${q.title}] 1/2 완료`);
+  }
+}
+function checkQuestSkin(skinId) {
+  QUESTS.filter(q => q.type === 'play_skin' && q.value === skinId).forEach(q => progressQuest(q.id));
+}
+function checkQuestReachStage(stage) {
+  QUESTS.filter(q => q.type === 'reach_stage' && q.value <= stage).forEach(q => progressQuest(q.id));
+}
+function checkQuestClearGame() {
+  QUESTS.filter(q => q.type === 'clear_game').forEach(q => progressQuest(q.id));
+}
+function checkQuestStageHp(hp) {
+  QUESTS.filter(q => q.type === 'stage_clear_hp' && hp >= q.value).forEach(q => progressQuest(q.id));
+}
+function checkQuestPlayGame() {
+  QUESTS.filter(q => q.type === 'play_game').forEach(q => progressQuest(q.id));
+}
+
+function showQuests() {
+  const prog  = loadQuestProgress();
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="panel">
+      <h2>📋 퀘스트</h2>
+      <p class="sub">각 퀘스트를 2번 달성하면 🪙 ${QUEST_REWARD} 코인 보상!</p>
+      ${(() => {
+        const last  = parseInt(localStorage.getItem(LS_QUEST_RESET) || '0');
+        const msLeft = Math.max(0, (last + QUEST_RESET_DAYS * 86400000) - Date.now());
+        const hLeft  = Math.floor(msLeft / 3600000);
+        const mLeft  = Math.floor((msLeft % 3600000) / 60000);
+        return `<div style="font-size:11px;color:#94a3b8;text-align:center;margin:-4px 0 10px">🔄 리셋까지 ${hLeft}시간 ${mLeft}분 남음 (3일마다 초기화)</div>`;
+      })()}
+      ${QUESTS.map(q => {
+        const p    = prog[q.id] || 0;
+        const done = p >= 2;
+        const pct  = (p / 2) * 100;
+        return `
+        <div class="quest-card ${done ? 'done' : p > 0 ? 'inprog' : ''}">
+          <div style="font-size:22px;line-height:1">${q.icon}</div>
+          <div class="quest-info">
+            <div class="quest-title">${q.title} ${done ? '<span style="color:#34d399">✓</span>' : ''}</div>
+            <div class="quest-desc">${q.desc}</div>
+            <div class="quest-prog-bar">
+              <div class="quest-prog-fill ${done ? 'done' : ''}" style="width:${pct}%"></div>
+            </div>
+            <div class="quest-meta">
+              <span style="color:${done ? '#34d399' : p > 0 ? '#fbbf24' : '#64748b'}">${done ? '달성 완료!' : `${p}/2 완료`}</span>
+              <span class="quest-reward">🪙 ${QUEST_REWARD} 보상</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+      ${_questOpenedDuringGame
+        ? `<button class="btn btn-purple" onclick="resumeFromQuests()">▶ 게임으로 돌아가기</button>`
+        : `<button class="btn btn-gray" onclick="showTitleScreen()">← 뒤로</button>`}
+    </div>`;
+}
+window.showQuests = showQuests;
+
+let _questOpenedDuringGame = false;
+function openQuestsDuringGame() {
+  _questOpenedDuringGame = true;
+  gameActive = false;
+  document.exitPointerLock();
+  document.getElementById('overlay').style.display = 'flex';
+  showQuests();
+}
+window.openQuestsDuringGame = openQuestsDuringGame;
+function resumeFromQuests() {
+  _questOpenedDuringGame = false;
+  document.getElementById('overlay').style.display = 'none';
+  gameActive = true;
+  if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+}
+window.resumeFromQuests = resumeFromQuests;
+
+// ── 오늘의 할인 ──
+function getDailyDiscounts(ownedColors = [], glassesOwned = false) {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  let s = 0;
+  for (let i = 0; i < today.length; i++) s = (s * 31 + today.charCodeAt(i)) | 0;
+  function rand() { s = (Math.imul(s, 1664525) + 1013904223) | 0; return (s >>> 0) / 4294967296; }
+  function pickPct() {
+    const r = rand();
+    if (r < 0.01) return 100;
+    if (r < 0.10) return 50;
+    if (r < 0.30) return 25;
+    return 10;
+  }
+  const pool = [
+    ...SHOP_COLORS.filter(c => c.price > 0 && !ownedColors.includes(c.id))
+      .map(c => ({ key: 'color_' + c.id, price: c.price })),
+    ...SHOP_COUPONS.map(c => ({ key: 'coupon_' + c.id, price: c.price })),
+    ...(!glassesOwned ? [{ key: 'glasses_glasses', price: 80 }] : []),
+  ];
+  const result = {};
+  for (let i = 0; i < 3 && pool.length > 0; i++) {
+    const idx = Math.floor(rand() * pool.length);
+    const item = pool.splice(idx, 1)[0];
+    result[item.key] = pickPct();
+  }
+  return result;
+}
+function discountedPrice(price, pct) { return pct >= 100 ? 0 : Math.ceil(price * (1 - pct / 100)); }
 
 const SHOP_COUPONS = [
   { id: 'stage2', name: '2단계 시작권', stage: 2, price: 25, icon: '🎟️' },
@@ -1834,6 +2473,8 @@ function init() {
     if (e.code === 'KeyT' && gameActive) { e.preventDefault(); useTeleportCoupon(); }
     if (e.code === 'KeyG' && gameActive) { e.preventDefault(); useGlasses(); }
     if (e.code === 'KeyM') { e.preventDefault(); gameActive ? openShopDuringGame() : showShop(); }
+    if (e.code === 'KeyI') { e.preventDefault(); gameActive ? openInventoryDuringGame() : showInventory(); }
+    if (e.code === 'KeyQ') { e.preventDefault(); gameActive ? openQuestsDuringGame() : showQuests(); }
   });
   window.addEventListener('keyup', e => { keys[e.code] = false; });
   window.addEventListener('resize', () => {
@@ -2247,14 +2888,15 @@ function clearStage() {
 }
 
 function buildStage(stage) {
-  // 스테이지 번호로 시드를 고정해 항상 같은 레이아웃 생성
+  // 낚시 블록·이동 플랫폼은 매판 다르게 — 시드 적용 전에 진짜 랜덤값 저장
+  const trueRand = Math.random();
   let _s = stage * 73856093 ^ 19349663;
   const _origRandom = Math.random;
   Math.random = () => { _s = (Math.imul(_s, 1664525) + 1013904223) | 0; return (_s >>> 0) / 4294967296; };
-  _buildStage(stage);
+  _buildStage(stage, trueRand);
   Math.random = _origRandom;
 }
-function _buildStage(stage) {
+function _buildStage(stage, trueRand = 0.5) {
   clearStage();
   const s = stage - 1;
   const palette = STAGE_COLORS[Math.min(s, STAGE_COLORS.length - 1)];
@@ -2274,9 +2916,11 @@ function _buildStage(stage) {
 
   // Start platform
   addPlatform(0, 0, 0, 6, 0.5, 6, palette.platform, false);
+  platforms[platforms.length - 1].userData.isStart = true;
 
-  // 낚시 플랫폼 삽입 인덱스 (중간쯤, 3번 이후)
-  const fakeIdx = 3 + Math.floor(Math.random() * (platformCount - 5));
+  // 낚시 플랫폼은 7단계까지만 등장
+  const useFake = stage < 8;
+  const fakeIdx = useFake ? 3 + Math.floor(trueRand * (platformCount - 5)) : -1;
   let fakePlaced = false;
 
   // Z축 방향(앞쪽)으로 주로 전진, 좌우는 약간만 흔들림
@@ -2286,11 +2930,11 @@ function _buildStage(stage) {
     prevX = x; prevY = y; prevZ = z;
     const lateralJitter = (Math.random() - 0.5) * hGap * 0.8;
     x += lateralJitter;
-    // 낚시 플랫폼 앞뒤는 거리 좁힘
-    const isFakeAdj = !fakePlaced && (i === fakeIdx - 1 || i === fakeIdx + 1);
-    const hGapMult = isFakeAdj ? 0.38 : (0.8 + Math.random() * 0.4);
+    // 낚시 플랫폼 자체와 바로 다음 플랫폼은 앞뒤 플랫폼과 겹치도록 간격 좁힘
+    const isFakeAdj = (!fakePlaced && i === fakeIdx) || (fakePlaced && i === fakeIdx + 1);
+    const hGapMult = isFakeAdj ? 0.8 : (0.8 + Math.random() * 0.4);
     z -= hGap * hGapMult;
-    y += vStep * (0.5 + Math.random() * 0.5);
+    y += isFakeAdj ? vStep * 0.3 : vStep * (0.5 + Math.random() * 0.5);
 
     const w = platformMinSize + Math.random() * 1.5;
     const d = platformMinSize + Math.random() * 1.5;
@@ -2299,7 +2943,7 @@ function _buildStage(stage) {
     if (!fakePlaced && i === fakeIdx) {
       fakePlaced = true;
       const fakeMat = new THREE.MeshStandardMaterial({
-        color: palette.platform, transparent: true, opacity: 0.35,
+        color: palette.platform, transparent: true, opacity: 0.85,
         roughness: 0.6, metalness: 0.1,
       });
       const fakeMesh = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.4, d + 0.5), fakeMat);
@@ -2309,16 +2953,22 @@ function _buildStage(stage) {
       platforms.push(fakeMesh);
       continue;
     }
-    // 10단계: 짝수 인덱스=보이는 플랫폼, 홀수 인덱스=투명 플랫폼(번갈아 배치)
+    // 10단계: 짝수=보이는, 홀수=투명 (번갈아)
     const isHidden10 = stage === 10 && i > 2 && i % 2 === 1;
-    const isHazard = !isHidden10 && Math.random() < hazardChance && i > 2;
-    const isPoisonHazard = !isHazard && !isHidden10 && stage >= 4 && Math.random() < poisonChance && i > 2;
-    const isFlipHazard = !isHazard && !isPoisonHazard && !isHidden10 && stage >= 4 && Math.random() < flipChance && i > 2;
-    // 3~9단계: 목표 개수만큼 안전 플랫폼을 투명으로 전환
+    // 9단계: 일반 일반 투명 패턴
+    const isHidden9 = stage === 9 && i > 2 && (i - 3) % 3 === 2;
+    // 8단계: 일반 일반 일반 투명 패턴
+    const isHidden8 = stage === 8 && i > 2 && (i - 3) % 4 === 3;
+    const isPatternHidden = isHidden9 || isHidden8;
+    const isHazard = !isHidden10 && !isPatternHidden && Math.random() < hazardChance && i > 2;
+    const isPoisonHazard = !isHazard && !isHidden10 && !isPatternHidden && stage >= 4 && Math.random() < poisonChance && i > 2;
+    const isFlipHazard = !isHazard && !isPoisonHazard && !isHidden10 && !isPatternHidden && stage >= 4 && Math.random() < flipChance && i > 2;
+    // 3~7단계: 목표 개수만큼 안전 플랫폼을 투명으로 전환 (낚시 블록 바로 뒤는 제외)
+    const isJustAfterFake = fakePlaced && i === fakeIdx + 1;
     const needHidden = hiddenTotal - hiddenPlaced;
-    const hiddenChance = needHidden > 0 && !isHazard && !isPoisonHazard && !isFlipHazard && i > 2
+    const hiddenChance = stage < 8 && needHidden > 0 && !isHazard && !isPoisonHazard && !isFlipHazard && !isJustAfterFake && i > 2
       ? needHidden / Math.max(1, platformCount - i) : 0;
-    const isHidden = isHidden10 || (stage < 10 && stage >= 3 && Math.random() < hiddenChance);
+    const isHidden = isHidden10 || isPatternHidden || (stage < 8 && stage >= 3 && !isJustAfterFake && Math.random() < hiddenChance);
     if (isHidden && stage < 10) hiddenPlaced++;
     addPlatform(x, y, z, w, 0.4, d, palette.platform, isHazard, false, isPoisonHazard, isFlipHazard, isHidden);
   }
@@ -2329,7 +2979,7 @@ function _buildStage(stage) {
   prePreFinalPlatformPos.set(prevX, prevY, prevZ);     // 히든 포탈 기준점: 클리어 전전 플랫폼
   goalPlatformPos.set(x, goalY, z);
   if (stage === 10) {
-    addPlatform(x, goalY, z, 8, 0.5, 8, 0xffd700, false, false);
+    addPlatform(x, goalY, z, 8, 0.5, 8, 0xffd700, false, true);
     buildFlag(x, goalY + 0.25, z);
   } else {
     addPlatform(x, goalY, z, 6, 0.5, 6, 0xffd700, false, true);
@@ -2430,17 +3080,18 @@ function buildMovingPlatforms(stage) {
 
   const eligible = platforms.filter(p =>
     p.userData.w && p.userData.w >= 2 &&
-    !p.userData.isGoal && !p.userData.isHazard &&
+    !p.userData.isGoal && !p.userData.isStart && !p.userData.isHazard && !p.userData.isFake &&
     !p.userData.isPoisonHazard && !p.userData.isFlipHazard && !p.userData.isHidden && !p.userData.isSpinning
   );
   if (eligible.length < 3) return;
 
+  const spinPool = [...eligible];
   for (let i = 0; i < count; i++) {
-    const fraction = (i + 1) / (count + 1);
-    const plat = eligible[Math.floor(fraction * eligible.length)];
+    if (spinPool.length === 0) break;
+    const idx = Math.floor(Math.random() * spinPool.length);
+    const plat = spinPool.splice(idx, 1)[0];
     const speed = (0.035 + i * 0.006) * 0.5;
 
-    // 기존 플랫폼을 눈에 띄는 색으로 바꾸고 회전 표시
     plat.material = new THREE.MeshStandardMaterial({
       color: 0x00ccff, emissive: 0x0077cc, emissiveIntensity: 0.5,
       roughness: 0.3, metalness: 0.3,
@@ -2461,15 +3112,17 @@ function updateMovingPlatforms() {
 function buildSlidingPlatforms(stage) {
   const eligible = platforms.filter(p =>
     p.userData.w && p.userData.w >= 2 &&
-    !p.userData.isGoal && !p.userData.isHazard &&
+    !p.userData.isGoal && !p.userData.isStart && !p.userData.isHazard && !p.userData.isFake &&
     !p.userData.isPoisonHazard && !p.userData.isFlipHazard &&
     !p.userData.isHidden && !p.userData.isSpinning
   );
   if (eligible.length < 4) return;
   const count = 2;
+  const slidePool = [...eligible];
   for (let i = 0; i < count; i++) {
-    const fraction = (i + 1) / (count + 1);
-    const plat = eligible[Math.floor(fraction * eligible.length)];
+    if (slidePool.length === 0) break;
+    const idx = Math.floor(Math.random() * slidePool.length);
+    const plat = slidePool.splice(idx, 1)[0];
     if (plat.userData.isSliding) continue;
     const speed = 0.025 + i * 0.008 + stage * 0.002;
     const range = 2.5 + Math.random() * 1.5;
@@ -2551,7 +3204,7 @@ function updateMeteors() {
         if (hp <= 0) { gameOver(); return; }
       }
       for (const plat of platforms) {
-        if (!plat.userData.w || plat.userData.isHidden) continue;
+        if (!plat.userData.w || plat.userData.isHidden || plat.userData.isFake || plat.userData.isSpinning || plat.userData.isSliding) continue;
         const { w, h, d } = plat.userData;
         if (Math.abs(plat.position.x - m.tx) < w / 2 &&
             Math.abs(plat.position.z - m.tz) < d / 2 &&
@@ -3063,6 +3716,8 @@ function startGame() {
   document.getElementById('score-ui').style.display = 'block';
   document.getElementById('coin-ui').style.display = 'block';
   document.getElementById('shop-hud-btn').style.display = 'block';
+  document.getElementById('inv-hud-btn').style.display = 'block';
+  document.getElementById('quest-hud-btn').style.display = 'block';
   updateCoinUI();
   updateGlassesUI();
   _gameOverCalled = false;
@@ -3534,6 +4189,7 @@ function updateParticles() {
 
 function nextStage() {
   sessionScore += calcScore();
+  checkQuestStageHp(hp);
 
   if (currentStage >= 10) {
     gameClear();
@@ -3541,6 +4197,7 @@ function nextStage() {
   }
 
   currentStage++;
+  checkQuestReachStage(currentStage);
   stageStartTime = Date.now();
   const palette = STAGE_COLORS[Math.min(currentStage - 1, STAGE_COLORS.length - 1)];
   SFX.stageClear();
@@ -3553,6 +4210,7 @@ function nextStage() {
 }
 
 async function gameClear() {
+  checkQuestClearGame();
   gameActive = false;
   _shopOpenedDuringGame = false;
   document.exitPointerLock();
@@ -3560,6 +4218,8 @@ async function gameClear() {
   document.getElementById('score-ui').style.display = 'none';
   document.getElementById('coin-ui').style.display = 'none';
   document.getElementById('shop-hud-btn').style.display = 'none';
+  document.getElementById('inv-hud-btn').style.display = 'none';
+  document.getElementById('quest-hud-btn').style.display = 'none';
   document.getElementById('teleport-ui').style.display = 'none';
   document.getElementById('glasses-ui').style.display = 'none';
   document.getElementById('touch-controls').style.display = 'none';
@@ -3582,6 +4242,7 @@ async function gameClear() {
       </div>
       <button class="btn btn-purple" onclick="onClickRestart()">다시 도전</button>
       <button class="btn btn-gray" onclick="onClickChangeName()">이름 변경</button>
+      <button class="btn btn-gray" onclick="showTitleScreen()">처음으로 돌아가기</button>
     </div>`;
   try {
     const rankings = await addRanking(playerName, finalScore, 10);
@@ -3606,6 +4267,8 @@ function gameOver() {
   document.getElementById('score-ui').style.display = 'none';
   document.getElementById('coin-ui').style.display = 'none';
   document.getElementById('shop-hud-btn').style.display = 'none';
+  document.getElementById('inv-hud-btn').style.display = 'none';
+  document.getElementById('quest-hud-btn').style.display = 'none';
   document.getElementById('teleport-ui').style.display = 'none';
   document.getElementById('glasses-ui').style.display = 'none';
   document.getElementById('touch-controls').style.display = 'none';
