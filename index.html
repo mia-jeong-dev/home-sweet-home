@@ -2127,6 +2127,7 @@ const SPIN_ANGLES = (() => {
 // ── 퀘스트 ──
 const LS_QUESTS       = 'ditto_quests';
 const LS_QUEST_RESET  = 'ditto_quest_reset';
+const LS_QUEST_GEN    = 'ditto_quest_gen';
 const QUEST_REWARD    = 30;
 const QUEST_RESET_DAYS = 3;
 
@@ -2140,18 +2141,48 @@ function checkQuestReset() {
 }
 checkQuestReset();
 
-const QUESTS = [
-  { id: 'q_reach3',   icon: '🏔️',  title: '3단계 도전자',   desc: '3단계 이상 도달하기',              type: 'reach_stage',    value: 3       },
-  { id: 'q_reach5',   icon: '⛰️',  title: '5단계 등반가',   desc: '5단계 이상 도달하기',              type: 'reach_stage',    value: 5       },
-  { id: 'q_reach8',   icon: '🗻',  title: '8단계 용사',     desc: '8단계 이상 도달하기',              type: 'reach_stage',    value: 8       },
-  { id: 'q_clear',    icon: '🏆',  title: '전설의 동글이', desc: '10단계를 완주하여 게임 클리어',     type: 'clear_game',     value: null    },
-  { id: 'q_skin_red', icon: '🔴',  title: '불꽃 전사',     desc: '빨강 스킨으로 게임 시작하기',       type: 'play_skin',      value: 'red'   },
-  { id: 'q_skin_gold',icon: '🌟',  title: '황금 동글이',   desc: '황금 골드 스킨으로 게임 시작하기', type: 'play_skin',      value: 'gold'  },
-  { id: 'q_skin_rainbow',icon:'🌈',title: '무지개 용사',   desc: '레인보우 스킨으로 게임 시작하기',   type: 'play_skin',      value: 'rainbow'},
-  { id: 'q_skin_ghost',icon:'👻',  title: '유령 동글이',   desc: '투명 스킨으로 게임 시작하기',       type: 'play_skin',      value: 'ghost' },
-  { id: 'q_survive',  icon: '🛡️',  title: '철벽 수비',     desc: 'HP 70 이상으로 스테이지 클리어',   type: 'stage_clear_hp', value: 70      },
-  { id: 'q_play',     icon: '🎮',  title: '꾸준한 동글이', desc: '게임을 시작하기',                   type: 'play_game',      value: null    },
+const QUEST_GENS = [
+  [ // ── 세트 1 ──
+    { id: 'q_reach3',      icon: '🏔️', title: '3단계 도전자',   desc: '3단계 이상 도달하기',              type: 'reach_stage',    value: 3       },
+    { id: 'q_reach5',      icon: '⛰️', title: '5단계 등반가',   desc: '5단계 이상 도달하기',              type: 'reach_stage',    value: 5       },
+    { id: 'q_reach8',      icon: '🗻', title: '8단계 용사',     desc: '8단계 이상 도달하기',              type: 'reach_stage',    value: 8       },
+    { id: 'q_clear',       icon: '🏆', title: '전설의 동글이',  desc: '10단계를 완주하여 게임 클리어',    type: 'clear_game',     value: null    },
+    { id: 'q_skin_red',    icon: '🔴', title: '불꽃 전사',      desc: '빨강 스킨으로 게임 시작하기',      type: 'play_skin',      value: 'red'   },
+    { id: 'q_skin_gold',   icon: '🌟', title: '황금 동글이',    desc: '황금 골드 스킨으로 게임 시작하기', type: 'play_skin',      value: 'gold'  },
+    { id: 'q_skin_rainbow',icon: '🌈', title: '무지개 용사',    desc: '레인보우 스킨으로 게임 시작하기',  type: 'play_skin',      value: 'rainbow'},
+    { id: 'q_skin_ghost',  icon: '👻', title: '유령 동글이',    desc: '투명 스킨으로 게임 시작하기',      type: 'play_skin',      value: 'ghost' },
+    { id: 'q_survive',     icon: '🛡️', title: '철벽 수비',      desc: 'HP 70 이상으로 스테이지 클리어',  type: 'stage_clear_hp', value: 70      },
+    { id: 'q_play',        icon: '🎮', title: '꾸준한 동글이',  desc: '게임을 시작하기',                  type: 'play_game',      value: null    },
+  ],
+  [ // ── 세트 2 ──
+    { id: 'q2_reach2',     icon: '🌿', title: '첫 발걸음',      desc: '2단계 이상 도달하기',              type: 'reach_stage',    value: 2       },
+    { id: 'q2_reach4',     icon: '🌄', title: '4단계 고수',     desc: '4단계 이상 도달하기',              type: 'reach_stage',    value: 4       },
+    { id: 'q2_reach6',     icon: '🌋', title: '6단계 전문가',   desc: '6단계 이상 도달하기',              type: 'reach_stage',    value: 6       },
+    { id: 'q2_reach10',    icon: '🌌', title: '정상 정복',      desc: '10단계에 도달하기',                type: 'reach_stage',    value: 10      },
+    { id: 'q2_skin_blue',  icon: '💙', title: '하늘의 동글이',  desc: '파랑 스킨으로 게임 시작하기',      type: 'play_skin',      value: 'blue'  },
+    { id: 'q2_skin_green', icon: '💚', title: '잔디밭의 동글이',desc: '초록 스킨으로 게임 시작하기',      type: 'play_skin',      value: 'green' },
+    { id: 'q2_skin_black', icon: '🖤', title: '어둠의 동글이',  desc: '블랙 스킨으로 게임 시작하기',      type: 'play_skin',      value: 'black' },
+    { id: 'q2_skin_silver',icon: '🩶', title: '은빛 동글이',    desc: '실버 스킨으로 게임 시작하기',      type: 'play_skin',      value: 'silver'},
+    { id: 'q2_survive90',  icon: '🔰', title: '무적의 동글이',  desc: 'HP 90 이상으로 스테이지 클리어',  type: 'stage_clear_hp', value: 90      },
+    { id: 'q2_clear',      icon: '🥇', title: '진정한 챔피언',  desc: '게임을 클리어하기',                type: 'clear_game',     value: null    },
+  ],
+  [ // ── 세트 3 ──
+    { id: 'q3_reach7',     icon: '🏕️', title: '7단계 탐험가',   desc: '7단계 이상 도달하기',              type: 'reach_stage',    value: 7       },
+    { id: 'q3_reach9',     icon: '🌠', title: '9단계 전설',     desc: '9단계 이상 도달하기',              type: 'reach_stage',    value: 9       },
+    { id: 'q3_skin_yellow',icon: '💛', title: '태양 동글이',    desc: '노랑 스킨으로 게임 시작하기',      type: 'play_skin',      value: 'yellow'},
+    { id: 'q3_skin_pink',  icon: '🩷', title: '벚꽃 동글이',    desc: '핑크 스킨으로 게임 시작하기',      type: 'play_skin',      value: 'pink'  },
+    { id: 'q3_skin_orange',icon: '🧡', title: '주황 동글이',    desc: '주황 스킨으로 게임 시작하기',      type: 'play_skin',      value: 'orange'},
+    { id: 'q3_skin_white', icon: '🤍', title: '순백의 동글이',  desc: '화이트 스킨으로 게임 시작하기',    type: 'play_skin',      value: 'white' },
+    { id: 'q3_skin_brown', icon: '🤎', title: '대지의 동글이',  desc: '갈색 스킨으로 게임 시작하기',      type: 'play_skin',      value: 'brown' },
+    { id: 'q3_survive_max',icon: '💎', title: '완벽한 동글이',  desc: 'HP 만렙(100)으로 스테이지 클리어',type: 'stage_clear_hp', value: 100     },
+    { id: 'q3_clear',      icon: '👑', title: '동글이의 왕',    desc: '게임을 클리어하기',                type: 'clear_game',     value: null    },
+    { id: 'q3_play',       icon: '🕹️', title: '게임 중독자',    desc: '게임을 시작하기',                  type: 'play_game',      value: null    },
+  ],
 ];
+
+function loadQuestGen()  { return parseInt(localStorage.getItem(LS_QUEST_GEN) || '0'); }
+function saveQuestGen(n) { localStorage.setItem(LS_QUEST_GEN, String(n)); }
+function getActiveQuests() { return QUEST_GENS[loadQuestGen() % QUEST_GENS.length]; }
 function loadQuestProgress() { try { return JSON.parse(localStorage.getItem(LS_QUESTS)) || {}; } catch { return {}; } }
 function saveQuestProgress(o) { localStorage.setItem(LS_QUESTS, JSON.stringify(o)); }
 
@@ -2166,7 +2197,8 @@ function showQuestToast(msg) {
 }
 
 function progressQuest(id) {
-  const q = QUESTS.find(x => x.id === id);
+  const quests = getActiveQuests();
+  const q = quests.find(x => x.id === id);
   if (!q) return;
   const prog = loadQuestProgress();
   if ((prog[id] || 0) >= 2) return;
@@ -2175,24 +2207,33 @@ function progressQuest(id) {
   if (prog[id] >= 2) {
     saveCoins(loadCoins() + QUEST_REWARD);
     showQuestToast(`🏅 퀘스트 달성! [${q.title}] +${QUEST_REWARD} 코인`);
+    // 모든 퀘스트 완료 시 다음 세트로
+    const allDone = quests.every(q => (prog[q.id] || 0) >= 2);
+    if (allDone) {
+      setTimeout(() => {
+        saveQuestGen(loadQuestGen() + 1);
+        localStorage.removeItem(LS_QUESTS);
+        showQuestToast('🎉 모든 퀘스트 달성! 새로운 퀘스트가 열렸어요!');
+      }, 1800);
+    }
   } else {
     showQuestToast(`📋 퀘스트 진행 [${q.title}] 1/2 완료`);
   }
 }
 function checkQuestSkin(skinId) {
-  QUESTS.filter(q => q.type === 'play_skin' && q.value === skinId).forEach(q => progressQuest(q.id));
+  getActiveQuests().filter(q => q.type === 'play_skin' && q.value === skinId).forEach(q => progressQuest(q.id));
 }
 function checkQuestReachStage(stage) {
-  QUESTS.filter(q => q.type === 'reach_stage' && q.value <= stage).forEach(q => progressQuest(q.id));
+  getActiveQuests().filter(q => q.type === 'reach_stage' && q.value <= stage).forEach(q => progressQuest(q.id));
 }
 function checkQuestClearGame() {
-  QUESTS.filter(q => q.type === 'clear_game').forEach(q => progressQuest(q.id));
+  getActiveQuests().filter(q => q.type === 'clear_game').forEach(q => progressQuest(q.id));
 }
 function checkQuestStageHp(hp) {
-  QUESTS.filter(q => q.type === 'stage_clear_hp' && hp >= q.value).forEach(q => progressQuest(q.id));
+  getActiveQuests().filter(q => q.type === 'stage_clear_hp' && hp >= q.value).forEach(q => progressQuest(q.id));
 }
 function checkQuestPlayGame() {
-  QUESTS.filter(q => q.type === 'play_game').forEach(q => progressQuest(q.id));
+  getActiveQuests().filter(q => q.type === 'play_game').forEach(q => progressQuest(q.id));
 }
 
 function showQuests() {
@@ -2204,13 +2245,18 @@ function showQuests() {
       <h2>📋 퀘스트</h2>
       <p class="sub">각 퀘스트를 2번 달성하면 🪙 ${QUEST_REWARD} 코인 보상!</p>
       ${(() => {
-        const last  = parseInt(localStorage.getItem(LS_QUEST_RESET) || '0');
+        const gen    = loadQuestGen();
+        const setNum = (gen % QUEST_GENS.length) + 1;
+        const last   = parseInt(localStorage.getItem(LS_QUEST_RESET) || '0');
         const msLeft = Math.max(0, (last + QUEST_RESET_DAYS * 86400000) - Date.now());
         const hLeft  = Math.floor(msLeft / 3600000);
         const mLeft  = Math.floor((msLeft % 3600000) / 60000);
-        return `<div style="font-size:11px;color:#94a3b8;text-align:center;margin:-4px 0 10px">🔄 리셋까지 ${hLeft}시간 ${mLeft}분 남음 (3일마다 초기화)</div>`;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#94a3b8;margin:-4px 0 10px;padding:0 2px">
+          <span>📂 세트 ${setNum} / ${QUEST_GENS.length}</span>
+          <span>🔄 리셋까지 ${hLeft}시간 ${mLeft}분 (3일마다)</span>
+        </div>`;
       })()}
-      ${QUESTS.map(q => {
+      ${getActiveQuests().map(q => {
         const p    = prog[q.id] || 0;
         const done = p >= 2;
         const pct  = (p / 2) * 100;
