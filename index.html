@@ -1218,6 +1218,7 @@ function showShop() {
   const glassesCount = loadGlasses();
   const freeCoupon   = loadFreeCoupon();
   const overlay      = document.getElementById('overlay');
+  overlay.style.display = 'flex';
   const discounts    = getDailyDiscounts(owned, glassesCount > 0);
   function dpct(key) { return discounts[key] || 0; }
   function dprice(price, key) { return discountedPrice(price, dpct(key)); }
@@ -1330,17 +1331,18 @@ window.onGlassesClick = function() {
   const count = loadGlasses();
   if (count > 0) { SFX.coin(); return; }
   const usingFree = _shopFreeMode && loadFreeCoupon() > 0;
-  const price = usingFree ? 0 : discountedPrice(80, getDailyDiscounts()['glasses_glasses'] || 0);
+  const price = usingFree ? 0 : discountedPrice(80, getDailyDiscounts(loadOwned(), false)['glasses_glasses'] || 0);
   const coins = loadCoins();
   if (coins < price) {
-    document.getElementById('shop-coin-count').style.color = '#ef4444';
-    setTimeout(() => { const el = document.getElementById('shop-coin-count'); if (el) el.style.color = ''; }, 600);
+    const coinEl = document.getElementById('shop-coin-count');
+    if (coinEl) { coinEl.style.color = '#ef4444'; setTimeout(() => { coinEl.style.color = ''; }, 600); }
     return;
   }
   saveCoins(coins - price);
   if (usingFree) { saveFreeCoupon(loadFreeCoupon() - 1); _shopFreeMode = false; }
   saveGlasses(3);
   showShop();
+  showQuestToast('✅ 이상한 안경 구매 완료!');
   SFX.stageClear();
 };
 
@@ -1398,8 +1400,8 @@ window.onCouponClick = function(id, price) {
     const effectivePrice = usingFree ? 0 : price;
     const coins = loadCoins();
     if (coins < effectivePrice) {
-      document.getElementById('shop-coin-count').style.color = '#ef4444';
-      setTimeout(() => { const el = document.getElementById('shop-coin-count'); if (el) el.style.color = ''; }, 600);
+      const coinEl = document.getElementById('shop-coin-count');
+      if (coinEl) { coinEl.style.color = '#ef4444'; setTimeout(() => { coinEl.style.color = ''; }, 600); }
       return;
     }
     saveCoins(coins - effectivePrice);
@@ -1407,7 +1409,9 @@ window.onCouponClick = function(id, price) {
     owned[id] = 3;
     saveOwnedCoupons(owned);
     saveActiveCoupon(id);
+    const couponInfo = SHOP_COUPONS.find(c => c.id === id);
     showShop();
+    showQuestToast(`✅ ${couponInfo ? couponInfo.name : '쿠폰'} 구매 완료!`);
     SFX.stageClear();
   }
 };
@@ -1426,8 +1430,8 @@ window.onShopClick = function(id, price) {
     const effectivePrice = usingFree ? 0 : price;
     const coins = loadCoins();
     if (coins < effectivePrice) {
-      document.getElementById('shop-coin-count').style.color = '#ef4444';
-      setTimeout(() => { const el = document.getElementById('shop-coin-count'); if (el) el.style.color = ''; }, 600);
+      const coinEl = document.getElementById('shop-coin-count');
+      if (coinEl) { coinEl.style.color = '#ef4444'; setTimeout(() => { coinEl.style.color = ''; }, 600); }
       return;
     }
     saveCoins(coins - effectivePrice);
@@ -1436,7 +1440,9 @@ window.onShopClick = function(id, price) {
     saveOwned(newOwned);
     saveActiveColor(id);
     applyCharacterColor(id);
+    const colorInfo = SHOP_COLORS.find(c => c.id === id);
     showShop();
+    showQuestToast(`✅ ${colorInfo ? colorInfo.name : id} 구매 완료!`);
     SFX.stageClear();
   }
 };
