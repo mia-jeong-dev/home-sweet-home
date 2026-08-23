@@ -247,14 +247,24 @@
     .panel h2 { font-size: 22px; font-weight: bold; margin-bottom: 6px; text-align: center; }
     .panel .sub { color: #aaa; font-size: 12px; text-align: center; margin-bottom: 16px; }
 
+    .panel-hero {
+      width: 520px;
+      padding: 36px 32px;
+    }
+    .panel-hero h2 { font-size: 30px; margin-bottom: 10px; }
+    .panel-hero .sub { font-size: 15px; margin-bottom: 20px; }
+
     @media (max-width: 480px) {
       .panel { padding: 18px 14px; border-radius: 14px; }
       .panel h2 { font-size: 19px; }
+      .panel-hero { padding: 22px 16px; }
+      .panel-hero h2 { font-size: 22px; }
+      .panel-hero .sub { font-size: 13px; }
       .ranking-table th { font-size: 10px; padding: 5px 5px; }
       .ranking-table td { font-size: 12px; padding: 7px 5px; }
       .rank-medal { font-size: 15px; }
       .name-input { font-size: 16px; padding: 10px 12px; }
-      .btn { font-size: 15px; padding: 12px 0; }
+      .btn { font-size: 16px; padding: 13px 0; }
       #score-display .score-big { font-size: 28px; }
     }
 
@@ -277,12 +287,12 @@
       width: 100%;
       border: none;
       border-radius: 30px;
-      font-size: 17px;
+      font-size: 19px;
       font-weight: bold;
-      padding: 12px 0;
+      padding: 15px 0;
       cursor: pointer;
       transition: transform 0.1s, box-shadow 0.2s;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
     .btn:hover { transform: scale(1.03); }
     .btn-purple { background: linear-gradient(135deg,#7c3aed,#a78bfa); color:#fff; box-shadow:0 4px 18px rgba(124,58,237,0.5); }
@@ -1111,7 +1121,7 @@ function _renderTitleScreen(forceNameInput) {
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
-    <div class="panel">
+    <div class="panel panel-hero">
       <h2>🟣 동글이의 점프맵 어드벤처 🟣</h2>
       <p class="sub">함정 가시를 피해 꼭대기까지 올라가세요!</p>
       <div class="shop-coin-bar">🪙 보유 코인: ${coins}</div>
@@ -1413,7 +1423,7 @@ function showGameOverScreen(score) {
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
-    <div class="panel">
+    <div class="panel panel-hero">
       <h2 style="color:#ef4444">💀 게임 오버</h2>
       <p class="sub">STAGE ${currentStage} 도달 · 플레이어: ${playerName}</p>
       <div id="score-display">
@@ -4283,7 +4293,7 @@ async function gameClear() {
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
-    <div class="panel">
+    <div class="panel panel-hero">
       <h2 style="color:#ffd700">🎉 게임 클리어! 🎉</h2>
       <p class="sub">모든 10단계를 완주했습니다! · ${playerName}</p>
       <div style="background:rgba(245,158,11,0.15);border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;color:#fcd34d;font-size:14px;font-weight:bold;text-align:center;margin-bottom:12px">🎁 완주 보상 +50 코인 획득!</div>
