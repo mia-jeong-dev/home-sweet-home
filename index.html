@@ -166,6 +166,7 @@
       justify-content: flex-start;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
       padding: 24px 0;
       padding-top:    calc(24px + env(safe-area-inset-top));
       padding-bottom: calc(24px + env(safe-area-inset-bottom));
@@ -683,6 +684,30 @@
       font-size: 10px; background: #f59e0b;
       color: #000; border-radius: 4px; padding: 1px 5px; font-weight: bold;
     }
+
+    /* ── 구매 확인 모달 ── */
+    #confirm-modal {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+    }
+    #confirm-modal.active { display: flex; }
+    #confirm-box {
+      background: rgba(15,10,30,0.98);
+      border: 2px solid #a78bfa;
+      border-radius: 18px;
+      padding: 28px 24px;
+      width: min(340px, 92vw);
+      text-align: center;
+      color: #fff;
+    }
+    #confirm-box .confirm-title { font-size: 18px; font-weight: bold; margin-bottom: 8px; }
+    #confirm-box .confirm-desc  { font-size: 13px; color: #aaa; margin-bottom: 20px; line-height: 1.6; }
+    #confirm-box .confirm-btns  { display: flex; gap: 10px; }
+    #confirm-box .confirm-btns .btn { margin: 0; }
   </style>
 </head>
 <body>
@@ -768,6 +793,16 @@
   </div>
 </div>
 
+<div id="confirm-modal">
+  <div id="confirm-box">
+    <div class="confirm-title" id="confirm-title">구매하시겠습니까?</div>
+    <div class="confirm-desc"  id="confirm-desc"></div>
+    <div class="confirm-btns">
+      <button class="btn btn-purple" id="confirm-yes" onclick="confirmPurchase(true)">예</button>
+      <button class="btn btn-gray"   onclick="confirmPurchase(false)">아니요</button>
+    </div>
+  </div>
+</div>
 <div id="quest-toast"></div>
 <div id="ui">
   <div id="hp-container">
@@ -1156,6 +1191,9 @@ function _renderTitleScreen(forceNameInput) {
   const couponInfo    = (activeCoupon && (couponCounts[activeCoupon] || 0) > 0)
     ? SHOP_COUPONS.find(c => c.id === activeCoupon) : null;
   const couponRemain  = couponInfo ? (couponCounts[activeCoupon] || 0) : 0;
+  const isNameChange  = !!(forceNameInput && playerName);
+  const changeCost    = isNameChange ? nameChangeCost() : 0;
+  const canAfford     = coins >= changeCost;
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
@@ -1171,9 +1209,17 @@ function _renderTitleScreen(forceNameInput) {
             ? `<div style="background:rgba(124,58,237,0.15);border:1px solid #7c3aed;border-radius:10px;padding:12px 14px;text-align:center;margin-bottom:12px;color:#c4b5fd;font-size:17px;font-weight:bold">👤 ${playerName}</div>
                <button class="btn btn-purple" onclick="onClickStart()">▶ 게임 시작!</button>`
             : `<input id="name-input" class="name-input" maxlength="12" placeholder="닉네임 입력 (최대 12자)" />
-               <button class="btn btn-purple" onclick="onClickStart()">▶ 게임 시작!</button>`
+               ${isNameChange
+                 ? `<div style="background:rgba(245,158,11,0.12);border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;text-align:center;margin-bottom:10px;font-size:13px;color:${canAfford ? '#fcd34d' : '#ef4444'}">
+                      ✏️ 이름 변경 비용: 🪙 ${changeCost}${canAfford ? '' : ' <span style="font-size:11px">(코인 부족)</span>'}
+                    </div>
+                    <button class="btn btn-purple" onclick="onClickStart()" ${canAfford ? '' : 'disabled style="opacity:0.5;cursor:not-allowed"'}>✏️ 이름 변경</button>
+                    <button class="btn btn-gray" onclick="showTitleScreen()" style="font-size:14px">← 취소</button>`
+                 : `<button class="btn btn-purple" onclick="onClickStart()">▶ 게임 시작!</button>`
+               }`
           }
           ${couponInfo ? `<div style="color:#f59e0b;font-size:12px;text-align:center;margin:-6px 0 8px">${couponInfo.icon} ${couponInfo.name} — ${couponInfo.stage}단계 시작 (잔여 ${couponRemain}회)</div>` : ''}
+          ${!forceNameInput ? `
           <div class="hero-section-label" style="margin-top:10px">메뉴</div>
           <div class="hero-btn-grid">
             <button class="btn btn-gray" onclick="showShop()" style="margin:0">🛒 상점</button>
@@ -1182,7 +1228,8 @@ function _renderTitleScreen(forceNameInput) {
             <button class="btn" onclick="showGamble()" style="margin:0;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;box-shadow:0 3px 14px rgba(217,119,6,0.5)">🎲 도박</button>
           </div>
           <button class="btn btn-gray" onclick="showHelp()" style="margin-top:8px;font-size:15px">❓ 게임 방법</button>
-          ${(!forceNameInput && playerName) ? `<button class="btn btn-gray" onclick="showTitleScreen(true)" style="margin-top:0;font-size:14px;opacity:0.7">✏️ 이름 변경</button>` : ''}
+          ${playerName ? `<button class="btn btn-gray" onclick="showTitleScreen(true)" style="margin-top:0;font-size:14px;opacity:0.7">✏️ 이름 변경</button>` : ''}
+          ` : ''}
         </div>
         <div class="hero-right">
           <div class="hero-section-label">🏆 랭킹보드</div>
@@ -1327,23 +1374,41 @@ function showShop() {
     </div>`;
 }
 
+let _pendingPurchase = null;
+function showConfirm(title, desc, onYes) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-desc').innerHTML  = desc;
+  _pendingPurchase = onYes;
+  document.getElementById('confirm-modal').classList.add('active');
+}
+window.confirmPurchase = function(yes) {
+  document.getElementById('confirm-modal').classList.remove('active');
+  if (yes && _pendingPurchase) _pendingPurchase();
+  _pendingPurchase = null;
+};
+
 window.onGlassesClick = function() {
   const count = loadGlasses();
   if (count > 0) { SFX.coin(); return; }
   const usingFree = _shopFreeMode && loadFreeCoupon() > 0;
-  const price = usingFree ? 0 : discountedPrice(80, getDailyDiscounts(loadOwned(), false)['glasses_glasses'] || 0);
+  const discountPct = getDailyDiscounts(loadOwned(), false)['glasses_glasses'] || 0;
+  const price = usingFree ? 0 : discountedPrice(80, discountPct);
   const coins = loadCoins();
   if (coins < price) {
     const coinEl = document.getElementById('shop-coin-count');
     if (coinEl) { coinEl.style.color = '#ef4444'; setTimeout(() => { coinEl.style.color = ''; }, 600); }
     return;
   }
-  saveCoins(coins - price);
-  if (usingFree) { saveFreeCoupon(loadFreeCoupon() - 1); _shopFreeMode = false; }
-  saveGlasses(3);
-  showShop();
-  showQuestToast('✅ 이상한 안경 구매 완료!');
-  SFX.stageClear();
+  const priceLabel = usingFree ? '🎟️ 무료 구매권 사용' : `🪙 ${price}코인 → 잔액 ${coins - price}코인`;
+  showConfirm('구매하시겠습니까?', `🥽 이상한 안경 (3회)<br><br>${priceLabel}`, () => {
+    saveCoins(loadCoins() - price);
+    if (usingFree) { saveFreeCoupon(loadFreeCoupon() - 1); _shopFreeMode = false; }
+    if (!usingFree && discountPct > 0) markDiscountUsed();
+    saveGlasses(3);
+    showShop();
+    showQuestToast('✅ 이상한 안경 구매 완료!');
+    SFX.stageClear();
+  });
 };
 
 function updateGlassesUI() {
@@ -1395,25 +1460,32 @@ window.onCouponClick = function(id, price) {
     saveActiveCoupon(loadActiveCoupon() === id ? null : id);
     showShop();
     SFX.coin();
-  } else {
-    const usingFree = _shopFreeMode && loadFreeCoupon() > 0;
-    const effectivePrice = usingFree ? 0 : price;
-    const coins = loadCoins();
-    if (coins < effectivePrice) {
-      const coinEl = document.getElementById('shop-coin-count');
-      if (coinEl) { coinEl.style.color = '#ef4444'; setTimeout(() => { coinEl.style.color = ''; }, 600); }
-      return;
-    }
-    saveCoins(coins - effectivePrice);
+    return;
+  }
+  const usingFree = _shopFreeMode && loadFreeCoupon() > 0;
+  const discountPct = getDailyDiscounts(loadOwned(), loadGlasses() > 0)['coupon_' + id] || 0;
+  const effectivePrice = usingFree ? 0 : price;
+  const coins = loadCoins();
+  if (coins < effectivePrice) {
+    const coinEl = document.getElementById('shop-coin-count');
+    if (coinEl) { coinEl.style.color = '#ef4444'; setTimeout(() => { coinEl.style.color = ''; }, 600); }
+    return;
+  }
+  const couponInfo = SHOP_COUPONS.find(c => c.id === id);
+  const itemName   = couponInfo ? `${couponInfo.icon} ${couponInfo.name}` : '쿠폰';
+  const priceLabel = usingFree ? '🎟️ 무료 구매권 사용' : `🪙 ${effectivePrice}코인 → 잔액 ${coins - effectivePrice}코인`;
+  showConfirm('구매하시겠습니까?', `${itemName} (3회)<br><br>${priceLabel}`, () => {
+    const currentOwned = loadOwnedCoupons();
+    saveCoins(loadCoins() - effectivePrice);
     if (usingFree) { saveFreeCoupon(loadFreeCoupon() - 1); _shopFreeMode = false; }
-    owned[id] = 3;
-    saveOwnedCoupons(owned);
+    if (!usingFree && discountPct > 0) markDiscountUsed();
+    currentOwned[id] = 3;
+    saveOwnedCoupons(currentOwned);
     saveActiveCoupon(id);
-    const couponInfo = SHOP_COUPONS.find(c => c.id === id);
     showShop();
     showQuestToast(`✅ ${couponInfo ? couponInfo.name : '쿠폰'} 구매 완료!`);
     SFX.stageClear();
-  }
+  });
 };
 
 window.onShopClick = function(id, price) {
@@ -1425,26 +1497,32 @@ window.onShopClick = function(id, price) {
     applyCharacterColor(id);
     showShop();
     SFX.coin();
-  } else {
-    const usingFree = _shopFreeMode && loadFreeCoupon() > 0;
-    const effectivePrice = usingFree ? 0 : price;
-    const coins = loadCoins();
-    if (coins < effectivePrice) {
-      const coinEl = document.getElementById('shop-coin-count');
-      if (coinEl) { coinEl.style.color = '#ef4444'; setTimeout(() => { coinEl.style.color = ''; }, 600); }
-      return;
-    }
-    saveCoins(coins - effectivePrice);
+    return;
+  }
+  const usingFree = _shopFreeMode && loadFreeCoupon() > 0;
+  const discountPct = getDailyDiscounts(owned, loadGlasses() > 0)['color_' + id] || 0;
+  const effectivePrice = usingFree ? 0 : price;
+  const coins = loadCoins();
+  if (coins < effectivePrice) {
+    const coinEl = document.getElementById('shop-coin-count');
+    if (coinEl) { coinEl.style.color = '#ef4444'; setTimeout(() => { coinEl.style.color = ''; }, 600); }
+    return;
+  }
+  const colorInfo  = SHOP_COLORS.find(c => c.id === id);
+  const itemName   = colorInfo ? `🎨 ${colorInfo.name}` : id;
+  const priceLabel = usingFree ? '🎟️ 무료 구매권 사용' : (effectivePrice === 0 ? '🎁 무료' : `🪙 ${effectivePrice}코인 → 잔액 ${coins - effectivePrice}코인`);
+  showConfirm('구매하시겠습니까?', `${itemName}<br><br>${priceLabel}`, () => {
+    saveCoins(loadCoins() - effectivePrice);
     if (usingFree) { saveFreeCoupon(loadFreeCoupon() - 1); _shopFreeMode = false; }
-    const newOwned = [...owned, id];
+    if (!usingFree && discountPct > 0) markDiscountUsed();
+    const newOwned = [...loadOwned(), id];
     saveOwned(newOwned);
     saveActiveColor(id);
     applyCharacterColor(id);
-    const colorInfo = SHOP_COLORS.find(c => c.id === id);
     showShop();
     showQuestToast(`✅ ${colorInfo ? colorInfo.name : id} 구매 완료!`);
     SFX.stageClear();
-  }
+  });
 };
 
 function applyCharacterColor(id) {
@@ -1967,6 +2045,27 @@ window.onClickStart = function() {
   const inp = document.getElementById('name-input');
   const name = inp ? inp.value.trim() : playerName;
   if (!name) { if (inp) inp.style.borderColor='#ef4444'; return; }
+  const isChangingName = !!(inp && playerName);
+  if (isChangingName) {
+    const cost = nameChangeCost();
+    const coins = loadCoins();
+    if (coins < cost) return;
+    const newName = name;
+    showConfirm(
+      '이름을 변경하시겠습니까?',
+      `<b style="color:#c4b5fd">${playerName}</b> → <b style="color:#fcd34d">${newName}</b><br><br>🪙 ${cost}코인 → 잔액 ${coins - cost}코인`,
+      () => {
+        saveCoins(loadCoins() - cost);
+        saveNameChangeCnt(loadNameChangeCnt() + 1);
+        playerName = newName;
+        localStorage.setItem(LS_PLAYER_NAME, newName);
+        checkQuestPlayGame();
+        checkQuestSkin(loadActiveColor());
+        showTitleScreen();
+      }
+    );
+    return;
+  }
   playerName = name;
   localStorage.setItem(LS_PLAYER_NAME, name);
   checkQuestPlayGame();
@@ -2123,7 +2222,9 @@ function updateScoreUI() {
 
   // 카메라 스와이프 (조이스틱·점프 영역 제외한 곳)
   let camId = null, camPrev = { x: 0, y: 0 };
+  const overlayEl = document.getElementById('overlay');
   document.addEventListener('touchstart', e => {
+    if (overlayEl.style.display !== 'none' && overlayEl.style.display !== '') return;
     for (const t of e.changedTouches) {
       if (camId !== null) continue;
       if (zone.contains(e.target) || jumpEl.contains(e.target)) continue;
@@ -2132,6 +2233,7 @@ function updateScoreUI() {
     }
   });
   document.addEventListener('touchmove', e => {
+    if (overlayEl.style.display !== 'none' && overlayEl.style.display !== '') return;
     for (const t of e.changedTouches) {
       if (t.identifier !== camId) continue;
       cameraYaw   -= (t.clientX - camPrev.x) * 0.006;
@@ -2170,15 +2272,17 @@ const SHOP_COLORS = [
   { id: 'rainbow', name: '레인보우',    hex: 'rainbow', color: 0xff0000, emissive: 0x440000, price: 100 },
 ];
 
-const LS_COINS         = 'ditto_coins';
-const LS_OWNED         = 'ditto_owned_colors';
-const LS_ACTIVE        = 'ditto_active_color';
-const LS_COUPONS       = 'ditto_owned_coupons';
-const LS_ACTIVE_COUPON = 'ditto_active_coupon';
-const LS_PLAYER_NAME   = 'ditto_player_name';
-const LS_GLASSES       = 'ditto_glasses';
-const LS_SPIN_DATE     = 'ditto_spin_date';
-const LS_FREE_COUPON   = 'ditto_free_coupon';
+const LS_COINS            = 'ditto_coins';
+const LS_OWNED            = 'ditto_owned_colors';
+const LS_ACTIVE           = 'ditto_active_color';
+const LS_COUPONS          = 'ditto_owned_coupons';
+const LS_ACTIVE_COUPON    = 'ditto_active_coupon';
+const LS_PLAYER_NAME      = 'ditto_player_name';
+const LS_GLASSES          = 'ditto_glasses';
+const LS_SPIN_DATE        = 'ditto_spin_date';
+const LS_FREE_COUPON      = 'ditto_free_coupon';
+const LS_NAME_CHANGE_CNT  = 'ditto_name_change_cnt';
+const LS_DISCOUNT_USED    = 'ditto_discount_used';
 
 const SPIN_PRIZES = [
   { label: '5코인',      coins: 5,          chance: 0.55, color: '#6d28d9' },
@@ -2372,6 +2476,7 @@ window.resumeFromQuests = resumeFromQuests;
 
 // ── 오늘의 할인 ──
 function getDailyDiscounts(ownedColors = [], glassesOwned = false) {
+  if (isDiscountUsedToday()) return {};
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   let s = 0;
   for (let i = 0; i < today.length; i++) s = (s * 31 + today.charCodeAt(i)) | 0;
@@ -2398,6 +2503,16 @@ function getDailyDiscounts(ownedColors = [], glassesOwned = false) {
   return result;
 }
 function discountedPrice(price, pct) { return pct >= 100 ? 0 : Math.ceil(price * (1 - pct / 100)); }
+
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function isDiscountUsedToday() {
+  try { return localStorage.getItem(LS_DISCOUNT_USED) === todayStr(); } catch { return false; }
+}
+function markDiscountUsed() { localStorage.setItem(LS_DISCOUNT_USED, todayStr()); }
+
+function loadNameChangeCnt()  { return parseInt(localStorage.getItem(LS_NAME_CHANGE_CNT) || '0'); }
+function saveNameChangeCnt(n) { localStorage.setItem(LS_NAME_CHANGE_CNT, String(n)); }
+function nameChangeCost()     { return (loadNameChangeCnt() + 1) * 50; }
 
 const SHOP_COUPONS = [
   { id: 'stage2', name: '2단계 시작권', stage: 2, price: 25, icon: '🎟️' },
