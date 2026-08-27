@@ -16,11 +16,10 @@
       background: #000;
       overflow: hidden;
       font-family: 'Arial', sans-serif;
-      /* iOS 고무줄 스크롤 방지 */
       position: fixed; width: 100%; height: 100%;
-      touch-action: none;
       -webkit-user-select: none; user-select: none;
     }
+    body.game-active { touch-action: none; }
     canvas { display: block; touch-action: none; }
 
     /* ── 상단 HUD ── */
@@ -292,9 +291,10 @@
     @media (max-width: 640px) {
       .hero-cols { grid-template-columns: 1fr; }
       .hero-left { border-right: none; border-bottom: 1px solid rgba(167,139,250,0.18); padding: 20px 18px; }
-      .hero-right { padding: 20px 18px; }
+      .hero-right { padding: 20px 18px; overflow-y: visible; }
       .hero-header { padding: 20px 18px 14px; }
       .hero-header h2 { font-size: 22px; }
+      .panel-hero { overflow: visible; }
     }
     @media (max-width: 480px) {
       .panel { padding: 18px 14px; border-radius: 14px; }
@@ -4556,6 +4556,17 @@ function updateCamera() {
 }
 
 init();
+
+// overlay 표시 여부에 따라 body.game-active 토글 (touch-action 스위칭)
+(function() {
+  const overlay = document.getElementById('overlay');
+  function sync() {
+    const visible = overlay.style.display !== 'none';
+    document.body.classList.toggle('game-active', !visible);
+  }
+  new MutationObserver(sync).observe(overlay, { attributes: true, attributeFilter: ['style'] });
+})();
+
 showTitleScreen();
 </script>
 <script>
