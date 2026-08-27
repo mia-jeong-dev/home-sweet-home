@@ -982,6 +982,7 @@ let flipSpikePositions = [];
 let movingPlatforms = [];
 let slidingPlatforms = [];
 let playerOnMovingPlatform = null;
+let playerOnSlipperyPlatform = false;
 let poisonActive = false;
 let poisonTicksRemaining = 0;
 let poisonTickTimer = 0;
@@ -3099,6 +3100,7 @@ function clearStage() {
   movingPlatforms = [];
   slidingPlatforms = [];
   playerOnMovingPlatform = null;
+  playerOnSlipperyPlatform = false;
   poisonActive = false;
   poisonTicksRemaining = 0;
   poisonTickTimer = 0;
@@ -3234,6 +3236,21 @@ function _buildStage(stage, trueRand = 0.5) {
   }
   buildMovingPlatforms(stage);
   buildSlidingPlatforms(stage);
+
+  if (stage === 6) {
+    const iceMat = () => new THREE.MeshStandardMaterial({
+      color: 0xbae6fd, emissive: 0x38bdf8, emissiveIntensity: 0.3,
+      roughness: 0.04, metalness: 0.25, transparent: true, opacity: 0.9,
+    });
+    for (const p of platforms) {
+      if (p.userData.isGoal || p.userData.isStart || p.userData.isHazard ||
+          p.userData.isPoisonHazard || p.userData.isFlipHazard ||
+          p.userData.isFake || p.userData.isHidden || p.userData.isSliding) continue;
+      p.userData.isSlippery = true;
+      p.material = iceMat();
+    }
+  }
+
   buildBackground(stage);
   if (stage === 1) buildSecretBlocks();
   if (stage === 10) buildStage10SecretBlocks();
@@ -4078,8 +4095,19 @@ function updatePlayer() {
   }
   if (_move.lengthSq() > 0) _move.normalize().multiplyScalar(MOVE_SPEED);
 
-  velocity.x = _move.x;
-  velocity.z = _move.z;
+  if (playerOnSlipperyPlatform) {
+    // 얼음 물리: 느린 가속 + 미끄러짐
+    if (_move.lengthSq() > 0) {
+      velocity.x += (_move.x - velocity.x) * 0.13;
+      velocity.z += (_move.z - velocity.z) * 0.13;
+    } else {
+      velocity.x *= 0.91;
+      velocity.z *= 0.91;
+    }
+  } else {
+    velocity.x = _move.x;
+    velocity.z = _move.z;
+  }
 
   // Gravity
   velocity.y += GRAVITY;
@@ -4105,6 +4133,7 @@ function updatePlayer() {
   const wasOnGround = onGround;
   onGround = false;
   playerOnMovingPlatform = null;
+  playerOnSlipperyPlatform = false;
   _pBox.setFromCenterAndSize(player.position, _pSize);
 
   for (const plat of platforms) {
@@ -4130,6 +4159,9 @@ function updatePlayer() {
         }
         if (plat.userData.isSliding) {
           playerOnMovingPlatform = slidingPlatforms.find(m => m.mesh === plat) || null;
+        }
+        if (plat.userData.isSlippery) {
+          playerOnSlipperyPlatform = true;
         }
 
         if (plat.userData.isGoal) {
