@@ -2075,6 +2075,7 @@ window.onClickStart = function() {
 };
 
 window.onClickRestart = function() {
+  renderer.domElement.style.display = '';
   checkQuestPlayGame();
   checkQuestSkin(loadActiveColor());
   sessionScore = 0;
