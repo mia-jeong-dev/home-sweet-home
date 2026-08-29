@@ -205,6 +205,23 @@
       opacity: 0;
       transition: opacity 0.15s;
     }
+    #underwater-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,80,180,0.22);
+      pointer-events: none;
+      z-index: 48;
+      opacity: 0;
+      transition: opacity 0.8s;
+    }
+    #underwater-overlay.active {
+      opacity: 1;
+      animation: uwPulse 4s ease-in-out infinite;
+    }
+    @keyframes uwPulse {
+      0%,100% { background: rgba(0,80,180,0.18); }
+      50%      { background: rgba(0,120,220,0.28); }
+    }
     #poison-indicator {
       position: fixed;
       top: 50%;
@@ -715,6 +732,7 @@
 
 <div id="damage-flash"></div>
 <div id="poison-flash"></div>
+<div id="underwater-overlay"></div>
 <div id="poison-indicator">☠ 독!</div>
 
 <div id="teleport-pw-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,5,20,0.97);border:2px solid #f59e0b;border-radius:16px;padding:24px 28px;z-index:200;text-align:center;min-width:260px;max-width:90vw;">
@@ -983,6 +1001,7 @@ let movingPlatforms = [];
 let slidingPlatforms = [];
 let playerOnMovingPlatform = null;
 let playerOnSlipperyPlatform = false;
+let underwaterDamageTimer = 0;
 let poisonActive = false;
 let poisonTicksRemaining = 0;
 let poisonTickTimer = 0;
@@ -2096,6 +2115,7 @@ window.onClickRestart = function() {
   poisonContactCooldown = 0;
   flipActive = false; flipTimer = 0; flipContactCooldown = 0;
   setFlipScreen(false);
+  setUnderwaterEffect(false);
   stageStartTime = Date.now();
   document.getElementById('overlay').style.display = 'none';
   document.getElementById('score-ui').style.display = 'block';
@@ -3102,12 +3122,14 @@ function clearStage() {
   slidingPlatforms = [];
   playerOnMovingPlatform = null;
   playerOnSlipperyPlatform = false;
+  underwaterDamageTimer = 0;
   poisonActive = false;
   poisonTicksRemaining = 0;
   poisonTickTimer = 0;
   poisonContactCooldown = 0;
   flipActive = false; flipTimer = 0; flipContactCooldown = 0;
   setFlipScreen(false);
+  setUnderwaterEffect(false);
   coinMeshes.forEach(c => scene.remove(c.mesh));
   coinMeshes = [];
   potionMeshes.forEach(p => scene.remove(p.group));
@@ -3137,6 +3159,7 @@ function buildStage(stage) {
   Math.random = () => { _s = (Math.imul(_s, 1664525) + 1013904223) | 0; return (_s >>> 0) / 4294967296; };
   _buildStage(stage, trueRand);
   Math.random = _origRandom;
+  setUnderwaterEffect(stage === 8);
 }
 function _buildStage(stage, trueRand = 0.5) {
   clearStage();
@@ -3989,6 +4012,7 @@ function startGame() {
   poisonContactCooldown = 0;
   flipActive = false; flipTimer = 0; flipContactCooldown = 0;
   setFlipScreen(false);
+  setUnderwaterEffect(false);
   hp = maxHp;
   updateHpBar();
   buildStage(currentStage);
@@ -4028,6 +4052,19 @@ function animate() {
   }
   if (_cachedActiveColorId === 'ghost') {
     playerBody.material.opacity = 0.07 + Math.abs(Math.sin(Date.now() * 0.002)) * 0.1;
+  }
+
+  // 8단계 수중 효과 & 5초마다 5 데미지
+  if (currentStage === 8) {
+    underwaterDamageTimer++;
+    if (underwaterDamageTimer >= 300) {
+      underwaterDamageTimer = 0;
+      hp = Math.max(0, hp - 5);
+      updateHpBar();
+      showDamageFlash();
+      SFX.damage();
+      if (hp <= 0) { gameOver(); return; }
+    }
   }
 
   updatePlayer();
@@ -4091,7 +4128,8 @@ function updatePlayer() {
     _move.addScaledVector(_fwd,   -window._touchMove.y);
     _move.addScaledVector(_right,  window._touchMove.x);
   }
-  if (_move.lengthSq() > 0) _move.normalize().multiplyScalar(MOVE_SPEED);
+  const stageMoveSpeed = currentStage === 8 ? MOVE_SPEED * 0.65 : MOVE_SPEED;
+  if (_move.lengthSq() > 0) _move.normalize().multiplyScalar(stageMoveSpeed);
 
   if (playerOnSlipperyPlatform) {
     // 얼음 물리: 느린 가속 + 미끄러짐
@@ -4107,13 +4145,22 @@ function updatePlayer() {
     velocity.z = _move.z;
   }
 
-  // Gravity (7단계: 낮은 중력 → 더 높고 느린 점프)
-  const stageGravity = currentStage === 7 ? GRAVITY * 0.55 : GRAVITY;
+  // 8단계 수중: 수평 감속 (물 저항)
+  if (currentStage === 8) {
+    velocity.x *= 0.82;
+    velocity.z *= 0.82;
+  }
+
+  // Gravity (7단계: 낮은 중력 / 8단계: 부력으로 느리게 낙하)
+  const stageGravity = currentStage === 7 ? GRAVITY * 0.55
+                     : currentStage === 8 ? GRAVITY * 0.60
+                     : GRAVITY;
   velocity.y += stageGravity;
 
   // Jump
+  const stageJumpForce = currentStage === 8 ? JUMP_FORCE * 0.80 : JUMP_FORCE;
   if ((keys['Space'] || keys['KeyW']) && onGround) {
-    velocity.y = JUMP_FORCE;
+    velocity.y = stageJumpForce;
     onGround = false;
     keys['Space'] = false;
     SFX.jump();
@@ -4361,6 +4408,7 @@ function respawn() {
   poisonContactCooldown = 0;
   flipActive = false; flipTimer = 0; flipContactCooldown = 0;
   setFlipScreen(false);
+  setUnderwaterEffect(false);
   updatePoisonIndicator();
 }
 
@@ -4402,6 +4450,27 @@ function updatePoisonIndicator() {
   const el = document.getElementById('poison-indicator');
   if (!el) return;
   el.style.display = poisonActive ? 'block' : 'none';
+}
+
+function setUnderwaterEffect(on) {
+  const el = document.getElementById('underwater-overlay');
+  if (el) el.classList.toggle('active', on);
+  if (!playerBody) return;
+  if (on) {
+    playerBody.material.transparent = true;
+    playerBody.material.opacity = 0.82;
+    const orig = playerBody.material.emissive.getHex();
+    playerBody.material._origEmissive = orig;
+    playerBody.material.emissive.setHex(0x0055cc);
+    playerBody.material.emissiveIntensity = 0.55;
+  } else {
+    playerBody.material.transparent = _cachedActiveColorId === 'ghost';
+    playerBody.material.opacity = _cachedActiveColorId === 'ghost' ? 0.13 : 1;
+    if (playerBody.material._origEmissive !== undefined) {
+      playerBody.material.emissive.setHex(playerBody.material._origEmissive);
+    }
+    playerBody.material.emissiveIntensity = 0.3;
+  }
 }
 
 function setFlipScreen(on) {
