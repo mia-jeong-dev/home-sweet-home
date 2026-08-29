@@ -4110,13 +4110,12 @@ function updatePlayer() {
   }
 
   // Gravity (7단계: 낮은 중력 → 더 높고 느린 점프)
-  const stageGravity    = currentStage === 7 ? GRAVITY * 0.65  : GRAVITY;
-  const stageJumpForce  = currentStage === 7 ? JUMP_FORCE * 1.4 : JUMP_FORCE;
+  const stageGravity = currentStage === 7 ? GRAVITY * 0.55 : GRAVITY;
   velocity.y += stageGravity;
 
   // Jump
   if ((keys['Space'] || keys['KeyW']) && onGround) {
-    velocity.y = stageJumpForce;
+    velocity.y = JUMP_FORCE;
     onGround = false;
     keys['Space'] = false;
     SFX.jump();
