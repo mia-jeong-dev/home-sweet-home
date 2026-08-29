@@ -4418,7 +4418,7 @@ function updatePlayer() {
         }
         if (plat.userData.isLavaHazard && lavaContactCooldown <= 0) {
           lavaActive = true;
-          lavaTicksRemaining = 4;
+          lavaTicksRemaining = 10;
           lavaTickTimer = 60;
           lavaContactCooldown = 300;
           const idx = platforms.indexOf(plat);
@@ -4593,7 +4593,7 @@ function respawn() {
   poisonContactCooldown = 0;
   flipActive = false; flipTimer = 0; flipContactCooldown = 0;
   setFlipScreen(false);
-  setUnderwaterEffect(false);
+  setUnderwaterEffect(currentStage === 8);
   updatePoisonIndicator();
 }
 
