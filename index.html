@@ -2545,15 +2545,15 @@ function saveNameChangeCnt(n) { localStorage.setItem(LS_NAME_CHANGE_CNT, String(
 function nameChangeCost()     { return (loadNameChangeCnt() + 1) * 50; }
 
 const SHOP_COUPONS = [
-  { id: 'stage2',  name: '2단계 시작권',  stage: 2,  price: 25,  icon: '🎟️' },
-  { id: 'stage3',  name: '3단계 시작권',  stage: 3,  price: 50,  icon: '🎫' },
-  { id: 'stage4',  name: '4단계 시작권',  stage: 4,  price: 85,  icon: '🌿' },
-  { id: 'stage5',  name: '5단계 시작권',  stage: 5,  price: 130, icon: '🔥' },
-  { id: 'stage6',  name: '6단계 시작권',  stage: 6,  price: 190, icon: '❄️' },
-  { id: 'stage7',  name: '7단계 시작권',  stage: 7,  price: 260, icon: '🌙' },
-  { id: 'stage8',  name: '8단계 시작권',  stage: 8,  price: 350, icon: '🌊' },
-  { id: 'stage9',  name: '9단계 시작권',  stage: 9,  price: 460, icon: '⭐' },
-  { id: 'stage10', name: '10단계 시작권', stage: 10, price: 600, icon: '👑' },
+  { id: 'stage2',  name: '2단계 시작권',  stage: 2,  price: 15,  icon: '🎟️' },
+  { id: 'stage3',  name: '3단계 시작권',  stage: 3,  price: 25,  icon: '🎫' },
+  { id: 'stage4',  name: '4단계 시작권',  stage: 4,  price: 40,  icon: '🌿' },
+  { id: 'stage5',  name: '5단계 시작권',  stage: 5,  price: 60,  icon: '🔥' },
+  { id: 'stage6',  name: '6단계 시작권',  stage: 6,  price: 85,  icon: '❄️' },
+  { id: 'stage7',  name: '7단계 시작권',  stage: 7,  price: 120, icon: '🌙' },
+  { id: 'stage8',  name: '8단계 시작권',  stage: 8,  price: 160, icon: '🌊' },
+  { id: 'stage9',  name: '9단계 시작권',  stage: 9,  price: 210, icon: '⭐' },
+  { id: 'stage10', name: '10단계 시작권', stage: 10, price: 270, icon: '👑' },
 ];
 
 function loadCoins()       { return parseInt(localStorage.getItem(LS_COINS) || '0'); }
