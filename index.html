@@ -2620,10 +2620,17 @@ function updateSkipUI() {
   if (!el) return;
   const owned = loadOwnedCoupons();
   el.style.display = (owned['skip']) ? 'block' : 'none';
+  if (!el._skipTouchBound) {
+    el._skipTouchBound = true;
+    el.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      useSkipCoupon();
+    }, { passive: false });
+  }
 }
 
 function useSkipCoupon() {
-  if (!gameActive) return;
   player.position.set(prePreFinalPlatformPos.x, prePreFinalPlatformPos.y + 1, prePreFinalPlatformPos.z);
   velocity.set(0, 0, 0);
   SFX.stageClear();
