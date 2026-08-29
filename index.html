@@ -796,8 +796,8 @@
     <div class="help-title">🎁 아이템</div>
     <div class="help-row"><span class="help-icon">🪙</span><span class="help-desc"><b>코인</b> — 플랫폼 위에 떠 있어요. 상점에서 스킨·아이템 구매에 사용!</span></div>
     <div class="help-row"><span class="help-icon">🧪</span><span class="help-desc"><b>초록 물약</b> — 먹으면 HP 회복! (6단계부터 3개 등장)</span></div>
-    <div class="help-row"><span class="help-icon">🥽</span><span class="help-desc"><b>이상한 안경</b> — 상점에서 구매. 투명 블록을 10초간 볼 수 있어요</span></div>
-    <div class="help-row"><span class="help-icon">⚡</span><span class="help-desc"><b>순간이동권</b> — 암호를 알면 10단계 직전으로 순간이동!</span></div>
+    <div class="help-row"><span class="help-icon">🥽</span><span class="help-desc"><b>이상한 안경</b> — 상점에서 구매. 게임 중 [G]키로 사용!</span></div>
+    <div class="help-row"><span class="help-icon">⚡</span><span class="help-desc"><b>순간이동권</b> — 암호를 알면 획득 가능!</span></div>
     <div class="help-row"><span class="help-icon">🎒</span><span class="help-desc"><b>인벤토리</b> — 보유한 스킨·쿠폰·아이템을 확인해요. [I]키 또는 HUD 버튼으로 열기</span></div>
     <div class="help-row"><span class="help-icon">📋</span><span class="help-desc"><b>퀘스트</b> — 각 퀘스트를 2번 달성하면 🪙 30 코인 보상! [Q]키 또는 HUD 버튼으로 확인<br>퀘스트 종류: 특정 스킨으로 플레이, N단계 이상 도달, 게임 클리어, HP 유지 클리어 등</span></div>
     <div class="help-row"><span class="help-icon">🔥</span><span class="help-desc"><b>오늘의 할인</b> — 상점에서 매일 3개 아이템이 할인돼요 (10%~100%). 자정마다 갱신!</span></div>
@@ -806,7 +806,6 @@
     <div class="help-row"><span class="help-icon">📈</span><span class="help-desc"><b>스테이지 보너스</b>: (도달 단계 - 1) × 1,000점<br><b>HP 보너스</b>: 잔여 HP × 5점<br><b>시간 보너스</b>: 빠를수록 높은 점수 (최대 900점)</span></div>
 
     <div class="help-title">💡 힌트</div>
-    <div class="help-row"><span class="help-icon">🥽</span><span class="help-desc">처음의 처음과 마지막의 마지막에서 이상한 안경을 써라</span></div>
     <button class="btn btn-purple" onclick="closeHelp()" style="margin-top:10px">✓ 알겠어요!</button>
   </div>
 </div>
@@ -1335,7 +1334,7 @@ function showShop() {
         <span class="coupon-status-badge">사용가능</span>
         <span class="coupon-icon">⚡</span>
         <div class="coupon-info">
-          <div class="coupon-name">순간이동권 <span style="font-size:10px;color:#888">(비밀)</span></div>
+          <div class="coupon-name">순간이동권</div>
           <div class="color-owned">✓ 무제한 — 게임 중 [T]키 또는 버튼 · 암호 입력 필요</div>
         </div>
       </div>
@@ -1370,8 +1369,8 @@ function showShop() {
           <div class="coupon-name">이상한 안경</div>
           <div class="${glassesCount > 0 ? 'color-owned' : 'color-price'}">
             ${glassesCount > 0
-              ? `✓ 잔여 ${glassesCount}회 — 게임 중 [G]키로 사용 · 10초간 투명한 블록을 볼 수 있음`
-              : `${priceHtml(80, 'glasses_glasses', false)} · 3회 제공 — 투명한 블록을 10초간 볼 수 있음`}
+              ? `✓ 잔여 ${glassesCount}회 — 게임 중 [G]키로 사용`
+              : `${priceHtml(80, 'glasses_glasses', false)} · 3회 제공`}
           </div>
         </div>
       </div>
@@ -2654,8 +2653,8 @@ function showTeleportPasswordPrompt() {
   const overlay = document.getElementById('overlay');
   overlay.innerHTML = `
     <div class="panel">
-      <h2>🔒 비밀 쿠폰</h2>
-      <p class="sub">암호를 입력하면 순간이동권(무제한)을 획득합니다!</p>
+      <h2>🔒 쿠폰 잠금 해제</h2>
+      <p class="sub">암호를 입력하세요.</p>
       <input id="pw-input" class="name-input" maxlength="20" placeholder="암호 입력" style="-webkit-text-security:disc;letter-spacing:4px;" />
       <button class="btn btn-purple" onclick="onTeleportPasswordSubmit()">확인</button>
       <button class="btn btn-gray" onclick="showShop()">← 뒤로</button>
@@ -3637,9 +3636,9 @@ function buildStage67() {
   buildBackground(4); // 마법 왕국 배경
 
   const banner = document.getElementById('level-banner');
-  document.getElementById('level-banner-title').textContent = '✨ 비밀 스테이지 67';
+  document.getElementById('level-banner-title').textContent = '✨ Stage 67';
   document.getElementById('level-banner-title').style.color = '#a78bfa';
-  document.getElementById('level-banner-sub').textContent = '숨겨진 길을 찾아낸 자만이 올 수 있는 곳';
+  document.getElementById('level-banner-sub').textContent = '???';
   banner.style.display = 'block';
   setTimeout(() => { banner.style.display = 'none'; }, 2800);
 
@@ -3807,7 +3806,7 @@ function buildHiddenHiddenArea() {
   });
 
   const banner = document.getElementById('level-banner');
-  document.getElementById('level-banner-title').textContent = '🔴 히든의 히든 스테이지';
+  document.getElementById('level-banner-title').textContent = '🔴 ??? 스테이지';
   document.getElementById('level-banner-title').style.color = '#ff2222';
   document.getElementById('level-banner-sub').textContent = '???';
   banner.style.display = 'block';
@@ -3948,9 +3947,9 @@ function buildSecretArea() {
 
   // 히든 스테이지 배너 표시
   const banner = document.getElementById('level-banner');
-  document.getElementById('level-banner-title').textContent = '🌟 히든 스테이지';
+  document.getElementById('level-banner-title').textContent = '🌟 ??? 스테이지';
   document.getElementById('level-banner-title').style.color = '#ffd700';
-  document.getElementById('level-banner-sub').textContent = '비밀의 방 — 코인을 모아 클리어하라!';
+  document.getElementById('level-banner-sub').textContent = '코인을 모아 클리어하라!';
   banner.style.display = 'block';
   setTimeout(() => { banner.style.display = 'none'; }, 2800);
 }
