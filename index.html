@@ -3173,7 +3173,8 @@ function _buildStage(stage, trueRand = 0.5) {
     x += lateralJitter;
     // 낚시 플랫폼 자체와 바로 다음 플랫폼은 앞뒤 플랫폼과 겹치도록 간격 좁힘
     const isFakeAdj = (!fakePlaced && i === fakeIdx) || (fakePlaced && i === fakeIdx + 1);
-    const hGapMult = isFakeAdj ? 0.8 : (0.8 + Math.random() * 0.4);
+    const fakeGapMult = stage <= 2 ? 0.95 : 0.8;
+    const hGapMult = isFakeAdj ? fakeGapMult : (0.8 + Math.random() * 0.4);
     z -= hGap * hGapMult;
     y += isFakeAdj ? vStep * 0.3 : vStep * (0.5 + Math.random() * 0.5);
 
