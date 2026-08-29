@@ -3240,17 +3240,12 @@ function _buildStage(stage, trueRand = 0.5) {
   buildSlidingPlatforms(stage);
 
   if (stage === 6) {
-    const iceMat = () => new THREE.MeshStandardMaterial({
-      color: 0xbae6fd, emissive: 0x38bdf8, emissiveIntensity: 0.3,
-      roughness: 0.04, metalness: 0.25, transparent: true, opacity: 0.9,
-    });
     for (const p of platforms) {
-      if (!p.userData.w) continue; // 가시 메시 등 특수 오브젝트 제외
+      if (!p.userData.w) continue;
       if (p.userData.isGoal || p.userData.isStart || p.userData.isHazard ||
           p.userData.isPoisonHazard || p.userData.isFlipHazard ||
           p.userData.isFake || p.userData.isHidden || p.userData.isSliding) continue;
       p.userData.isSlippery = true;
-      p.material = iceMat();
     }
   }
 
