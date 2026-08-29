@@ -835,6 +835,7 @@
     <div id="score-ui">SCORE: <span id="score-val-ui">0</span></div>
     <div id="coin-ui">🪙 <span id="coin-val-ui">0</span></div>
     <div id="teleport-ui" onclick="useTeleportCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f59e0b;border-radius:10px;padding:7px 12px;color:#fcd34d;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">⚡ 순간이동 [T]</div>
+    <div id="skip-ui" onclick="useSkipCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🚀 스킵</div>
     <div id="glasses-ui" onclick="useGlasses()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #00e5ff;border-radius:10px;padding:7px 12px;color:#67e8f9;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🥽 안경 [G]</div>
     <div id="shop-hud-btn" onclick="openShopDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🛒 상점</div>
     <div id="inv-hud-btn" onclick="openInventoryDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #34d399;border-radius:10px;padding:7px 12px;color:#6ee7b7;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🎒 인벤토리 [I]</div>
@@ -1345,7 +1346,7 @@ function showShop() {
           <div class="coupon-name">스킵권</div>
           <div class="${ownedCoupons['skip'] ? 'color-owned' : 'color-price'}">
             ${ownedCoupons['skip']
-              ? '✓ 무제한 — 게임 중 [T]키 · 현재 단계 골인 전전 구간으로 이동'
+              ? '✓ 무제한 — 게임 중 🚀 버튼으로 현재 단계 골인 직전 구간으로 이동'
               : '🔒 암호 입력으로 획득'}
           </div>
         </div>
@@ -2124,6 +2125,7 @@ window.onClickRestart = function() {
   buildStage(currentStage);
   applyCharacterColor(loadActiveColor());
   updateTeleportUI();
+  updateSkipUI();
   player.position.set(0, 2, 0);
   velocity.set(0, 0, 0);
   invincibleTimer = 0;
@@ -2612,6 +2614,22 @@ function updateTeleportUI() {
   el.style.display = 'block';
   el.textContent = `⚡ 순간이동 [T]`;
 }
+
+function updateSkipUI() {
+  const el = document.getElementById('skip-ui');
+  if (!el) return;
+  const owned = loadOwnedCoupons();
+  el.style.display = (owned['skip']) ? 'block' : 'none';
+}
+
+function useSkipCoupon() {
+  if (!gameActive) return;
+  player.position.set(prePreFinalPlatformPos.x, prePreFinalPlatformPos.y + 1, prePreFinalPlatformPos.z);
+  velocity.set(0, 0, 0);
+  SFX.stageClear();
+  showDamageFlash();
+}
+window.useSkipCoupon = useSkipCoupon;
 
 function useTeleportCoupon() {
   // T키: 암호 모달 표시 (소유/활성화 무관하게 항상 사용 가능)
@@ -4201,6 +4219,7 @@ function startGame() {
   buildStage(currentStage);
   applyCharacterColor(loadActiveColor());
   updateTeleportUI();
+  updateSkipUI();
   player.position.set(0, 2, 0);
   velocity.set(0, 0, 0);
   stageStartTime = Date.now();
