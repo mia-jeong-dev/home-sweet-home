@@ -2619,25 +2619,19 @@ window.useTeleportCoupon = useTeleportCoupon;
 
 window.confirmTeleport = function() {
   const inp = document.getElementById('teleport-pw-input');
-  if (inp.value !== '016712') {
+  if (inp.value !== '6713') {
     inp.style.borderColor = '#ef4444';
     inp.value = '';
     inp.placeholder = '암호가 틀렸습니다...';
     return;
   }
-  // 암호 일치 → 순간이동
+  // 암호 일치 → 현재 스테이지 골인 전전 구간으로 순간이동
   document.getElementById('teleport-pw-modal').style.display = 'none';
   renderer.domElement.style.display = 'block';
   gameActive = true;
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
-  // 스테이지 10으로 이동 후 골 직전 블록에 배치
-  currentStage = 10;
-  buildStage(10);
-  updateTeleportUI();
-  player.position.set(preFinalPlatformPos.x, preFinalPlatformPos.y, preFinalPlatformPos.z);
+  player.position.set(prePreFinalPlatformPos.x, prePreFinalPlatformPos.y + 1, prePreFinalPlatformPos.z);
   velocity.set(0, 0, 0);
-  hp = maxHp;
-  updateHpBar();
   SFX.stageClear();
   showDamageFlash();
 };
@@ -2667,7 +2661,7 @@ window.showTeleportPasswordPrompt = showTeleportPasswordPrompt;
 
 window.onTeleportPasswordSubmit = function() {
   const inp = document.getElementById('pw-input');
-  if (inp.value === '016712') {
+  if (inp.value === '6713') {
     const owned = loadOwnedCoupons();
     owned['teleport'] = 1;
     saveOwnedCoupons(owned);
