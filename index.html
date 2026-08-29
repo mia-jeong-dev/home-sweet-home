@@ -3650,19 +3650,28 @@ function buildStage67() {
   clearStage();
   currentStage = 67;
   stage67Triggered = true;
-  const palette = STAGE_COLORS[3]; // 마법 왕국 테마
 
-  scene.fog.color.setHex(palette.sky2);
-  renderer.setClearColor(palette.sky2);
+  scene.fog.color.set(0x111122);
+  renderer.setClearColor(0x111122);
 
-  const platformCount = 26;
-  const hGap = 3.9;
-  const vStep = 1.6;
-  const hazardChance = 0.47;
-  const poisonChance = 0.09;
+  const platformCount = 67;
+  const hGap = 3.2;
+  const vStep = 1.4;
 
-  addPlatform(0, 0, 0, 6, 0.5, 6, palette.platform, false);
-  platforms[platforms.length - 1].userData.isStart = true;
+  const rainbowColors = [
+    0xff4444, 0xff8800, 0xffdd00, 0x44ff44,
+    0x00ccff, 0x4444ff, 0xcc44ff, 0xff44aa,
+  ];
+
+  // 시작 플랫폼
+  const startMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.2 });
+  const startMesh = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 6), startMat);
+  startMesh.position.set(0, 0, 0);
+  startMesh.castShadow = true;
+  startMesh.receiveShadow = true;
+  startMesh.userData = { w: 6, h: 0.5, d: 6, isHazard: false, isGoal: false, isStart: true };
+  scene.add(startMesh);
+  platforms.push(startMesh);
   stage67StartPos.set(0, 1.5, 0);
 
   let x = 0, y = 0, z = 0;
@@ -3673,21 +3682,61 @@ function buildStage67() {
 
     const w = 3.5 + Math.random() * 1.5;
     const d = 3.5 + Math.random() * 1.5;
-    const roll = Math.random();
-    const isHazard = roll < hazardChance;
-    const isPoisonHazard = !isHazard && roll < hazardChance + poisonChance;
+    const color = rainbowColors[i % rainbowColors.length];
 
-    addPlatform(x, y, z, w, 0.5, d, palette.platform, isHazard, false, isPoisonHazard);
-    if (!isHazard && !isPoisonHazard) {
-      buildFiveCoins(x, y, z);
-    }
+    const mat = new THREE.MeshStandardMaterial({
+      color, emissive: color, emissiveIntensity: 0.18, roughness: 0.4, metalness: 0.1,
+    });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 0.5, d), mat);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData = { w, h: 0.5, d, isHazard: false, isGoal: false };
+    scene.add(mesh);
+    platforms.push(mesh);
+    buildFiveCoins(x, y, z);
   }
 
   // Goal
   y += vStep * 1.3;
-  addPlatform(x, y, z, 6, 0.5, 6, 0xffd700, false, true);
+  const goalMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffa500, emissiveIntensity: 0.7, roughness: 0.2, metalness: 0.5 });
+  const goalMesh = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 6), goalMat);
+  goalMesh.position.set(x, y, z);
+  goalMesh.castShadow = true;
+  goalMesh.receiveShadow = true;
+  goalMesh.userData = { w: 6, h: 0.5, d: 6, isHazard: false, isGoal: true };
+  scene.add(goalMesh);
+  platforms.push(goalMesh);
 
-  buildBackground(4); // 마법 왕국 배경
+  // 배경: '67' 텍스트 스프라이트 다수
+  const qCanvas = document.createElement('canvas');
+  qCanvas.width = 128; qCanvas.height = 128;
+  const qCtx = qCanvas.getContext('2d');
+  qCtx.fillStyle = 'rgba(0,0,0,0)';
+  qCtx.fillRect(0, 0, 128, 128);
+  qCtx.font = 'bold 80px Arial';
+  qCtx.textAlign = 'center';
+  qCtx.textBaseline = 'middle';
+  const bgRainbow = ['#ff4444','#ff8800','#ffdd00','#44ff44','#00ccff','#cc44ff','#ff44aa'];
+  for (let i = 0; i < 50; i++) {
+    qCtx.fillStyle = bgRainbow[i % bgRainbow.length];
+    qCtx.fillText('67', 64, 64);
+  }
+  const qTex = new THREE.CanvasTexture(qCanvas);
+  const qMat = new THREE.SpriteMaterial({ map: qTex, transparent: true, opacity: 0.82 });
+  for (let i = 0; i < 60; i++) {
+    const sp = new THREE.Sprite(qMat.clone());
+    sp.material.color.setHex(parseInt(bgRainbow[i % bgRainbow.length].slice(1), 16));
+    const side = Math.random() > 0.5 ? 1 : -1;
+    const scale = 4 + Math.random() * 7;
+    sp.scale.set(scale, scale, 1);
+    sp.position.set(
+      side * (10 + Math.random() * 30),
+      Math.random() * 120,
+      -(Math.random() * 280)
+    );
+    addBg(sp);
+  }
 
   const banner = document.getElementById('level-banner');
   document.getElementById('level-banner-title').textContent = '✨ Stage 67';
@@ -3696,7 +3745,7 @@ function buildStage67() {
   banner.style.display = 'block';
   setTimeout(() => { banner.style.display = 'none'; }, 2800);
 
-  updateStageUI(67, palette);
+  updateStageUI(67, { name: 'Stage 67', sub: '???', platform: 0xffffff, sky2: 0x111122 });
   player.position.set(0, 2, 0);
   velocity.set(0, 0, 0);
 }
