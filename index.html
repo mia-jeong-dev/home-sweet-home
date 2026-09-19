@@ -1569,6 +1569,7 @@ window.onShopClick = function(id, price) {
 function applyCharacterColor(id) {
   if (!playerBody) return;
   _cachedActiveColorId = id;
+  playerBody.scale.set(1, id === 'potato' ? 1.35 : 1, 1);
   if (id === 'ghost') {
     playerBody.material.transparent = true;
     playerBody.material.depthWrite = false;
@@ -2314,6 +2315,7 @@ const SHOP_COLORS = [
   { id: 'silver',  name: '은빛 실버',   hex: '#b0b8c1', color: 0xb0b8c1, emissive: 0x4a5568, price: 70 },
   { id: 'ghost',   name: '투명 동글이', hex: 'ghost',   color: 0xccffff, emissive: 0x00aaaa, price: 15 },
   { id: 'rainbow', name: '레인보우',    hex: 'rainbow', color: 0xff0000, emissive: 0x440000, price: 100 },
+  { id: 'potato',  name: '감자 동글이', hex: '#c8a050', color: 0xc8a050, emissive: 0x7a5410, price: 140 },
 ];
 
 const LS_COINS            = 'ditto_coins';
@@ -2856,6 +2858,7 @@ function buildPlayer() {
   });
   playerBody = new THREE.Mesh(bodyGeo, bodyMat);
   playerBody.castShadow = true;
+  if (activeId === 'potato') playerBody.scale.set(1, 1.35, 1);
   player.add(playerBody);
 
   // Eyes
