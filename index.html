@@ -3793,9 +3793,6 @@ function updateLavaDrops() {
       const dy = player.position.y - l.mesh.position.y;
       const dz = player.position.z - l.mesh.position.z;
       if (dx * dx + dy * dy + dz * dz < (0.55 + 0.32) * (0.55 + 0.32)) {
-        lavaActive = true;
-        lavaTicksRemaining = 7;
-        lavaTickTimer = 60;
         lavaContactCooldown = 300;
         const idx = platforms.indexOf(l.plat);
         [-1, 1].forEach(delta => {
@@ -4356,20 +4353,6 @@ function animate() {
   updateParticles();
   updateLavaDrops();
   if (lavaContactCooldown > 0) lavaContactCooldown--;
-  if (lavaActive) {
-    if (lavaTickTimer > 0) {
-      lavaTickTimer--;
-    } else {
-      hp = Math.max(0, hp - 3);
-      updateHpBar();
-      showDamageFlash();
-      SFX.damage();
-      if (hp <= 0) { gameOver(); return; }
-      lavaTicksRemaining--;
-      if (lavaTicksRemaining <= 0) { lavaActive = false; }
-      else { lavaTickTimer = 60; }
-    }
-  }
   updateCamera();
   if (++_scoreUITick >= 30) { _scoreUITick = 0; updateScoreUI(); }
 
