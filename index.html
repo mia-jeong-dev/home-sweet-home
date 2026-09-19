@@ -2370,7 +2370,7 @@ const SHOP_COLORS = [
   { id: 'silver',  name: '은빛 실버',   hex: '#b0b8c1', color: 0xb0b8c1, emissive: 0x4a5568, price: 70 },
   { id: 'ghost',   name: '투명 동글이', hex: 'ghost',   color: 0xccffff, emissive: 0x00aaaa, price: 15 },
   { id: 'rainbow', name: '레인보우',    hex: 'rainbow', color: 0xff0000, emissive: 0x440000, price: 100 },
-  { id: 'potato',      name: '감자 동글이', hex: '#b08535', color: 0xb08535, emissive: 0x7a5410, price: 140 },
+  { id: 'potato',      name: '감자 동글이', hex: '#8c6420', color: 0x8c6420, emissive: 0x7a5410, price: 140 },
   { id: 'soccer',     name: '축구공',      hex: '#efefef', color: 0xefefef, emissive: 0x222222, price: 130 },
   { id: 'baseball',   name: '야구공',      hex: '#f5ede0', color: 0xf5ede0, emissive: 0x552222, price: 130 },
   { id: 'basketball', name: '농구공',      hex: '#e06000', color: 0xe06000, emissive: 0x5a2000, price: 130 },
@@ -2400,7 +2400,7 @@ function createBallTexture(type) {
   const ctx = canvas.getContext('2d');
 
   if (type === 'potato') {
-    ctx.fillStyle = '#b08535';
+    ctx.fillStyle = '#8c6420';
     ctx.fillRect(0, 0, S, S);
     // 불규칙 갈색 얼룩 패치
     const patches = [
