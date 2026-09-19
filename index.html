@@ -1618,7 +1618,7 @@ function applyCharacterColor(id) {
   if (needsCube !== currentCube) {
     playerBody.geometry.dispose();
     playerBody.geometry = needsCube
-      ? new THREE.BoxGeometry(1.1, 1.1, 1.1)
+      ? new THREE.BoxGeometry(0.887, 0.887, 0.887)
       : new THREE.SphereGeometry(0.55, 20, 20);
     _setFaceZ(needsCube);
   }
@@ -3112,10 +3112,10 @@ function buildStars() {
 }
 
 function _setFaceZ(isCube) {
-  const ez = isCube ? 0.57 : 0.46;
-  const sz = isCube ? 0.59 : 0.50;
-  const mz = isCube ? 0.58 : 0.50;
-  const mc = isCube ? 0.60 : 0.52;
+  const ez = isCube ? 0.45 : 0.46;
+  const sz = isCube ? 0.47 : 0.50;
+  const mz = isCube ? 0.46 : 0.50;
+  const mc = isCube ? 0.48 : 0.52;
   if (playerLeftEye)    playerLeftEye.position.z    = ez;
   if (playerRightEye)   playerRightEye.position.z   = ez;
   if (playerLeftShine)  playerLeftShine.position.z  = sz;
@@ -3141,7 +3141,7 @@ function buildPlayer() {
   const activeId  = loadActiveColor();
   const activeCol = SHOP_COLORS.find(c => c.id === activeId) || SHOP_COLORS[0];
   const isCube    = activeId === 'cube';
-  const bodyGeo   = isCube ? new THREE.BoxGeometry(1.1, 1.1, 1.1) : new THREE.SphereGeometry(0.55, 20, 20);
+  const bodyGeo   = isCube ? new THREE.BoxGeometry(0.887, 0.887, 0.887) : new THREE.SphereGeometry(0.55, 20, 20);
   const bodyMat   = new THREE.MeshStandardMaterial({
     color: activeCol.color, roughness: 0.3, metalness: 0.1,
     emissive: activeCol.emissive, emissiveIntensity: 0.3,
@@ -3160,10 +3160,10 @@ function buildPlayer() {
   player.add(playerBody);
 
   // Eyes
-  const ez = isCube ? 0.57 : 0.46;
-  const sz = isCube ? 0.59 : 0.50;
-  const mz = isCube ? 0.58 : 0.50;
-  const mc = isCube ? 0.60 : 0.52;
+  const ez = isCube ? 0.45 : 0.46;
+  const sz = isCube ? 0.47 : 0.50;
+  const mz = isCube ? 0.46 : 0.50;
+  const mc = isCube ? 0.48 : 0.52;
   const eyeGeo = new THREE.SphereGeometry(0.1, 12, 12);
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
   playerLeftEye = new THREE.Mesh(eyeGeo, eyeMat);
