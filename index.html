@@ -970,6 +970,7 @@ const SFX = (() => {
 // ─────────────────────────────────────────────
 let scene, camera, renderer;
 let player, playerBody, playerBodyTexture = null;
+let playerLeftEye, playerRightEye, playerLeftShine, playerRightShine, playerMouthLine;
 let platforms = [];
 let hazards = [];
 let spikePositions = [];
@@ -1389,9 +1390,10 @@ function showShop() {
         </div>
       </div>
 
-      <div style="color:#a78bfa;font-size:13px;font-weight:bold;letter-spacing:1px;margin:18px 0 10px">🎨 캐릭터 색상</div>
+      <div style="color:#a78bfa;font-size:14px;font-weight:bold;letter-spacing:1px;margin:18px 0 6px">🔵 동글이</div>
+      <div style="color:#888;font-size:11px;margin:0 0 7px">🎨 색상</div>
       <div class="shop-grid">
-        ${SHOP_COLORS.filter(c => !SPECIAL_SKIN_IDS.has(c.id)).map(c => {
+        ${SHOP_COLORS.filter(c => !SPECIAL_SKIN_IDS.has(c.id) && !SHAPE_SKIN_IDS.has(c.id)).map(c => {
           const isOwned  = owned.includes(c.id);
           const isActive = c.id === activeId;
           const key      = 'color_' + c.id;
@@ -1409,7 +1411,7 @@ function showShop() {
           </div>`;
         }).join('')}
       </div>
-      <div style="color:#f59e0b;font-size:13px;font-weight:bold;letter-spacing:1px;margin:18px 0 10px">✨ 특수 스킨</div>
+      <div style="color:#f59e0b;font-size:11px;margin:10px 0 7px">✨ 특수</div>
       <div class="shop-grid">
         ${SHOP_COLORS.filter(c => SPECIAL_SKIN_IDS.has(c.id)).map(c => {
           const isOwned  = owned.includes(c.id);
@@ -1422,6 +1424,26 @@ function showShop() {
             ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
             ${!isOwned ? discountBadge(key) : ''}
             <div class="color-swatch" style="background:${c.hex};"></div>
+            <div class="color-name">${c.name}</div>
+            <div class="${isOwned ? 'color-owned' : 'color-price'}">
+              ${isOwned ? (isActive ? '✓ 착용중' : '✓ 보유') : priceHtml(c.price, key, false)}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="color:#60a5fa;font-size:14px;font-weight:bold;letter-spacing:1px;margin:18px 0 10px">📦 모양</div>
+      <div class="shop-grid">
+        ${SHOP_COLORS.filter(c => SHAPE_SKIN_IDS.has(c.id)).map(c => {
+          const isOwned  = owned.includes(c.id);
+          const isActive = c.id === activeId;
+          const key      = 'color_' + c.id;
+          const sale     = dprice(c.price, key);
+          return `
+          <div class="color-card ${isOwned ? 'owned' : ''} ${isActive ? 'active' : ''}" style="position:relative"
+               onclick="onShopClick('${c.id}', ${sale})">
+            ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
+            ${!isOwned ? discountBadge(key) : ''}
+            <div class="color-swatch" style="background:${c.hex};border-radius:4px;"></div>
             <div class="color-name">${c.name}</div>
             <div class="${isOwned ? 'color-owned' : 'color-price'}">
               ${isOwned ? (isActive ? '✓ 착용중' : '✓ 보유') : priceHtml(c.price, key, false)}
@@ -1590,6 +1612,17 @@ function applyCharacterColor(id) {
   if (!playerBody) return;
   _cachedActiveColorId = id;
 
+  // 큐브 ↔ 구체 형태 전환
+  const needsCube   = id === 'cube';
+  const currentCube = playerBody.geometry.type === 'BoxGeometry';
+  if (needsCube !== currentCube) {
+    playerBody.geometry.dispose();
+    playerBody.geometry = needsCube
+      ? new THREE.BoxGeometry(1.1, 1.1, 1.1)
+      : new THREE.SphereGeometry(0.55, 20, 20);
+    _setFaceZ(needsCube);
+  }
+
   if (playerBodyTexture) { playerBodyTexture.dispose(); playerBodyTexture = null; }
 
   if (BALL_SKIN_IDS.has(id)) {
@@ -1691,8 +1724,9 @@ function showInventory() {
   const overlay      = document.getElementById('overlay');
   overlay.style.display = 'flex';
 
-  const ownedColors   = SHOP_COLORS.filter(c => owned.includes(c.id) && !SPECIAL_SKIN_IDS.has(c.id));
+  const ownedColors   = SHOP_COLORS.filter(c => owned.includes(c.id) && !SPECIAL_SKIN_IDS.has(c.id) && !SHAPE_SKIN_IDS.has(c.id));
   const ownedSpecials = SHOP_COLORS.filter(c => owned.includes(c.id) &&  SPECIAL_SKIN_IDS.has(c.id));
+  const ownedShapes   = SHOP_COLORS.filter(c => owned.includes(c.id) &&  SHAPE_SKIN_IDS.has(c.id));
   const ownedCouponList = SHOP_COUPONS.filter(c => (ownedCoupons[c.id] || 0) > 0);
 
   overlay.innerHTML = `
@@ -1701,9 +1735,10 @@ function showInventory() {
       <p class="sub">보유 중인 아이템 목록이에요</p>
       <div class="shop-coin-bar">🪙 보유 코인: ${coins}</div>
 
-      <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin:14px 0 8px">🎨 보유 스킨 (${ownedColors.length}개)</div>
+      <div style="color:#a78bfa;font-size:14px;font-weight:bold;margin:14px 0 4px">🔵 동글이</div>
+      <div style="color:#888;font-size:11px;margin:0 0 6px">🎨 색상 (${ownedColors.length}개)</div>
       ${ownedColors.length === 0
-        ? `<p style="color:#666;font-size:13px;text-align:center">보유한 스킨이 없어요</p>`
+        ? `<p style="color:#666;font-size:12px;text-align:center;margin-bottom:6px">없음</p>`
         : `<div class="shop-grid">
           ${ownedColors.map(c => {
             const isActive = c.id === loadActiveColor();
@@ -1716,10 +1751,9 @@ function showInventory() {
             </div>`;
           }).join('')}
           </div>`}
-
-      <div style="color:#f59e0b;font-size:13px;font-weight:bold;margin:14px 0 8px">✨ 특수 스킨 (${ownedSpecials.length}개)</div>
+      <div style="color:#f59e0b;font-size:11px;margin:8px 0 6px">✨ 특수 (${ownedSpecials.length}개)</div>
       ${ownedSpecials.length === 0
-        ? `<p style="color:#666;font-size:13px;text-align:center">보유한 특수 스킨이 없어요</p>`
+        ? `<p style="color:#666;font-size:12px;text-align:center;margin-bottom:6px">없음</p>`
         : `<div class="shop-grid">
           ${ownedSpecials.map(c => {
             const isActive = c.id === loadActiveColor();
@@ -1727,6 +1761,22 @@ function showInventory() {
             <div class="color-card owned ${isActive ? 'active' : ''}" onclick="invEquipColor('${c.id}')">
               ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
               <div class="color-swatch" style="background:${c.hex};"></div>
+              <div class="color-name">${c.name}</div>
+              <div class="color-owned">${isActive ? '✓ 착용중' : '✓ 보유'}</div>
+            </div>`;
+          }).join('')}
+          </div>`}
+
+      <div style="color:#60a5fa;font-size:14px;font-weight:bold;margin:14px 0 8px">📦 모양 (${ownedShapes.length}개)</div>
+      ${ownedShapes.length === 0
+        ? `<p style="color:#666;font-size:13px;text-align:center">보유한 모양 스킨이 없어요</p>`
+        : `<div class="shop-grid">
+          ${ownedShapes.map(c => {
+            const isActive = c.id === loadActiveColor();
+            return `
+            <div class="color-card owned ${isActive ? 'active' : ''}" onclick="invEquipColor('${c.id}')">
+              ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
+              <div class="color-swatch" style="background:${c.hex};border-radius:4px;"></div>
               <div class="color-name">${c.name}</div>
               <div class="color-owned">${isActive ? '✓ 착용중' : '✓ 보유'}</div>
             </div>`;
@@ -2376,6 +2426,7 @@ const SHOP_COLORS = [
   { id: 'basketball', name: '농구공',      hex: '#e06000', color: 0xe06000, emissive: 0x5a2000, price: 130 },
   { id: 'volleyball', name: '배구공',      hex: '#1a6fc4', color: 0x1a6fc4, emissive: 0x0a2a60, price: 130 },
   { id: 'tennis',     name: '테니스공',    hex: '#ccdd00', color: 0xccdd00, emissive: 0x445500, price: 130 },
+  { id: 'cube',       name: '정육면체',    hex: '#7090b0', color: 0x7090b0, emissive: 0x203040, price: 100 },
 ];
 
 const LS_COINS            = 'ditto_coins';
@@ -2392,6 +2443,7 @@ const LS_DISCOUNT_USED    = 'ditto_discount_used';
 
 const BALL_SKIN_IDS    = new Set(['potato', 'soccer', 'baseball', 'basketball', 'volleyball', 'tennis']);
 const SPECIAL_SKIN_IDS = new Set(['potato', ...BALL_SKIN_IDS]);
+const SHAPE_SKIN_IDS   = new Set(['cube']);
 
 function createBallTexture(type) {
   const S = 512, H = S / 2;
@@ -3059,6 +3111,26 @@ function buildStars() {
   scene.add(new THREE.Points(geo, mat));
 }
 
+function _setFaceZ(isCube) {
+  const ez = isCube ? 0.57 : 0.46;
+  const sz = isCube ? 0.59 : 0.50;
+  const mz = isCube ? 0.58 : 0.50;
+  const mc = isCube ? 0.60 : 0.52;
+  if (playerLeftEye)    playerLeftEye.position.z    = ez;
+  if (playerRightEye)   playerRightEye.position.z   = ez;
+  if (playerLeftShine)  playerLeftShine.position.z  = sz;
+  if (playerRightShine) playerRightShine.position.z = sz;
+  if (playerMouthLine) {
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(-0.15, -0.08, mz),
+      new THREE.Vector3(0, -0.22, mc),
+      new THREE.Vector3(0.15, -0.08, mz)
+    );
+    playerMouthLine.geometry.dispose();
+    playerMouthLine.geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(12));
+  }
+}
+
 // ─────────────────────────────────────────────
 // DITTO PLAYER
 // ─────────────────────────────────────────────
@@ -3066,15 +3138,13 @@ function buildPlayer() {
   player = new THREE.Group();
 
   // Body - 저장된 색상 적용
-  const activeId = loadActiveColor();
+  const activeId  = loadActiveColor();
   const activeCol = SHOP_COLORS.find(c => c.id === activeId) || SHOP_COLORS[0];
-  const bodyGeo = new THREE.SphereGeometry(0.55, 20, 20);
-  const bodyMat = new THREE.MeshStandardMaterial({
-    color: activeCol.color,
-    roughness: 0.3,
-    metalness: 0.1,
-    emissive: activeCol.emissive,
-    emissiveIntensity: 0.3,
+  const isCube    = activeId === 'cube';
+  const bodyGeo   = isCube ? new THREE.BoxGeometry(1.1, 1.1, 1.1) : new THREE.SphereGeometry(0.55, 20, 20);
+  const bodyMat   = new THREE.MeshStandardMaterial({
+    color: activeCol.color, roughness: 0.3, metalness: 0.1,
+    emissive: activeCol.emissive, emissiveIntensity: 0.3,
   });
   playerBody = new THREE.Mesh(bodyGeo, bodyMat);
   playerBody.castShadow = true;
@@ -3090,35 +3160,39 @@ function buildPlayer() {
   player.add(playerBody);
 
   // Eyes
+  const ez = isCube ? 0.57 : 0.46;
+  const sz = isCube ? 0.59 : 0.50;
+  const mz = isCube ? 0.58 : 0.50;
+  const mc = isCube ? 0.60 : 0.52;
   const eyeGeo = new THREE.SphereGeometry(0.1, 12, 12);
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
-  const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-  leftEye.position.set(-0.18, 0.12, 0.46);
-  player.add(leftEye);
-  const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-  rightEye.position.set(0.18, 0.12, 0.46);
-  player.add(rightEye);
+  playerLeftEye = new THREE.Mesh(eyeGeo, eyeMat);
+  playerLeftEye.position.set(-0.18, 0.12, ez);
+  player.add(playerLeftEye);
+  playerRightEye = new THREE.Mesh(eyeGeo, eyeMat);
+  playerRightEye.position.set(0.18, 0.12, ez);
+  player.add(playerRightEye);
 
   // Eye shine
   const shineGeo = new THREE.SphereGeometry(0.04, 8, 8);
   const shineMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1 });
-  const ls = new THREE.Mesh(shineGeo, shineMat);
-  ls.position.set(-0.14, 0.16, 0.5);
-  player.add(ls);
-  const rs = new THREE.Mesh(shineGeo, shineMat);
-  rs.position.set(0.22, 0.16, 0.5);
-  player.add(rs);
+  playerLeftShine = new THREE.Mesh(shineGeo, shineMat);
+  playerLeftShine.position.set(-0.14, 0.16, sz);
+  player.add(playerLeftShine);
+  playerRightShine = new THREE.Mesh(shineGeo, shineMat);
+  playerRightShine.position.set(0.22, 0.16, sz);
+  player.add(playerRightShine);
 
   // Mouth curve
   const mouthCurve = new THREE.QuadraticBezierCurve3(
-    new THREE.Vector3(-0.15, -0.08, 0.5),
-    new THREE.Vector3(0, -0.22, 0.52),
-    new THREE.Vector3(0.15, -0.08, 0.5)
+    new THREE.Vector3(-0.15, -0.08, mz),
+    new THREE.Vector3(0, -0.22, mc),
+    new THREE.Vector3(0.15, -0.08, mz)
   );
-  const mouthPoints = mouthCurve.getPoints(12);
-  const mouthGeo = new THREE.BufferGeometry().setFromPoints(mouthPoints);
+  const mouthGeo = new THREE.BufferGeometry().setFromPoints(mouthCurve.getPoints(12));
   const mouthMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
-  player.add(new THREE.Line(mouthGeo, mouthMat));
+  playerMouthLine = new THREE.Line(mouthGeo, mouthMat);
+  player.add(playerMouthLine);
 
   player.position.set(0, 2, 0);
   scene.add(player);
@@ -4555,9 +4629,11 @@ function animate() {
   if (!gameActive) return;
 
   dittoWobble += 0.08;
-  const _baseScaleY = _cachedActiveColorId === 'potato' ? 1.15 : 1;
-  playerBody.scale.y = _baseScaleY * (1 + Math.sin(dittoWobble) * 0.04);
-  playerBody.scale.x = 1 - Math.sin(dittoWobble) * 0.02;
+  if (_cachedActiveColorId !== 'cube') {
+    const _baseScaleY = _cachedActiveColorId === 'potato' ? 1.15 : 1;
+    playerBody.scale.y = _baseScaleY * (1 + Math.sin(dittoWobble) * 0.04);
+    playerBody.scale.x = 1 - Math.sin(dittoWobble) * 0.02;
+  }
 
   // 레인보우 색상 순환
   if (_cachedActiveColorId === 'rainbow') {
