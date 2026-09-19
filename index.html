@@ -806,6 +806,7 @@
     <div class="help-row"><span class="help-icon">📈</span><span class="help-desc"><b>스테이지 보너스</b>: (도달 단계 - 1) × 1,000점<br><b>HP 보너스</b>: 잔여 HP × 5점<br><b>시간 보너스</b>: 빠를수록 높은 점수 (최대 900점)</span></div>
 
     <div class="help-title">💡 힌트</div>
+    <div class="help-row"><span class="help-icon">🥽</span><span class="help-desc">처음의 처음과 마지막의 마지막에서 이상한 안경을 써라<br>또 3×3단계도 그렇게 해 봐라</span></div>
     <button class="btn btn-purple" onclick="closeHelp()" style="margin-top:10px">✓ 알겠어요!</button>
   </div>
 </div>
@@ -3247,8 +3248,8 @@ function _buildStage(stage, trueRand = 0.5) {
   const hGap = 2.9 + stage * 0.25 - (stage > 5 ? 0.3 : 0) - (stage >= 7 ? 0.6 : 0);   // 수평 간격 (7단계~는 추가로 좁힘)
   const vStep = 1.2 + stage * 0.1;  // 높이 상승 (완만하게)
   const hazardChance = 0.15 + stage * 0.08;
-  const poisonChance = stage >= 4 ? Math.min(0.12, 0.03 * (stage - 1)) : 0;
-  const flipChance   = stage >= 5 ? Math.min(0.10, 0.03 * (stage - 1)) : 0;
+  const poisonChance = stage >= 4 ? Math.min(0.18, 0.05 * (stage - 1)) : 0;
+  const flipChance   = stage >= 5 ? Math.min(0.15, 0.05 * (stage - 1)) : 0;
   const platformMinSize = Math.max(2.8, 4.8 - stage * 0.25);
   const hiddenTotal  = stage >= 3 && stage < 10 ? 1 + (stage - 3) * 3 : 0;
   let   hiddenPlaced = 0;
@@ -3755,13 +3756,13 @@ function addLavaDropToPlatform(plat) {
   if (!plat || !plat.userData.w || plat.userData.isGoal || plat.userData.isStart || plat.userData.isHazard || plat.userData.isPoisonHazard || plat.userData.isFlipHazard || plat.userData.isFake) return;
   lavaPlatforms.add(plat);
   plat.userData.isLavaHazard = true;
-  const geo = new THREE.SphereGeometry(0.45, 10, 10);
+  const geo = new THREE.SphereGeometry(0.32, 10, 10);
   const mat = new THREE.MeshStandardMaterial({
     color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.9,
     roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.9
   });
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(plat.position.x, plat.position.y + plat.userData.h / 2 + 0.45, plat.position.z);
+  mesh.position.set(plat.position.x, plat.position.y + plat.userData.h / 2 + 0.32, plat.position.z);
   mesh.castShadow = true;
   scene.add(mesh);
   lavaDropMeshes.push({ mesh, plat });
@@ -3781,10 +3782,30 @@ function buildLavaDrops() {
 
 function updateLavaDrops() {
   const t = Date.now() * 0.003;
-  for (const l of lavaDropMeshes) {
-    l.mesh.position.y = l.plat.position.y + l.plat.userData.h / 2 + 0.45 + Math.sin(t + l.plat.position.x) * 0.1;
+  for (let i = lavaDropMeshes.length - 1; i >= 0; i--) {
+    const l = lavaDropMeshes[i];
+    l.mesh.position.y = l.plat.position.y + l.plat.userData.h / 2 + 0.32 + Math.sin(t + l.plat.position.x) * 0.1;
     l.mesh.rotation.y += 0.025;
     l.mesh.material.emissiveIntensity = 0.7 + Math.sin(t * 2.5 + l.plat.position.z) * 0.3;
+
+    if (lavaContactCooldown <= 0) {
+      const dx = player.position.x - l.mesh.position.x;
+      const dy = player.position.y - l.mesh.position.y;
+      const dz = player.position.z - l.mesh.position.z;
+      if (dx * dx + dy * dy + dz * dz < (0.55 + 0.32) * (0.55 + 0.32)) {
+        lavaActive = true;
+        lavaTicksRemaining = 7;
+        lavaTickTimer = 60;
+        lavaContactCooldown = 300;
+        const idx = platforms.indexOf(l.plat);
+        [-1, 1].forEach(delta => {
+          const adj = platforms[idx + delta];
+          if (adj) addLavaDropToPlatform(adj);
+        });
+        scene.remove(l.mesh);
+        lavaDropMeshes.splice(i, 1);
+      }
+    }
   }
 }
 
@@ -4339,7 +4360,7 @@ function animate() {
     if (lavaTickTimer > 0) {
       lavaTickTimer--;
     } else {
-      hp = Math.max(0, hp - 5);
+      hp = Math.max(0, hp - 3);
       updateHpBar();
       showDamageFlash();
       SFX.damage();
@@ -4523,17 +4544,6 @@ function updatePlayer() {
           SFX.stageClear();
           showDamageFlash();
           return;
-        }
-        if (plat.userData.isLavaHazard && lavaContactCooldown <= 0) {
-          lavaActive = true;
-          lavaTicksRemaining = 10;
-          lavaTickTimer = 60;
-          lavaContactCooldown = 300;
-          const idx = platforms.indexOf(plat);
-          [-1, 1].forEach(delta => {
-            const adj = platforms[idx + delta];
-            if (adj) addLavaDropToPlatform(adj);
-          });
         }
       }
     }
