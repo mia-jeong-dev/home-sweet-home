@@ -3794,13 +3794,20 @@ function updateLavaDrops() {
       const dz = player.position.z - l.mesh.position.z;
       if (dx * dx + dy * dy + dz * dz < (0.55 + 0.32) * (0.55 + 0.32)) {
         lavaContactCooldown = 300;
+        hp = Math.max(0, hp - 15);
+        updateHpBar();
+        showDamageFlash();
+        SFX.damage();
         const idx = platforms.indexOf(l.plat);
+        scene.remove(l.mesh);
+        lavaDropMeshes.splice(i, 1);
+        lavaPlatforms.delete(l.plat);
+        l.plat.userData.isLavaHazard = false;
         [-1, 1].forEach(delta => {
           const adj = platforms[idx + delta];
           if (adj) addLavaDropToPlatform(adj);
         });
-        scene.remove(l.mesh);
-        lavaDropMeshes.splice(i, 1);
+        if (hp <= 0) { gameOver(); return; }
       }
     }
   }
