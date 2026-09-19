@@ -2409,7 +2409,7 @@ function createBallTexture(type) {
       [0.88, 0.30, 0.11, 0.15, -0.30], [0.45, 0.50, 0.22, 0.12,  0.55],
       [0.68, 0.82, 0.13, 0.08, -0.20], [0.08, 0.78, 0.10, 0.14,  0.15],
     ];
-    ctx.fillStyle = 'rgba(110,65,8,0.14)';
+    ctx.fillStyle = 'rgba(110,65,8,0.07)';
     patches.forEach(([u, v, rx, ry, rot]) => {
       ctx.save(); ctx.translate(u*S, v*S); ctx.rotate(rot);
       ctx.beginPath(); ctx.ellipse(0, 0, rx*S, ry*S, 0, 0, Math.PI*2); ctx.fill();
@@ -2423,7 +2423,7 @@ function createBallTexture(type) {
     ];
     eyes.forEach(([u, v, rot]) => {
       ctx.save(); ctx.translate(u*S, v*S); ctx.rotate(rot);
-      ctx.fillStyle = '#5c2808';
+      ctx.fillStyle = 'rgba(92,40,8,0.55)';
       ctx.beginPath(); ctx.ellipse(0, 0, S*0.040, S*0.024, 0, 0, Math.PI*2); ctx.fill();
       ctx.fillStyle = 'rgba(210,170,80,0.35)';
       ctx.beginPath(); ctx.ellipse(-S*0.012, -S*0.010, S*0.014, S*0.008, 0, 0, Math.PI*2); ctx.fill();
