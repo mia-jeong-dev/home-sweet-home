@@ -1391,7 +1391,7 @@ function showShop() {
 
       <div style="color:#a78bfa;font-size:13px;font-weight:bold;letter-spacing:1px;margin:18px 0 10px">🎨 캐릭터 색상</div>
       <div class="shop-grid">
-        ${SHOP_COLORS.map(c => {
+        ${SHOP_COLORS.filter(c => !SPECIAL_SKIN_IDS.has(c.id)).map(c => {
           const isOwned  = owned.includes(c.id);
           const isActive = c.id === activeId;
           const key      = 'color_' + c.id;
@@ -1402,6 +1402,26 @@ function showShop() {
             ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
             ${!isOwned && c.price > 0 ? discountBadge(key) : ''}
             <div class="color-swatch" style="background:${c.hex === 'rainbow' ? 'linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0000ff,#8b00ff)' : c.hex === 'ghost' ? 'rgba(200,255,255,0.12)' : c.hex};${c.hex === 'ghost' ? 'border:2px dashed rgba(0,220,220,0.7)' : ''}"></div>
+            <div class="color-name">${c.name}</div>
+            <div class="${isOwned ? 'color-owned' : 'color-price'}">
+              ${isOwned ? (isActive ? '✓ 착용중' : '✓ 보유') : priceHtml(c.price, key, false)}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="color:#f59e0b;font-size:13px;font-weight:bold;letter-spacing:1px;margin:18px 0 10px">✨ 특수 스킨</div>
+      <div class="shop-grid">
+        ${SHOP_COLORS.filter(c => SPECIAL_SKIN_IDS.has(c.id)).map(c => {
+          const isOwned  = owned.includes(c.id);
+          const isActive = c.id === activeId;
+          const key      = 'color_' + c.id;
+          const sale     = dprice(c.price, key);
+          return `
+          <div class="color-card ${isOwned ? 'owned' : ''} ${isActive ? 'active' : ''}" style="position:relative"
+               onclick="onShopClick('${c.id}', ${sale})">
+            ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
+            ${!isOwned ? discountBadge(key) : ''}
+            <div class="color-swatch" style="background:${c.hex};"></div>
             <div class="color-name">${c.name}</div>
             <div class="${isOwned ? 'color-owned' : 'color-price'}">
               ${isOwned ? (isActive ? '✓ 착용중' : '✓ 보유') : priceHtml(c.price, key, false)}
@@ -1671,7 +1691,8 @@ function showInventory() {
   const overlay      = document.getElementById('overlay');
   overlay.style.display = 'flex';
 
-  const ownedColors = SHOP_COLORS.filter(c => owned.includes(c.id));
+  const ownedColors   = SHOP_COLORS.filter(c => owned.includes(c.id) && !SPECIAL_SKIN_IDS.has(c.id));
+  const ownedSpecials = SHOP_COLORS.filter(c => owned.includes(c.id) &&  SPECIAL_SKIN_IDS.has(c.id));
   const ownedCouponList = SHOP_COUPONS.filter(c => (ownedCoupons[c.id] || 0) > 0);
 
   overlay.innerHTML = `
@@ -1690,6 +1711,22 @@ function showInventory() {
             <div class="color-card owned ${isActive ? 'active' : ''}" onclick="invEquipColor('${c.id}')">
               ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
               <div class="color-swatch" style="background:${c.hex === 'rainbow' ? 'linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0000ff,#8b00ff)' : c.hex === 'ghost' ? 'rgba(200,255,255,0.12)' : c.hex};${c.hex === 'ghost' ? 'border:2px dashed rgba(0,220,220,0.7)' : ''}"></div>
+              <div class="color-name">${c.name}</div>
+              <div class="color-owned">${isActive ? '✓ 착용중' : '✓ 보유'}</div>
+            </div>`;
+          }).join('')}
+          </div>`}
+
+      <div style="color:#f59e0b;font-size:13px;font-weight:bold;margin:14px 0 8px">✨ 특수 스킨 (${ownedSpecials.length}개)</div>
+      ${ownedSpecials.length === 0
+        ? `<p style="color:#666;font-size:13px;text-align:center">보유한 특수 스킨이 없어요</p>`
+        : `<div class="shop-grid">
+          ${ownedSpecials.map(c => {
+            const isActive = c.id === loadActiveColor();
+            return `
+            <div class="color-card owned ${isActive ? 'active' : ''}" onclick="invEquipColor('${c.id}')">
+              ${isActive ? '<span class="color-active-badge">착용</span>' : ''}
+              <div class="color-swatch" style="background:${c.hex};"></div>
               <div class="color-name">${c.name}</div>
               <div class="color-owned">${isActive ? '✓ 착용중' : '✓ 보유'}</div>
             </div>`;
@@ -2353,7 +2390,8 @@ const LS_FREE_COUPON      = 'ditto_free_coupon';
 const LS_NAME_CHANGE_CNT  = 'ditto_name_change_cnt';
 const LS_DISCOUNT_USED    = 'ditto_discount_used';
 
-const BALL_SKIN_IDS = new Set(['soccer', 'baseball', 'basketball', 'volleyball', 'tennis']);
+const BALL_SKIN_IDS    = new Set(['soccer', 'baseball', 'basketball', 'volleyball', 'tennis']);
+const SPECIAL_SKIN_IDS = new Set(['potato', ...BALL_SKIN_IDS]);
 
 function createBallTexture(type) {
   const S = 512, H = S / 2;
