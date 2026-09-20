@@ -799,7 +799,7 @@
     <div class="help-row"><span class="help-icon">🥽</span><span class="help-desc"><b>이상한 안경</b> — 상점에서 구매. 게임 중 [G]키로 사용!</span></div>
     <div class="help-row"><span class="help-icon">⚡</span><span class="help-desc"><b>순간이동권</b> — 암호를 알면 획득 가능!</span></div>
     <div class="help-row"><span class="help-icon">🎒</span><span class="help-desc"><b>인벤토리</b> — 보유한 스킨·쿠폰·아이템을 확인해요. [I]키 또는 HUD 버튼으로 열기</span></div>
-    <div class="help-row"><span class="help-icon">📋</span><span class="help-desc"><b>퀘스트</b> — 각 퀘스트를 2번 달성하면 🪙 30 코인 보상! [Q]키 또는 HUD 버튼으로 확인<br>퀘스트 종류: 특정 스킨으로 플레이, N단계 이상 도달, 게임 클리어, HP 유지 클리어 등</span></div>
+    <div class="help-row"><span class="help-icon">📋</span><span class="help-desc"><b>퀘스트</b> — 각 퀘스트를 2번 달성하면 🪙 30 코인 보상! [Q]키 또는 HUD 버튼으로 확인<br>퀘스트 종류: 특정 스킨으로 플레이, N단계 이상 도달, 게임 클리어, HP 유지 클리어 등<br>⚠️ <b>🚪 나가기 버튼</b>으로 나가면 이번 게임에서 달성한 퀘스트는 저장되지 않아요!</span></div>
     <div class="help-row"><span class="help-icon">🔥</span><span class="help-desc"><b>오늘의 할인</b> — 상점에서 매일 3개 아이템이 할인돼요 (10%~100%). 자정마다 갱신!</span></div>
 
     <div class="help-title">📊 점수 계산</div>
@@ -841,6 +841,7 @@
     <div id="shop-hud-btn" onclick="openShopDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🛒 상점</div>
     <div id="inv-hud-btn" onclick="openInventoryDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #34d399;border-radius:10px;padding:7px 12px;color:#6ee7b7;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🎒 인벤토리 [I]</div>
     <div id="quest-hud-btn" onclick="openQuestsDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f59e0b;border-radius:10px;padding:7px 12px;color:#fcd34d;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">📋 퀘스트 [Q]</div>
+    <div id="exit-hud-btn" onclick="exitGameEarly()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #ef4444;border-radius:10px;padding:7px 12px;color:#fca5a5;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🚪 나가기</div>
     <div id="controls-hint">
       WASD / 방향키: 이동<br>
       SPACE: 점프<br>
@@ -1019,6 +1020,8 @@ let hp = 100, maxHp = 100;
 let currentStage = 1;
 let gameActive = false;
 let _gameOverCalled = false;
+let _questSnapshot = null;
+let _questCoinEarned = 0;
 let damageFlashTimeout = null;
 let invincibleTimer = 0;
 let mouseX = 0, mouseY = 0;
@@ -1706,6 +1709,25 @@ function openShopDuringGame() {
   showShop();
 }
 window.openShopDuringGame = openShopDuringGame;
+
+function exitGameEarly() {
+  if (_questSnapshot !== null) {
+    saveQuestProgress(_questSnapshot);
+    if (_questCoinEarned > 0) saveCoins(Math.max(0, loadCoins() - _questCoinEarned));
+    _questSnapshot = null;
+    _questCoinEarned = 0;
+  }
+  gameActive = false;
+  _gameOverCalled = true;
+  document.exitPointerLock();
+  renderer.domElement.style.display = 'none';
+  ['score-ui','coin-ui','shop-hud-btn','inv-hud-btn','quest-hud-btn',
+   'exit-hud-btn','teleport-ui','skip-ui','glasses-ui','touch-controls']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  _shopOpenedDuringGame = false;
+  showTitleScreen();
+}
+window.exitGameEarly = exitGameEarly;
 
 function resumeFromShop() {
   _shopOpenedDuringGame = false;
@@ -2698,6 +2720,7 @@ function progressQuest(id) {
   saveQuestProgress(prog);
   if (prog[id] >= 2) {
     saveCoins(loadCoins() + QUEST_REWARD);
+    _questCoinEarned += QUEST_REWARD;
     showQuestToast(`🏅 퀘스트 달성! [${q.title}] +${QUEST_REWARD} 코인`);
     // 모든 퀘스트 완료 시 다음 세트로
     const allDone = quests.every(q => (prog[q.id] || 0) >= 2);
@@ -4582,9 +4605,12 @@ function startGame() {
   document.getElementById('shop-hud-btn').style.display = 'block';
   document.getElementById('inv-hud-btn').style.display = 'block';
   document.getElementById('quest-hud-btn').style.display = 'block';
+  document.getElementById('exit-hud-btn').style.display = 'block';
   updateCoinUI();
   updateGlassesUI();
   _gameOverCalled = false;
+  _questSnapshot = JSON.parse(JSON.stringify(loadQuestProgress()));
+  _questCoinEarned = 0;
   gameActive = true;
   renderer.domElement.style.display = 'block';
   if ('ontouchstart' in window) document.getElementById('touch-controls').style.display = 'flex';
@@ -5160,9 +5186,11 @@ async function gameClear() {
   document.getElementById('shop-hud-btn').style.display = 'none';
   document.getElementById('inv-hud-btn').style.display = 'none';
   document.getElementById('quest-hud-btn').style.display = 'none';
+  document.getElementById('exit-hud-btn').style.display = 'none';
   document.getElementById('teleport-ui').style.display = 'none';
   document.getElementById('glasses-ui').style.display = 'none';
   document.getElementById('touch-controls').style.display = 'none';
+  _questSnapshot = null; _questCoinEarned = 0;
   SFX.gameClear();
   saveCoins(loadCoins() + 50);
   const finalScore = sessionScore;
@@ -5220,9 +5248,11 @@ function gameOver() {
   document.getElementById('shop-hud-btn').style.display = 'none';
   document.getElementById('inv-hud-btn').style.display = 'none';
   document.getElementById('quest-hud-btn').style.display = 'none';
+  document.getElementById('exit-hud-btn').style.display = 'none';
   document.getElementById('teleport-ui').style.display = 'none';
   document.getElementById('glasses-ui').style.display = 'none';
   document.getElementById('touch-controls').style.display = 'none';
+  _questSnapshot = null; _questCoinEarned = 0;
   _shopOpenedDuringGame = false;
   const finalScore = sessionScore + calcScore();
   setTimeout(async () => {
