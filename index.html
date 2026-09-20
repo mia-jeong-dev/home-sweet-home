@@ -1074,8 +1074,11 @@ let pvpOpponentStage = 1;
 let pvpMyStagesCleared = 0;
 let pvpGameStarted = false;
 let pvpSyncInterval = null;
-let pvpBetAmount = 0;   // 이번 판 배팅 금액 (호스트가 결정)
-let pvpActualBet = 0;   // 실제 차감된 금액 (보유 코인으로 제한)
+let pvpBetAmount = 0;    // 이번 판 배팅 금액 (호스트가 결정)
+let pvpActualBet = 0;    // 실제 차감된 금액 (보유 코인으로 제한)
+let pvpOpponentCoins = 0; // 상대방 보유 코인
+let pvpMyBestZ = 0;      // 이번 스테이지 최대 진행 Z (작을수록 멀리)
+let pvpOppBestZ = 0;     // 상대방 최대 진행 Z
 
 // ── 플레이어 & 랭킹 ──
 let playerName = localStorage.getItem('ditto_player_name') || '';
@@ -4922,6 +4925,7 @@ function animate() {
   if (!gameActive) return;
 
   dittoWobble += 0.08;
+  if (pvpMode && player.position.z < pvpMyBestZ) pvpMyBestZ = player.position.z;
   if (_cachedActiveColorId !== 'cube' && _cachedActiveColorId !== 'tetrahedron') {
     const _baseScaleY = _cachedActiveColorId === 'potato' ? 1.15 : 1;
     playerBody.scale.y = _baseScaleY * (1 + Math.sin(dittoWobble) * 0.04);
@@ -5449,6 +5453,7 @@ function nextStage() {
   }
 
   currentStage++;
+  if (pvpMode) { pvpMyBestZ = 0; pvpOppBestZ = 0; }
   checkQuestReachStage(currentStage);
   stageStartTime = Date.now();
   const palette = STAGE_COLORS[Math.min(currentStage - 1, STAGE_COLORS.length - 1)];
@@ -5468,9 +5473,11 @@ function _pvpRandCode() {
   const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({length: 6}, () => ch[Math.floor(Math.random() * ch.length)]).join('');
 }
-function _pvpRandBet() {
-  const tiers = [10, 20, 30, 40, 50, 75, 100];
-  return tiers[Math.floor(Math.random() * tiers.length)];
+function _pvpRandBet(maxBet) {
+  const all = [10, 20, 30, 40, 50, 75, 100];
+  const valid = all.filter(t => t <= maxBet);
+  if (valid.length === 0) return maxBet > 0 ? maxBet : 0;
+  return valid[Math.floor(Math.random() * valid.length)];
 }
 
 function pvpCleanup() {
@@ -5501,6 +5508,18 @@ function _pvpSetupConn(conn) {
     if (!data || !data.type) return;
     if (data.type === 'hello') {
       pvpOpponentName = data.name || '상대방';
+      pvpOpponentCoins = data.coins || 0;
+      // 호스트가 상대 코인을 받은 후 배팅 결정
+      if (pvpIsHost && conn.open) {
+        const maxBet = Math.min(loadCoins(), pvpOpponentCoins);
+        pvpBetAmount = _pvpRandBet(maxBet);
+        setTimeout(() => {
+          if (pvpConn && pvpConn.open) {
+            pvpConn.send({ type: 'countdown', count: 3, bet: pvpBetAmount });
+            _pvpShowCountdown(3);
+          }
+        }, 500);
+      }
     } else if (data.type === 'countdown') {
       pvpBetAmount = data.bet || 0;
       _pvpShowCountdown(data.count);
@@ -5508,6 +5527,7 @@ function _pvpSetupConn(conn) {
       _pvpBeginGame();
     } else if (data.type === 'update') {
       pvpOpponentStage = data.stage || 1;
+      pvpOppBestZ = data.bestZ ?? 0;
       updatePvpHUD();
     } else if (data.type === 'win') {
       if (pvpGameStarted) _pvpShowResult(false, data.name + ' 먼저 클리어!');
@@ -5550,6 +5570,8 @@ function _pvpBeginGame() {
   pvpGameStarted = true;
   pvpMyStagesCleared = 0;
   pvpOpponentStage = 1;
+  pvpOppBestZ = 0;
+  pvpMyBestZ = 0;
   pvpTimerSecs = 180;
   pvpActualBet = Math.min(pvpBetAmount, loadCoins());
   if (pvpActualBet > 0) { saveCoins(loadCoins() - pvpActualBet); }
@@ -5590,9 +5612,10 @@ function _pvpBeginGame() {
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
   if (!animating) { animating = true; animate(); }
 
-  // 1초마다 상대에게 내 스테이지 전송
+  // 1초마다 상대에게 내 스테이지 + 진행도 전송
   pvpSyncInterval = setInterval(() => {
-    if (pvpConn && pvpConn.open) pvpConn.send({ type: 'update', stage: currentStage, name: playerName });
+    if (pvpConn && pvpConn.open)
+      pvpConn.send({ type: 'update', stage: currentStage, bestZ: pvpMyBestZ, name: playerName });
   }, 1000);
 
   // 타이머 카운트다운
@@ -5608,11 +5631,22 @@ function _pvpBeginGame() {
 
 function _pvpTimeUp() {
   if (!pvpGameStarted || !pvpMode) return;
-  const myStage = currentStage;
-  const oppStage = pvpOpponentStage;
-  if (myStage > oppStage) _pvpShowResult(true, `시간 종료! 더 높은 단계 도달 (${myStage}단계)`);
-  else if (myStage < oppStage) _pvpShowResult(false, `시간 종료! 상대방이 더 높은 단계 (${oppStage}단계)`);
-  else _pvpShowResult(null, `시간 종료! 같은 단계 — 무승부 (${myStage}단계)`);
+  const myStage = currentStage, oppStage = pvpOpponentStage;
+  if (myStage > oppStage) {
+    _pvpShowResult(true, `시간 종료! 더 높은 단계 (${myStage}단계 vs ${oppStage}단계)`);
+  } else if (myStage < oppStage) {
+    _pvpShowResult(false, `시간 종료! 상대방이 더 높은 단계 (${oppStage}단계 vs ${myStage}단계)`);
+  } else {
+    // 같은 단계 — Z 진행도 비교 (더 작은 Z = 더 멀리)
+    const PLAT_THRESH = 5;
+    if (pvpMyBestZ < pvpOppBestZ - PLAT_THRESH) {
+      _pvpShowResult(true, `시간 종료! 같은 단계, 더 멀리 진행 (${myStage}단계)`);
+    } else if (pvpOppBestZ < pvpMyBestZ - PLAT_THRESH) {
+      _pvpShowResult(false, `시간 종료! 같은 단계, 상대방이 더 멀리 진행 (${myStage}단계)`);
+    } else {
+      _pvpShowResult(null, `시간 종료! 같은 플랫폼 — 무승부 (${myStage}단계)`);
+    }
+  }
 }
 
 function pvpWin() {
@@ -5641,8 +5675,7 @@ function _pvpShowResult(won, reason) {
       saveCoins(loadCoins() + prize);
       coinMsg = `<div style="font-size:18px;color:#fbbf24;font-weight:bold;margin-bottom:4px">🪙 +${prize} 코인 획득!</div>`;
     } else if (won === null) {
-      saveCoins(loadCoins() + pvpActualBet);
-      coinMsg = `<div style="font-size:15px;color:#a78bfa;margin-bottom:4px">🪙 배팅금 ${pvpActualBet}코인 반환</div>`;
+      coinMsg = `<div style="font-size:15px;color:#94a3b8;margin-bottom:4px">🪙 배팅금 ${pvpActualBet}코인 소멸 (무승부)</div>`;
     } else {
       coinMsg = `<div style="font-size:15px;color:#ef4444;margin-bottom:4px">🪙 -${pvpActualBet} 코인 (배팅 패배)</div>`;
     }
@@ -5723,12 +5756,7 @@ window.pvpCreate = function() {
     _pvpSetupConn(conn);
     if (statusEl) statusEl.innerHTML = `<span style="color:#34d399">✓ 상대방 연결됨!</span>`;
     conn.on('open', () => {
-      conn.send({ type: 'hello', name: playerName || '나' });
-      pvpBetAmount = _pvpRandBet();
-      setTimeout(() => {
-        conn.send({ type: 'countdown', count: 3, bet: pvpBetAmount });
-        _pvpShowCountdown(3);
-      }, 400);
+      conn.send({ type: 'hello', name: playerName || '나', coins: loadCoins() });
     });
   });
   pvpPeer.on('error', (err) => {
@@ -5761,8 +5789,8 @@ window.pvpJoin = function() {
     pvpConn = pvpPeer.connect(hostId, { reliable: true });
     _pvpSetupConn(pvpConn);
     pvpConn.on('open', () => {
-      pvpConn.send({ type: 'hello', name: playerName || '나' });
-      if (statusEl) statusEl.innerHTML = '<span style="color:#34d399">✓ 연결됨! 곧 시작...</span>';
+      pvpConn.send({ type: 'hello', name: playerName || '나', coins: loadCoins() });
+      if (statusEl) statusEl.innerHTML = '<span style="color:#34d399">✓ 연결됨! 배팅 계산 중...</span>';
     });
     pvpConn.on('error', () => {
       if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">연결 실패. 방 코드를 확인하세요.</span>';
