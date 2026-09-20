@@ -5714,92 +5714,90 @@ window.showPvpLobby = function() {
   overlay.innerHTML = `
     <div class="panel" style="max-width:380px;width:90%">
       <h2 style="text-align:center;margin-bottom:4px">⚔️ PVP 1대1 대결</h2>
-      <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:12px;color:#a78bfa;line-height:1.7">
-        ⏱ 3분 타임어택 · 체력 없음 · 떨어지면 현재 단계 재시작<br>
-        먼저 10단계 클리어 또는 시간 종료 시 더 높은 단계 승리<br>
-        🪙 <b style="color:#fbbf24">랜덤 배팅</b> — 시작 전 무작위 코인 결정, 이긴 사람이 전부 획득!
+      <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:12px;color:#a78bfa;line-height:1.9">
+        매칭 시작 누르면 랜덤한 사람과 자동 매칭!<br>
+        ⏱ 3분 타임어택 · 체력 없음<br>
+        💀 떨어지면 그 단계 처음으로 리스폰<br>
+        🏆 먼저 10단계 클리어하면 즉시 승리<br>
+        같은 단계면 더 멀리 간 사람 승리<br>
+        같은 플랫폼이면 무승부 (코인 소멸)<br>
+        🪙 <b style="color:#fbbf24">랜덤 배팅</b> — 이긴 사람이 전부 획득!
       </div>
       <div id="pvp-status" style="text-align:center;min-height:44px;color:#a78bfa;font-size:14px;margin-bottom:12px;line-height:1.6"></div>
-      <div id="pvp-ui-section">
-        <button class="btn btn-purple" onclick="pvpCreate()" style="width:100%;margin-bottom:10px">🏠 방 만들기</button>
-        <div style="text-align:center;color:#555;margin-bottom:10px;font-size:13px">또는 방 코드로 입장</div>
-        <div style="display:flex;gap:8px;margin-bottom:0">
-          <input id="pvp-code-input" class="name-input" maxlength="6" placeholder="방 코드 6자리" style="flex:1;letter-spacing:3px;text-transform:uppercase" />
-          <button class="btn btn-gray" onclick="pvpJoin()" style="margin:0;white-space:nowrap">입장</button>
-        </div>
-      </div>
-      <div style="margin-top:12px">
-        <button class="btn btn-gray" onclick="pvpCleanup();showTitleScreen()" style="width:100%;font-size:14px">← 뒤로</button>
-      </div>
+      <button class="btn btn-purple" onclick="pvpAutoMatch()" style="width:100%;margin-bottom:10px;font-size:16px">🔍 매칭 시작</button>
+      <button class="btn btn-gray" onclick="pvpCleanup();showTitleScreen()" style="width:100%;font-size:14px">← 뒤로</button>
     </div>
   `;
 };
 
-window.pvpCreate = function() {
+const _PVP_SLOTS = 20;
+
+window.pvpAutoMatch = function() {
   pvpCleanup();
-  pvpRoomCode = _pvpRandCode();
-  pvpIsHost = true;
-  const peerId = 'ditgame-' + pvpRoomCode.toLowerCase();
   const statusEl = document.getElementById('pvp-status');
-  if (statusEl) statusEl.textContent = '서버 연결 중...';
+  if (statusEl) statusEl.innerHTML = '상대방 찾는 중...';
+  const startSlot = Math.floor(Math.random() * _PVP_SLOTS);
+  _pvpTrySlot(startSlot, 0);
+};
+
+function _pvpTrySlot(slotN, attempts) {
+  if (attempts >= _PVP_SLOTS) {
+    const statusEl = document.getElementById('pvp-status');
+    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">매칭 실패. 잠시 후 다시 시도해주세요.</span>';
+    return;
+  }
+  pvpCleanup();
+  pvpIsHost = true;
+  const slotId = 'ditgame-q' + slotN;
+  const statusEl = document.getElementById('pvp-status');
   try {
-    pvpPeer = new Peer(peerId);
+    pvpPeer = new Peer(slotId);
   } catch(e) {
     if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">PeerJS 로드 오류. 페이지를 새로고침하세요.</span>';
     return;
   }
   pvpPeer.on('open', () => {
-    if (statusEl) statusEl.innerHTML = `방 코드: <span style="font-size:22px;font-weight:900;color:#fbbf24;letter-spacing:5px">${pvpRoomCode}</span><br><span style="font-size:11px;color:#888">상대방에게 이 코드를 알려주세요</span>`;
+    if (statusEl) statusEl.innerHTML = '⏳ 상대방 기다리는 중...<br><span style="font-size:11px;color:#666">상대방이 나타나면 자동으로 시작돼요</span>';
   });
   pvpPeer.on('connection', (conn) => {
     pvpConn = conn;
     _pvpSetupConn(conn);
-    if (statusEl) statusEl.innerHTML = `<span style="color:#34d399">✓ 상대방 연결됨!</span>`;
+    if (statusEl) statusEl.innerHTML = '<span style="color:#34d399">✓ 상대방 발견! 연결 중...</span>';
     conn.on('open', () => {
       conn.send({ type: 'hello', name: playerName || '나', coins: loadCoins() });
     });
   });
   pvpPeer.on('error', (err) => {
-    if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444">오류: ${err.type}${err.type === 'unavailable-id' ? ' (코드 사용 중, 재시도)' : ''}</span>`;
-    if (err.type === 'unavailable-id') { pvpRoomCode = _pvpRandCode(); setTimeout(() => window.pvpCreate(), 500); }
+    if (err.type === 'unavailable-id') {
+      // Slot taken — try joining as guest
+      pvpIsHost = false;
+      if (pvpPeer) { try { pvpPeer.destroy(); } catch(e2) {} pvpPeer = null; }
+      try {
+        pvpPeer = new Peer();
+      } catch(e) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">PeerJS 로드 오류. 페이지를 새로고침하세요.</span>';
+        return;
+      }
+      pvpPeer.on('open', () => {
+        if (statusEl) statusEl.innerHTML = '상대방 발견! 연결 중...';
+        pvpConn = pvpPeer.connect(slotId, { reliable: true });
+        _pvpSetupConn(pvpConn);
+        pvpConn.on('open', () => {
+          pvpConn.send({ type: 'hello', name: playerName || '나', coins: loadCoins() });
+          if (statusEl) statusEl.innerHTML = '<span style="color:#34d399">✓ 연결됨! 배팅 계산 중...</span>';
+        });
+        pvpConn.on('error', () => {
+          _pvpTrySlot((slotN + 1) % _PVP_SLOTS, attempts + 1);
+        });
+      });
+      pvpPeer.on('error', () => {
+        _pvpTrySlot((slotN + 1) % _PVP_SLOTS, attempts + 1);
+      });
+    } else {
+      if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444">오류: ${err.type}</span>`;
+    }
   });
-};
-
-window.pvpJoin = function() {
-  pvpCleanup();
-  const input = document.getElementById('pvp-code-input');
-  if (!input) return;
-  const code = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
-  const statusEl = document.getElementById('pvp-status');
-  if (code.length < 6) {
-    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">방 코드 6자리를 입력해주세요</span>';
-    return;
-  }
-  pvpRoomCode = code;
-  pvpIsHost = false;
-  if (statusEl) statusEl.textContent = '연결 중...';
-  try {
-    pvpPeer = new Peer();
-  } catch(e) {
-    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">PeerJS 로드 오류. 페이지를 새로고침하세요.</span>';
-    return;
-  }
-  pvpPeer.on('open', () => {
-    const hostId = 'ditgame-' + code.toLowerCase();
-    pvpConn = pvpPeer.connect(hostId, { reliable: true });
-    _pvpSetupConn(pvpConn);
-    pvpConn.on('open', () => {
-      pvpConn.send({ type: 'hello', name: playerName || '나', coins: loadCoins() });
-      if (statusEl) statusEl.innerHTML = '<span style="color:#34d399">✓ 연결됨! 배팅 계산 중...</span>';
-    });
-    pvpConn.on('error', () => {
-      if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">연결 실패. 방 코드를 확인하세요.</span>';
-    });
-  });
-  pvpPeer.on('error', (err) => {
-    if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444">오류: ${err.type}</span>`;
-  });
-};
+}
 
 async function gameClear() {
   checkQuestClearGame();
