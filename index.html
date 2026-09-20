@@ -1138,6 +1138,17 @@ function getMonthlyRankings() {
   const start = new Date(); start.setDate(1); start.setHours(0,0,0,0);
   return bestPerPlayer(sharedRankings.filter(r => r.ts >= start.getTime()));
 }
+async function renamePlayerInRankings(oldName, newName) {
+  // 메모리
+  sharedRankings = sharedRankings.map(r => r.name === oldName ? { ...r, name: newName } : r);
+  // 로컬스토리지
+  const local = loadLocalScores().map(r => r.name === oldName ? { ...r, name: newName } : r);
+  localStorage.setItem(LS_LOCAL_SCORES, JSON.stringify(local));
+  // Supabase
+  try { await db.from('rankings').update({ name: newName }).eq('name', oldName); }
+  catch(e) { console.warn('랭킹 이름 변경 서버 오류', e); }
+}
+
 async function addRanking(name, score, stage) {
   const ts = Date.now();
   const date = new Date().toLocaleDateString('ko-KR');
@@ -2363,8 +2374,10 @@ window.onClickStart = function() {
       () => {
         saveCoins(loadCoins() - cost);
         saveNameChangeCnt(loadNameChangeCnt() + 1);
+        const oldName = playerName;
         playerName = newName;
         localStorage.setItem(LS_PLAYER_NAME, newName);
+        renamePlayerInRankings(oldName, newName);
         checkQuestPlayGame();
         checkQuestSkin(loadActiveColor());
         showTitleScreen();
