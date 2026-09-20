@@ -841,6 +841,8 @@
     <div id="skip-ui" onclick="useSkipCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🚀 스킵</div>
     <div id="glasses-ui" onclick="useGlasses()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #00e5ff;border-radius:10px;padding:7px 12px;color:#67e8f9;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🥽 안경 [G]</div>
     <div id="jump-ui" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #86efac;border-radius:10px;padding:7px 12px;color:#4ade80;font-size:12px;font-weight:bold;pointer-events:none;white-space:nowrap;text-align:center;">💊 점프부스트</div>
+    <div id="pvp-timer-ui" style="display:none;background:rgba(0,0,0,0.7);border:2px solid #f472b6;border-radius:10px;padding:7px 16px;color:#f9a8d4;font-size:14px;font-weight:bold;pointer-events:none;white-space:nowrap;text-align:center;min-width:80px;">⏱ 3:00</div>
+    <div id="pvp-opp-ui" style="display:none;background:rgba(0,0,0,0.7);border:2px solid #fb923c;border-radius:10px;padding:7px 12px;color:#fdba74;font-size:12px;font-weight:bold;pointer-events:none;white-space:nowrap;text-align:center;">⚔️ 상대방: 1단계</div>
     <div id="invinc-ui" onclick="useInvincPotion()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f9a8d4;border-radius:10px;padding:7px 12px;color:#f472b6;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🛡️ 무적 [H]</div>
     <div id="shop-hud-btn" onclick="openShopDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🛒 상점</div>
     <div id="inv-hud-btn" onclick="openInventoryDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #34d399;border-radius:10px;padding:7px 12px;color:#6ee7b7;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🎒 인벤토리 [I]</div>
@@ -864,6 +866,7 @@
   <div id="jump-btn">⬆</div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -1057,6 +1060,20 @@ let glassesActive = false;
 let _jumpBoostActive = false;
 let invincPotionActive = false;
 let invincPotionTimer = 0;
+
+// ── PVP ──
+let pvpMode = false;
+let pvpPeer = null;
+let pvpConn = null;
+let pvpIsHost = false;
+let pvpRoomCode = '';
+let pvpTimerSecs = 180;
+let pvpTimerInterval = null;
+let pvpOpponentName = '상대방';
+let pvpOpponentStage = 1;
+let pvpMyStagesCleared = 0;
+let pvpGameStarted = false;
+let pvpSyncInterval = null;
 
 // ── 플레이어 & 랭킹 ──
 let playerName = localStorage.getItem('ditto_player_name') || '';
@@ -1267,7 +1284,8 @@ function _renderTitleScreen(forceNameInput) {
             <button class="btn btn-gray" onclick="showQuests()" style="margin:0;border-color:#f59e0b;color:#fcd34d">📋 퀘스트</button>
             <button class="btn" onclick="showGamble()" style="margin:0;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;box-shadow:0 3px 14px rgba(217,119,6,0.5)">🎲 도박</button>
           </div>
-          <button class="btn btn-gray" onclick="showHelp()" style="margin-top:8px;font-size:15px">❓ 게임 방법</button>
+          <button class="btn" onclick="showPvpLobby()" style="margin-top:0;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-size:15px;box-shadow:0 3px 14px rgba(219,39,119,0.45)">⚔️ PVP 대결</button>
+          <button class="btn btn-gray" onclick="showHelp()" style="margin-top:0;font-size:15px">❓ 게임 방법</button>
           ${playerName ? `<button class="btn btn-gray" onclick="showTitleScreen(true)" style="margin-top:0;font-size:14px;opacity:0.7">✏️ 이름 변경</button>` : ''}
           ` : ''}
         </div>
@@ -3820,7 +3838,7 @@ function _buildStage(stage, trueRand = 0.5) {
   const poisonChance = stage >= 4 ? Math.min(0.23, 0.06 * (stage - 1)) : 0;
   const flipChance   = stage >= 5 ? Math.min(0.20, 0.06 * (stage - 1)) : 0;
   const platformMinSize = Math.max(2.8, 4.8 - stage * 0.25);
-  const hiddenTotal  = stage >= 3 && stage < 10 ? 1 + (stage - 3) * 3 : 0;
+  const hiddenTotal  = stage >= 3 && stage < 10 ? Math.min(pvpMode ? 5 : Infinity, 1 + (stage - 3) * 3) : 0;
   let   hiddenPlaced = 0;
 
   // Start platform
@@ -3918,8 +3936,8 @@ function _buildStage(stage, trueRand = 0.5) {
 
   buildBackground(stage);
   if (stage === 1) buildSecretBlocks();
-  if (stage === 9) buildStage9HiddenBlocks();
-  if (stage === 10) buildStage10SecretBlocks();
+  if (!pvpMode && stage === 9) buildStage9HiddenBlocks();
+  if (!pvpMode && stage === 10) buildStage10SecretBlocks();
   if (stage === 5) buildLavaDrops();
   updateStageUI(stage, palette);
 }
@@ -5187,14 +5205,15 @@ function updatePlayer() {
     spikeDamageTimer++;
     if (spikeDamageTimer >= 30) {
       spikeDamageTimer = 0;
-      // invincibleTimer 무시하고 가시 대미지만 별도 처리
-      const amount = 15;
-      hp = Math.max(0, hp - amount);
-      updateHpBar();
-      showDamageFlash();
-      spawnDamageParticles();
-      SFX.damage();
-      if (hp <= 0) { gameOver(); return; }
+      if (!pvpMode) {
+        const amount = 15;
+        hp = Math.max(0, hp - amount);
+        updateHpBar();
+        showDamageFlash();
+        spawnDamageParticles();
+        SFX.damage();
+        if (hp <= 0) { gameOver(); return; }
+      }
     }
   } else {
     spikeDamageTimer = 0;
@@ -5209,17 +5228,19 @@ function updatePlayer() {
     if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) { onPoisonSpike = true; break; }
   }
   if (onPoisonSpike && poisonContactCooldown <= 0) {
-    hp = Math.max(0, hp - 10);
-    updateHpBar();
-    showDamageFlash();
-    spawnPoisonParticles();
-    SFX.damage();
-    poisonActive = true;
-    poisonTicksRemaining = 4;
-    poisonTickTimer = 60;
+    if (!pvpMode) {
+      hp = Math.max(0, hp - 10);
+      updateHpBar();
+      showDamageFlash();
+      spawnPoisonParticles();
+      SFX.damage();
+      if (hp <= 0) { gameOver(); return; }
+    }
+    poisonActive = !pvpMode;
+    poisonTicksRemaining = pvpMode ? 0 : 4;
+    poisonTickTimer = pvpMode ? 0 : 60;
     poisonContactCooldown = 90;
     updatePoisonIndicator();
-    if (hp <= 0) { gameOver(); return; }
   }
   if (poisonContactCooldown > 0) poisonContactCooldown--;
 
@@ -5232,15 +5253,17 @@ function updatePlayer() {
     if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) { onFlipSpike = true; break; }
   }
   if (onFlipSpike && flipContactCooldown <= 0) {
-    hp = Math.max(0, hp - 5);
-    updateHpBar();
+    if (!pvpMode) {
+      hp = Math.max(0, hp - 5);
+      updateHpBar();
+      if (hp <= 0) { gameOver(); return; }
+    }
     showDamageFlash();
     SFX.damage();
     flipActive = true;
     flipTimer = FLIP_DURATION;
     flipContactCooldown = 90;
     setFlipScreen(true);
-    if (hp <= 0) { gameOver(); return; }
   }
   if (flipContactCooldown > 0) flipContactCooldown--;
   if (flipActive) {
@@ -5300,7 +5323,7 @@ function respawn() {
 }
 
 function takeDamage(amount) {
-  if (invincibleTimer > 0 || invincPotionActive) return;
+  if (invincibleTimer > 0 || invincPotionActive || pvpMode) return;
   hp = Math.max(0, hp - amount);
   invincibleTimer = 60;
   SFX.damage();
@@ -5418,6 +5441,7 @@ function nextStage() {
   checkQuestStageHp(hp);
 
   if (currentStage >= 10) {
+    if (pvpMode) { pvpWin(); return; }
     gameClear();
     return;
   }
@@ -5434,6 +5458,288 @@ function nextStage() {
   updateHpBar();
   showLevelBanner(currentStage, palette);
 }
+
+// ─────────────────────────────────────────────
+// PVP
+// ─────────────────────────────────────────────
+function _pvpRandCode() {
+  const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length: 6}, () => ch[Math.floor(Math.random() * ch.length)]).join('');
+}
+
+function pvpCleanup() {
+  if (pvpSyncInterval)  { clearInterval(pvpSyncInterval);  pvpSyncInterval = null; }
+  if (pvpTimerInterval) { clearInterval(pvpTimerInterval); pvpTimerInterval = null; }
+  if (pvpConn)  { try { pvpConn.close(); } catch(e){} pvpConn = null; }
+  if (pvpPeer)  { try { pvpPeer.destroy(); } catch(e){} pvpPeer = null; }
+  pvpMode = false; pvpGameStarted = false;
+  ['pvp-timer-ui','pvp-opp-ui'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+}
+
+function updatePvpHUD() {
+  const timerEl = document.getElementById('pvp-timer-ui');
+  const oppEl   = document.getElementById('pvp-opp-ui');
+  if (timerEl) {
+    const m = Math.floor(pvpTimerSecs / 60), s = pvpTimerSecs % 60;
+    timerEl.textContent = `⏱ ${m}:${s.toString().padStart(2,'0')}`;
+    timerEl.style.color = pvpTimerSecs <= 30 ? '#ef4444' : '#f9a8d4';
+    timerEl.style.borderColor = pvpTimerSecs <= 30 ? '#ef4444' : '#f472b6';
+  }
+  if (oppEl) oppEl.textContent = `⚔️ ${pvpOpponentName}: ${pvpOpponentStage}단계`;
+}
+
+function _pvpSetupConn(conn) {
+  conn.on('data', (data) => {
+    if (!data || !data.type) return;
+    if (data.type === 'hello') {
+      pvpOpponentName = data.name || '상대방';
+    } else if (data.type === 'countdown') {
+      _pvpShowCountdown(data.count);
+    } else if (data.type === 'start') {
+      _pvpBeginGame();
+    } else if (data.type === 'update') {
+      pvpOpponentStage = data.stage || 1;
+      updatePvpHUD();
+    } else if (data.type === 'win') {
+      if (pvpGameStarted) _pvpShowResult(false, data.name + ' 먼저 클리어!');
+    }
+  });
+  conn.on('close', () => {
+    if (pvpGameStarted) {
+      _pvpShowResult(true, '상대방이 연결을 끊었어요');
+    } else {
+      const s = document.getElementById('pvp-status');
+      if (s) s.innerHTML = '<span style="color:#ef4444">상대방 연결 끊김</span>';
+    }
+  });
+  conn.on('error', () => {
+    if (pvpGameStarted) _pvpShowResult(true, '연결 오류');
+  });
+}
+
+function _pvpShowCountdown(startN) {
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  let n = startN;
+  const tick = () => {
+    if (n > 0) {
+      overlay.innerHTML = `<div style="font-size:96px;color:#fff;text-shadow:0 0 40px #a78bfa;font-weight:900">${n}</div>`;
+      n--; setTimeout(tick, 1000);
+    } else {
+      overlay.innerHTML = `<div style="font-size:64px;color:#fbbf24;text-shadow:0 0 40px #fbbf24;font-weight:900">START!</div>`;
+      setTimeout(_pvpBeginGame, 600);
+    }
+  };
+  tick();
+}
+
+function _pvpBeginGame() {
+  pvpMode = true;
+  pvpGameStarted = true;
+  pvpMyStagesCleared = 0;
+  pvpOpponentStage = 1;
+  pvpTimerSecs = 180;
+
+  // Hide overlay, show game
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'none';
+  renderer.domElement.style.display = 'block';
+
+  // Show/hide HUD
+  ['score-ui','coin-ui','shop-hud-btn','inv-hud-btn','quest-hud-btn','exit-hud-btn'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = id === 'score-ui' || id === 'coin-ui' ? 'block' : 'none';
+  });
+  document.getElementById('pvp-timer-ui').style.display = 'block';
+  document.getElementById('pvp-opp-ui').style.display = 'block';
+  document.getElementById('hp-container').style.display = 'none';
+  if ('ontouchstart' in window) document.getElementById('touch-controls').style.display = 'flex';
+
+  // Init game state
+  _gameOverCalled = false;
+  gameActive = true;
+  currentStage = 1;
+  sessionScore = 0; sessionCoins = 0;
+  hp = maxHp;
+  velocity.set(0, 0, 0);
+  spikeDamageTimer = 0;
+  poisonActive = false; poisonTicksRemaining = 0; poisonTickTimer = 0; poisonContactCooldown = 0;
+  flipActive = false; flipTimer = 0; flipContactCooldown = 0;
+  invincPotionActive = false; invincPotionTimer = 0;
+  invincibleTimer = 0;
+  setFlipScreen(false);
+  setUnderwaterEffect(false);
+  buildStage(1);
+  applyCharacterColor(loadActiveColor());
+  player.position.set(0, 2, 0);
+  stageStartTime = Date.now();
+  updatePvpHUD();
+  if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+  if (!animating) { animating = true; animate(); }
+
+  // 1초마다 상대에게 내 스테이지 전송
+  pvpSyncInterval = setInterval(() => {
+    if (pvpConn && pvpConn.open) pvpConn.send({ type: 'update', stage: currentStage, name: playerName });
+  }, 1000);
+
+  // 타이머 카운트다운
+  pvpTimerInterval = setInterval(() => {
+    pvpTimerSecs--;
+    updatePvpHUD();
+    if (pvpTimerSecs <= 0) {
+      clearInterval(pvpTimerInterval); pvpTimerInterval = null;
+      _pvpTimeUp();
+    }
+  }, 1000);
+}
+
+function _pvpTimeUp() {
+  if (!pvpGameStarted || !pvpMode) return;
+  const myStage = currentStage;
+  const oppStage = pvpOpponentStage;
+  if (myStage > oppStage) _pvpShowResult(true, `시간 종료! 더 높은 단계 도달 (${myStage}단계)`);
+  else if (myStage < oppStage) _pvpShowResult(false, `시간 종료! 상대방이 더 높은 단계 (${oppStage}단계)`);
+  else _pvpShowResult(null, `시간 종료! 같은 단계 — 무승부 (${myStage}단계)`);
+}
+
+function pvpWin() {
+  if (!pvpGameStarted) return;
+  if (pvpConn && pvpConn.open) pvpConn.send({ type: 'win', name: playerName });
+  _pvpShowResult(true, '10단계 클리어! 먼저 완주했어요!');
+}
+
+function _pvpShowResult(won, reason) {
+  if (!pvpMode) return;
+  pvpGameStarted = false;
+  gameActive = false;
+  if (pvpSyncInterval)  { clearInterval(pvpSyncInterval);  pvpSyncInterval = null; }
+  if (pvpTimerInterval) { clearInterval(pvpTimerInterval); pvpTimerInterval = null; }
+  renderer.domElement.style.display = 'none';
+  document.getElementById('hp-container').style.display = '';
+  ['pvp-timer-ui','pvp-opp-ui','touch-controls'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  SFX[won === true ? 'stageClear' : won === false ? 'gameOver' : 'coin']?.();
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  const icon = won === true ? '🏆' : won === false ? '💀' : '🤝';
+  const title = won === true ? '<span style="color:#fbbf24">승리!</span>' : won === false ? '<span style="color:#ef4444">패배</span>' : '<span style="color:#a78bfa">무승부</span>';
+  overlay.innerHTML = `
+    <div class="panel" style="max-width:380px;width:90%;text-align:center">
+      <div style="font-size:64px;margin-bottom:8px">${icon}</div>
+      <h2 style="margin-bottom:6px">${title}</h2>
+      <div style="color:#94a3b8;font-size:13px;margin-bottom:20px">${reason || ''}</div>
+      <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;line-height:1.8">
+        <div>나 (${playerName || '나'}): <b>${currentStage}단계</b></div>
+        <div>${pvpOpponentName}: <b>${pvpOpponentStage}단계</b></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-purple" onclick="pvpCleanup();showPvpLobby()">🔄 다시 대결</button>
+        <button class="btn btn-gray" onclick="pvpCleanup();showTitleScreen()">🏠 홈으로</button>
+      </div>
+    </div>
+  `;
+  pvpMode = false;
+}
+
+window.showPvpLobby = function() {
+  pvpCleanup();
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="panel" style="max-width:380px;width:90%">
+      <h2 style="text-align:center;margin-bottom:4px">⚔️ PVP 1대1 대결</h2>
+      <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:12px;color:#a78bfa;line-height:1.7">
+        ⏱ 3분 타임어택 · 체력 없음 · 떨어지면 현재 단계 재시작<br>
+        먼저 10단계 클리어 또는 시간 종료 시 더 높은 단계 승리<br>
+        반전 가시 효과 유지 · 히든 스테이지 없음
+      </div>
+      <div id="pvp-status" style="text-align:center;min-height:44px;color:#a78bfa;font-size:14px;margin-bottom:12px;line-height:1.6"></div>
+      <div id="pvp-ui-section">
+        <button class="btn btn-purple" onclick="pvpCreate()" style="width:100%;margin-bottom:10px">🏠 방 만들기</button>
+        <div style="text-align:center;color:#555;margin-bottom:10px;font-size:13px">또는 방 코드로 입장</div>
+        <div style="display:flex;gap:8px;margin-bottom:0">
+          <input id="pvp-code-input" class="name-input" maxlength="6" placeholder="방 코드 6자리" style="flex:1;letter-spacing:3px;text-transform:uppercase" />
+          <button class="btn btn-gray" onclick="pvpJoin()" style="margin:0;white-space:nowrap">입장</button>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn btn-gray" onclick="pvpCleanup();showTitleScreen()" style="width:100%;font-size:14px">← 뒤로</button>
+      </div>
+    </div>
+  `;
+};
+
+window.pvpCreate = function() {
+  pvpCleanup();
+  pvpRoomCode = _pvpRandCode();
+  pvpIsHost = true;
+  const peerId = 'ditgame-' + pvpRoomCode.toLowerCase();
+  const statusEl = document.getElementById('pvp-status');
+  if (statusEl) statusEl.textContent = '서버 연결 중...';
+  try {
+    pvpPeer = new Peer(peerId);
+  } catch(e) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">PeerJS 로드 오류. 페이지를 새로고침하세요.</span>';
+    return;
+  }
+  pvpPeer.on('open', () => {
+    if (statusEl) statusEl.innerHTML = `방 코드: <span style="font-size:22px;font-weight:900;color:#fbbf24;letter-spacing:5px">${pvpRoomCode}</span><br><span style="font-size:11px;color:#888">상대방에게 이 코드를 알려주세요</span>`;
+  });
+  pvpPeer.on('connection', (conn) => {
+    pvpConn = conn;
+    _pvpSetupConn(conn);
+    if (statusEl) statusEl.innerHTML = `<span style="color:#34d399">✓ 상대방 연결됨!</span>`;
+    conn.on('open', () => {
+      conn.send({ type: 'hello', name: playerName || '나' });
+      setTimeout(() => {
+        conn.send({ type: 'countdown', count: 3 });
+        _pvpShowCountdown(3);
+      }, 400);
+    });
+  });
+  pvpPeer.on('error', (err) => {
+    if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444">오류: ${err.type}${err.type === 'unavailable-id' ? ' (코드 사용 중, 재시도)' : ''}</span>`;
+    if (err.type === 'unavailable-id') { pvpRoomCode = _pvpRandCode(); setTimeout(() => window.pvpCreate(), 500); }
+  });
+};
+
+window.pvpJoin = function() {
+  pvpCleanup();
+  const input = document.getElementById('pvp-code-input');
+  if (!input) return;
+  const code = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const statusEl = document.getElementById('pvp-status');
+  if (code.length < 6) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">방 코드 6자리를 입력해주세요</span>';
+    return;
+  }
+  pvpRoomCode = code;
+  pvpIsHost = false;
+  if (statusEl) statusEl.textContent = '연결 중...';
+  try {
+    pvpPeer = new Peer();
+  } catch(e) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">PeerJS 로드 오류. 페이지를 새로고침하세요.</span>';
+    return;
+  }
+  pvpPeer.on('open', () => {
+    const hostId = 'ditgame-' + code.toLowerCase();
+    pvpConn = pvpPeer.connect(hostId, { reliable: true });
+    _pvpSetupConn(pvpConn);
+    pvpConn.on('open', () => {
+      pvpConn.send({ type: 'hello', name: playerName || '나' });
+      if (statusEl) statusEl.innerHTML = '<span style="color:#34d399">✓ 연결됨! 곧 시작...</span>';
+    });
+    pvpConn.on('error', () => {
+      if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">연결 실패. 방 코드를 확인하세요.</span>';
+    });
+  });
+  pvpPeer.on('error', (err) => {
+    if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444">오류: ${err.type}</span>`;
+  });
+};
 
 async function gameClear() {
   checkQuestClearGame();
@@ -5503,6 +5809,7 @@ async function gameClear() {
 
 function gameOver() {
   if (_gameOverCalled) return;
+  if (pvpMode) return; // PVP에서는 HP 없으므로 gameOver 미사용
   _gameOverCalled = true;
   gameActive = false;
   renderer.domElement.style.display = 'none';
