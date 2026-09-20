@@ -2505,119 +2505,176 @@ function createBallTexture(type) {
     });
 
   } else if (type === 'soccer') {
-    ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(0, 0, S, S);
-    ctx.fillStyle = '#111111';
+    // 흰 바탕 + 미묘한 라이트 그라데이션
+    const sg = ctx.createRadialGradient(H*0.7, H*0.6, 0, H, H, H*1.2);
+    sg.addColorStop(0, '#ffffff'); sg.addColorStop(1, '#d8d8d8');
+    ctx.fillStyle = sg; ctx.fillRect(0, 0, S, S);
+
+    // 오각형 패치 + 패널 외곽선 (축구공 고전 패턴)
+    const pR = S * 0.075;
     const spots = [
       [H, H],
-      [H * 0.5, H], [H * 1.5, H],
-      [H, H * 0.45], [H, H * 1.55],
-      [H * 0.28, H * 0.45], [H * 0.72, H * 0.45],
-      [H * 1.28, H * 0.45], [H * 1.72, H * 0.45],
-      [H * 0.28, H * 1.55], [H * 0.72, H * 1.55],
-      [H * 1.28, H * 1.55], [H * 1.72, H * 1.55],
+      [H*0.5, H], [H*1.5, H],
+      [H, H*0.42], [H, H*1.58],
+      [H*0.27, H*0.42], [H*0.73, H*0.42],
+      [H*1.27, H*0.42], [H*1.73, H*0.42],
+      [H*0.27, H*1.58], [H*0.73, H*1.58],
+      [H*1.27, H*1.58], [H*1.73, H*1.58],
     ];
-    spots.forEach(([px, py]) => {
+    function pentagon(cx, cy, r, rot=0) {
       ctx.beginPath();
       for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-        const r = S * 0.072;
-        i === 0 ? ctx.moveTo(px + Math.cos(a) * r, py + Math.sin(a) * r)
-                : ctx.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r);
+        const a = (i/5)*Math.PI*2 - Math.PI/2 + rot;
+        i===0 ? ctx.moveTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
+              : ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r);
       }
       ctx.closePath();
-      ctx.fill();
-    });
+    }
+    // 채우기
+    ctx.fillStyle = '#111';
+    spots.forEach(([px,py]) => { pentagon(px,py,pR); ctx.fill(); });
+    // 패널 외곽 테두리
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 3;
+    spots.forEach(([px,py]) => { pentagon(px,py,pR*1.55); ctx.stroke(); });
 
   } else if (type === 'baseball') {
-    ctx.fillStyle = '#f7f0e3';
-    ctx.fillRect(0, 0, S, S);
-    ctx.strokeStyle = '#cc1111';
-    ctx.lineWidth = 14;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(H * 0.7, H * 0.2);
-    ctx.bezierCurveTo(H * 0.3, H * 0.8, H * 1.1, H * 1.2, H * 0.7, H * 1.8);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(H * 1.3, H * 0.2);
-    ctx.bezierCurveTo(H * 1.7, H * 0.8, H * 0.9, H * 1.2, H * 1.3, H * 1.8);
-    ctx.stroke();
-    ctx.lineWidth = 4;
-    for (let i = 0; i < 8; i++) {
-      const t = 0.1 + i * 0.11;
-      const lx = H * 0.7 + (H * 0.5 - H * 0.4) * t;
-      const ly = H * 0.2 + (H * 1.6) * t;
-      ctx.beginPath(); ctx.moveTo(lx - 10, ly - 3); ctx.lineTo(lx - 2, ly + 7); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(lx - 4, ly - 9); ctx.lineTo(lx + 4, ly + 1); ctx.stroke();
-      const rx = H * 1.3 + (-H * 0.05) * t;
-      const ry = H * 0.2 + (H * 1.6) * t;
-      ctx.beginPath(); ctx.moveTo(rx + 2, ry - 7); ctx.lineTo(rx + 10, ry + 3); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(rx - 4, ry + 1); ctx.lineTo(rx + 4, ry + 11); ctx.stroke();
+    // 크림색 베이스
+    const bg = ctx.createRadialGradient(H*0.75, H*0.65, 0, H, H, H*1.15);
+    bg.addColorStop(0,'#fff8ee'); bg.addColorStop(1,'#e8d8c0');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, S, S);
+
+    // 시임 곡선 두 쌍
+    function seamCurve(x0,y0, cx1,cy1, cx2,cy2, x1,y1) {
+      ctx.beginPath();
+      ctx.moveTo(x0,y0);
+      ctx.bezierCurveTo(cx1,cy1,cx2,cy2,x1,y1);
+      ctx.stroke();
+    }
+    // 왼쪽 시임
+    ctx.strokeStyle = '#cc1111'; ctx.lineWidth = 13; ctx.lineCap = 'round';
+    seamCurve(H*0.72, H*0.18, H*0.28, H*0.75, H*1.05, H*1.25, H*0.72, H*1.82);
+    // 오른쪽 시임
+    seamCurve(H*1.28, H*0.18, H*1.72, H*0.75, H*0.95, H*1.25, H*1.28, H*1.82);
+
+    // V자 스티치 — 두 시임 따라 배치
+    ctx.lineWidth = 4; ctx.lineCap = 'butt';
+    for (let i = 0; i < 11; i++) {
+      const t = 0.07 + i * 0.085;
+      // 왼 시임 포인트 (베지어 근사)
+      const lx = H*0.72*(1-t)**3 + H*0.28*3*(1-t)**2*t + H*1.05*3*(1-t)*t**2 + H*0.72*t**3;
+      const ly = H*0.18*(1-t)**3 + H*0.75*3*(1-t)**2*t + H*1.25*3*(1-t)*t**2 + H*1.82*t**3;
+      ctx.beginPath(); ctx.moveTo(lx-9, ly-4); ctx.lineTo(lx-1, ly+6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx-5, ly-7); ctx.lineTo(lx+3, ly+3); ctx.stroke();
+      // 오른 시임 포인트
+      const rx = H*1.28*(1-t)**3 + H*1.72*3*(1-t)**2*t + H*0.95*3*(1-t)*t**2 + H*1.28*t**3;
+      const ry = H*0.18*(1-t)**3 + H*0.75*3*(1-t)**2*t + H*1.25*3*(1-t)*t**2 + H*1.82*t**3;
+      ctx.beginPath(); ctx.moveTo(rx+1, ry-6); ctx.lineTo(rx+9, ry+4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(rx-3, ry+3); ctx.lineTo(rx+5, ry+13); ctx.stroke();
     }
 
   } else if (type === 'basketball') {
-    const grad = ctx.createRadialGradient(H * 0.85, H * 0.7, 0, H, H, H * 1.1);
-    grad.addColorStop(0, '#ff8800'); grad.addColorStop(1, '#c84400');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, S, S);
-    ctx.strokeStyle = '#111111';
-    ctx.lineWidth = 10;
+    // 오렌지 그라데이션 베이스
+    const og = ctx.createRadialGradient(H*0.72, H*0.65, 0, H, H, H*1.15);
+    og.addColorStop(0,'#ff9922'); og.addColorStop(0.6,'#e06800'); og.addColorStop(1,'#a83000');
+    ctx.fillStyle = og; ctx.fillRect(0, 0, S, S);
+
+    // 농구공 표면 pebble 텍스처 (점각)
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    for (let i = 0; i < 900; i++) {
+      const px = (i * 137.5 % S), py = (i * 97.3 % S);
+      ctx.beginPath(); ctx.arc(px, py, 1.2, 0, Math.PI*2); ctx.fill();
+    }
+
+    // 시임 라인
+    ctx.strokeStyle = '#1a0800'; ctx.lineCap = 'round';
+    // 수평 중앙 시임
+    ctx.lineWidth = 9;
     ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(S, H); ctx.stroke();
+    // 수직 중앙 시임
     ctx.beginPath(); ctx.moveTo(H, 0); ctx.lineTo(H, S); ctx.stroke();
-    ctx.lineWidth = 8;
+    // 왼쪽 S자 시임
+    ctx.lineWidth = 7;
     ctx.beginPath();
-    ctx.moveTo(H * 0.38, 0);
-    ctx.bezierCurveTo(H * 0.88, H, H * 0.12, H, H * 0.38, S);
+    ctx.moveTo(H*0.36, 0);
+    ctx.bezierCurveTo(H*0.36+H*0.55, H*0.6, H*0.36-H*0.55, H*1.4, H*0.36, H*2);
     ctx.stroke();
+    // 오른쪽 S자 시임
     ctx.beginPath();
-    ctx.moveTo(H * 1.62, 0);
-    ctx.bezierCurveTo(H * 1.12, H, H * 1.88, H, H * 1.62, S);
+    ctx.moveTo(H*1.64, 0);
+    ctx.bezierCurveTo(H*1.64-H*0.55, H*0.6, H*1.64+H*0.55, H*1.4, H*1.64, H*2);
     ctx.stroke();
 
   } else if (type === 'volleyball') {
-    ctx.fillStyle = '#1a6fc4';
+    // 배구공: 파랑/노랑/흰 3색 밴드 (Mikasa 스타일)
+    // 파랑 베이스
+    ctx.fillStyle = '#1255a0';
     ctx.fillRect(0, 0, S, S);
-    ctx.fillStyle = '#f9c800';
+    // 노랑 대각 밴드 (오른쪽 위)
+    ctx.fillStyle = '#f5c200';
     ctx.beginPath();
-    ctx.moveTo(H, 0); ctx.lineTo(S, 0); ctx.lineTo(S, H);
-    ctx.bezierCurveTo(S, H * 0.3, H * 1.6, 0, H, 0);
+    ctx.moveTo(H*0.55, 0); ctx.lineTo(S, 0); ctx.lineTo(S, H*1.45);
+    ctx.bezierCurveTo(S, H*0.9, H*1.6, H*0.4, H*0.55, 0);
     ctx.fill();
-    ctx.fillStyle = '#f0f0f0';
+    // 흰색 밴드 (왼쪽 아래→오른쪽 위 대각)
+    ctx.fillStyle = '#f2f2f2';
     ctx.beginPath();
-    ctx.moveTo(0, H); ctx.lineTo(H, 0); ctx.lineTo(0, 0);
-    ctx.fill();
-    ctx.fillStyle = '#f9c800';
+    ctx.moveTo(0, H*0.55);
+    ctx.bezierCurveTo(H*0.3, H*0.2, H*0.8, H*0.35, H*1.1, H*0.5);
+    ctx.bezierCurveTo(H*1.5, H*0.65, H*1.7, H*0.9, S, H*0.55);
+    ctx.lineTo(S, H*1.45);
+    ctx.bezierCurveTo(H*1.7, H*1.1, H*1.2, H*0.85, H*0.9, H*1.0);
+    ctx.bezierCurveTo(H*0.5, H*1.15, H*0.2, H*1.3, 0, H*1.45);
+    ctx.closePath(); ctx.fill();
+    // 파랑 왼쪽 아래 밴드
+    ctx.fillStyle = '#1255a0';
     ctx.beginPath();
-    ctx.moveTo(S, H); ctx.lineTo(S, S); ctx.lineTo(H, S);
-    ctx.bezierCurveTo(H * 1.5, S, S, H * 1.5, S, H);
-    ctx.fill();
-    ctx.fillStyle = '#f0f0f0';
+    ctx.moveTo(0, H*1.45);
+    ctx.bezierCurveTo(H*0.2, H*1.3, H*0.5, H*1.15, H*0.9, H*1.0);
+    ctx.bezierCurveTo(H*1.2, H*0.85, H*1.7, H*1.1, S, H*1.45);
+    ctx.lineTo(S, S*2); ctx.lineTo(0, S*2); ctx.closePath(); ctx.fill();
+    // 시임 외곽선
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(0, H); ctx.lineTo(H, S); ctx.lineTo(0, S);
-    ctx.fill();
-    ctx.strokeStyle = '#1a2a44';
-    ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(S, H); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(H, 0); ctx.lineTo(H, S); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(S, S); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(S, 0); ctx.lineTo(0, S); ctx.stroke();
-
-  } else if (type === 'tennis') {
-    const g = ctx.createRadialGradient(H * 0.8, H * 0.7, 0, H, H, H * 1.1);
-    g.addColorStop(0, '#d8ec10'); g.addColorStop(1, '#9aaa00');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, S, S);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = S * 0.1;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(0, H - S * 0.05);
-    ctx.bezierCurveTo(S * 0.25, H - S * 0.28, S * 0.75, H + S * 0.28, S, H + S * 0.05);
+    ctx.moveTo(H*0.55, 0);
+    ctx.bezierCurveTo(H*1.6, H*0.4, S, H*0.9, S, H*1.45);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(0, H + S * 0.05);
-    ctx.bezierCurveTo(S * 0.25, H + S * 0.28, S * 0.75, H - S * 0.28, S, H - S * 0.05);
+    ctx.moveTo(0, H*0.55);
+    ctx.bezierCurveTo(H*0.3, H*0.2, H*0.8, H*0.35, H*1.1, H*0.5);
+    ctx.bezierCurveTo(H*1.5, H*0.65, H*1.7, H*0.9, S, H*0.55);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, H*1.45);
+    ctx.bezierCurveTo(H*0.2, H*1.3, H*0.5, H*1.15, H*0.9, H*1.0);
+    ctx.bezierCurveTo(H*1.2, H*0.85, H*1.7, H*1.1, S, H*1.45);
+    ctx.stroke();
+
+  } else if (type === 'tennis') {
+    // 밝은 펠트 황녹색
+    const tg = ctx.createRadialGradient(H*0.72, H*0.65, 0, H, H, H*1.1);
+    tg.addColorStop(0,'#d6f020'); tg.addColorStop(1,'#8aaa00');
+    ctx.fillStyle = tg; ctx.fillRect(0, 0, S, S);
+
+    // 펠트 노이즈 질감
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    for (let i = 0; i < 600; i++) {
+      const px = (i*173.1)%S, py = (i*111.7)%S;
+      ctx.fillRect(px, py, 1, 2);
+    }
+
+    // 테니스공 특유의 흰 S자 시임 (두 줄)
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = S*0.095; ctx.lineCap = 'round';
+    // 위쪽 S
+    ctx.beginPath();
+    ctx.moveTo(0, H*0.45);
+    ctx.bezierCurveTo(S*0.22, H*0.05, S*0.52, H*0.15, S*0.5, H*0.5);
+    ctx.bezierCurveTo(S*0.48, H*0.85, S*0.78, H*0.95, S, H*0.55);
+    ctx.stroke();
+    // 아래쪽 S (위의 180° 대칭)
+    ctx.beginPath();
+    ctx.moveTo(0, H*1.45);
+    ctx.bezierCurveTo(S*0.22, H*1.05, S*0.52, H*1.15, S*0.5, H*1.5);
+    ctx.bezierCurveTo(S*0.48, H*1.85, S*0.78, H*1.95, S, H*1.55);
     ctx.stroke();
   }
 
