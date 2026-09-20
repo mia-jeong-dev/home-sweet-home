@@ -1622,7 +1622,7 @@ function applyCharacterColor(id) {
   if (playerBody.geometry.type !== targetType) {
     playerBody.geometry.dispose();
     playerBody.geometry = needsCube ? new THREE.BoxGeometry(0.887, 0.887, 0.887)
-      : needsTet ? new THREE.TetrahedronGeometry(1.808 * Math.sqrt(6) / 4)
+      : needsTet ? makeTetrahedronGeo()
       : new THREE.SphereGeometry(0.55, 20, 20);
     _setFaceZ(needsCube);
     _setFaceVisible(!needsTet);
@@ -3231,6 +3231,13 @@ function buildStars() {
   scene.add(new THREE.Points(geo, mat));
 }
 
+function makeTetrahedronGeo() {
+  const geo = new THREE.TetrahedronGeometry(1.808 * Math.sqrt(6) / 4);
+  geo.rotateZ(Math.PI / 4);
+  geo.rotateX(-Math.acos(1 / Math.sqrt(3)));
+  return geo;
+}
+
 function _setFaceVisible(visible) {
   [playerLeftEye, playerRightEye, playerLeftShine, playerRightShine, playerMouthLine]
     .forEach(m => { if (m) m.visible = visible; });
@@ -3268,7 +3275,7 @@ function buildPlayer() {
   const isCube   = activeId === 'cube';
   const isTet    = activeId === 'tetrahedron';
   const bodyGeo  = isCube ? new THREE.BoxGeometry(0.887, 0.887, 0.887)
-                 : isTet  ? new THREE.TetrahedronGeometry(1.808 * Math.sqrt(6) / 4)
+                 : isTet  ? makeTetrahedronGeo()
                  : new THREE.SphereGeometry(0.55, 20, 20);
   const bodyMat   = new THREE.MeshStandardMaterial({
     color: activeCol.color, roughness: 0.3, metalness: 0.1,
