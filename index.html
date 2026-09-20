@@ -1842,20 +1842,26 @@ function openShopDuringGame() {
 window.openShopDuringGame = openShopDuringGame;
 
 function exitGameEarly() {
+  gameActive = false;
+  _gameOverCalled = true;
+  document.exitPointerLock();
+  renderer.domElement.style.display = 'none';
+  ['score-ui','coin-ui','shop-hud-btn','inv-hud-btn','quest-hud-btn',
+   'exit-hud-btn','teleport-ui','skip-ui','glasses-ui','jump-ui','invinc-ui','touch-controls',
+   'pvp-timer-ui','pvp-opp-ui']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  _shopOpenedDuringGame = false;
+  if (pvpMode) {
+    pvpCleanup();
+    showTitleScreen();
+    return;
+  }
   if (_questSnapshot !== null) {
     saveQuestProgress(_questSnapshot);
     if (_questCoinEarned > 0) saveCoins(Math.max(0, loadCoins() - _questCoinEarned));
     _questSnapshot = null;
     _questCoinEarned = 0;
   }
-  gameActive = false;
-  _gameOverCalled = true;
-  document.exitPointerLock();
-  renderer.domElement.style.display = 'none';
-  ['score-ui','coin-ui','shop-hud-btn','inv-hud-btn','quest-hud-btn',
-   'exit-hud-btn','teleport-ui','skip-ui','glasses-ui','jump-ui','invinc-ui','touch-controls']
-    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
-  _shopOpenedDuringGame = false;
   showTitleScreen();
 }
 window.exitGameEarly = exitGameEarly;
@@ -5585,7 +5591,8 @@ function _pvpBeginGame() {
 
   // Show/hide HUD
   ['score-ui','coin-ui','shop-hud-btn','inv-hud-btn','quest-hud-btn','exit-hud-btn'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.style.display = id === 'score-ui' || id === 'coin-ui' ? 'block' : 'none';
+    const show = id === 'score-ui' || id === 'coin-ui' || id === 'exit-hud-btn';
+    const el = document.getElementById(id); if (el) el.style.display = show ? 'block' : 'none';
   });
   document.getElementById('pvp-timer-ui').style.display = 'block';
   document.getElementById('pvp-opp-ui').style.display = 'block';
@@ -5684,6 +5691,7 @@ function _pvpShowResult(won, reason) {
     updateCoinUI();
   }
 
+  document.exitPointerLock();
   SFX[won === true ? 'stageClear' : won === false ? 'gameOver' : 'coin']?.();
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
