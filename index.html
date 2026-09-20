@@ -1626,6 +1626,8 @@ function applyCharacterColor(id) {
       : new THREE.SphereGeometry(0.55, 20, 20);
     _setFaceZ(needsCube);
     _setFaceVisible(!needsTet);
+    const _R = 1.808 * Math.sqrt(6) / 4;
+    playerBody.position.y = needsTet ? (-0.5 + _R / 3) : 0;
   }
 
   if (playerBodyTexture) { playerBodyTexture.dispose(); playerBodyTexture = null; }
@@ -3283,6 +3285,10 @@ function buildPlayer() {
   });
   playerBody = new THREE.Mesh(bodyGeo, bodyMat);
   playerBody.castShadow = true;
+  if (isTet) {
+    const R = 1.808 * Math.sqrt(6) / 4;
+    playerBody.position.y = -0.5 + R / 3;
+  }
   if (BALL_SKIN_IDS.has(activeId)) {
     if (playerBodyTexture) { playerBodyTexture.dispose(); }
     playerBodyTexture = createBallTexture(activeId);
