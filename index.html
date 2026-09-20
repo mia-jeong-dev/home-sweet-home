@@ -773,7 +773,7 @@
     <div class="help-title">🎮 조작법</div>
     <div class="help-row"><span class="help-icon">⌨️</span><span class="help-desc"><b>WASD / 방향키</b> — 이동<br><b>Space</b> — 점프<br><b>마우스 드래그</b> — 카메라 회전</span></div>
     <div class="help-row"><span class="help-icon">📱</span><span class="help-desc"><b>조이스틱</b> — 이동 (모바일)<br><b>⬆ 버튼</b> — 점프 (모바일)<br><b>화면 스와이프</b> — 카메라 회전</span></div>
-    <div class="help-row"><span class="help-icon">⌨️</span><span class="help-desc"><b>T</b> — 순간이동 &nbsp;·&nbsp; <b>G</b> — 안경 &nbsp;·&nbsp; <b>M</b> — 상점 &nbsp;·&nbsp; <b>I</b> — 인벤토리 &nbsp;·&nbsp; <b>Q</b> — 퀘스트</span></div>
+    <div class="help-row"><span class="help-icon">⌨️</span><span class="help-desc"><b>T</b> — 순간이동 &nbsp;·&nbsp; <b>G</b> — 안경 &nbsp;·&nbsp; <b>H</b> — 무적 물약 &nbsp;·&nbsp; <b>M</b> — 상점 &nbsp;·&nbsp; <b>I</b> — 인벤토리 &nbsp;·&nbsp; <b>Q</b> — 퀘스트</span></div>
 
     <div class="help-title">🎯 게임 목표</div>
     <div class="help-row"><span class="help-icon">🏆</span><span class="help-desc">함정을 피해 <b>황금 플랫폼</b>에 도달하면 다음 단계로! 총 <b>10단계</b>까지 있어요.</span></div>
@@ -797,6 +797,8 @@
     <div class="help-row"><span class="help-icon">🪙</span><span class="help-desc"><b>코인</b> — 플랫폼 위에 떠 있어요. 상점에서 스킨·아이템 구매에 사용!</span></div>
     <div class="help-row"><span class="help-icon">🧪</span><span class="help-desc"><b>초록 물약</b> — 먹으면 HP 회복! (6단계부터 3개 등장)</span></div>
     <div class="help-row"><span class="help-icon">🥽</span><span class="help-desc"><b>이상한 안경</b> — 상점에서 구매. 게임 중 [G]키로 사용!</span></div>
+    <div class="help-row"><span class="help-icon">💊</span><span class="help-desc"><b>점프력 물약</b> — 상점에서 구매 (90코인). 3게임 동안 점프력 25% 상승! 자동 적용</span></div>
+    <div class="help-row"><span class="help-icon">🛡️</span><span class="help-desc"><b>무적 물약</b> — 상점에서 구매 (90코인). 게임 중 [H]키로 10초간 무적!</span></div>
     <div class="help-row"><span class="help-icon">⚡</span><span class="help-desc"><b>순간이동권</b> — 암호를 알면 획득 가능!</span></div>
     <div class="help-row"><span class="help-icon">🎒</span><span class="help-desc"><b>인벤토리</b> — 보유한 스킨·쿠폰·아이템을 확인해요. [I]키 또는 HUD 버튼으로 열기</span></div>
     <div class="help-row"><span class="help-icon">📋</span><span class="help-desc"><b>퀘스트</b> — 각 퀘스트를 2번 달성하면 🪙 30 코인 보상! [Q]키 또는 HUD 버튼으로 확인<br>퀘스트 종류: 특정 스킨으로 플레이, N단계 이상 도달, 게임 클리어, HP 유지 클리어 등<br>⚠️ <b>🚪 나가기 버튼</b>으로 나가면 이번 게임에서 달성한 퀘스트는 저장되지 않아요!</span></div>
@@ -838,6 +840,8 @@
     <div id="teleport-ui" onclick="useTeleportCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f59e0b;border-radius:10px;padding:7px 12px;color:#fcd34d;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">⚡ 순간이동 [T]</div>
     <div id="skip-ui" onclick="useSkipCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🚀 스킵</div>
     <div id="glasses-ui" onclick="useGlasses()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #00e5ff;border-radius:10px;padding:7px 12px;color:#67e8f9;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🥽 안경 [G]</div>
+    <div id="jump-ui" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #86efac;border-radius:10px;padding:7px 12px;color:#4ade80;font-size:12px;font-weight:bold;pointer-events:none;white-space:nowrap;text-align:center;">💊 점프부스트</div>
+    <div id="invinc-ui" onclick="useInvincPotion()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f9a8d4;border-radius:10px;padding:7px 12px;color:#f472b6;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🛡️ 무적 [H]</div>
     <div id="shop-hud-btn" onclick="openShopDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🛒 상점</div>
     <div id="inv-hud-btn" onclick="openInventoryDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #34d399;border-radius:10px;padding:7px 12px;color:#6ee7b7;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🎒 인벤토리 [I]</div>
     <div id="quest-hud-btn" onclick="openQuestsDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f59e0b;border-radius:10px;padding:7px 12px;color:#fcd34d;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">📋 퀘스트 [Q]</div>
@@ -1050,6 +1054,9 @@ let lavaContactCooldown = 0;
 let dittoWobble = 0;
 let glassesTimer = 0;
 let glassesActive = false;
+let _jumpBoostActive = false;
+let invincPotionActive = false;
+let invincPotionTimer = 0;
 
 // ── 플레이어 & 랭킹 ──
 let playerName = localStorage.getItem('ditto_player_name') || '';
@@ -1380,6 +1387,28 @@ function showShop() {
       }).join('')}
 
       <div class="coupon-section-title">🔭 특수 아이템</div>
+      <div class="coupon-card ${loadJumpPotion() > 0 ? 'owned' : ''}" style="position:relative" onclick="onJumpPotionClick()">
+        <span class="coupon-icon">💊</span>
+        <div class="coupon-info">
+          <div class="coupon-name">점프력 물약</div>
+          <div class="${loadJumpPotion() > 0 ? 'color-owned' : 'color-price'}">
+            ${loadJumpPotion() > 0
+              ? `✓ 잔여 ${loadJumpPotion()}게임`
+              : `🪙 90코인 · 3게임 제공`}
+          </div>
+        </div>
+      </div>
+      <div class="coupon-card ${loadInvincPotion() > 0 ? 'owned' : ''}" style="position:relative" onclick="onInvincPotionClick()">
+        <span class="coupon-icon">🛡️</span>
+        <div class="coupon-info">
+          <div class="coupon-name">무적 물약</div>
+          <div class="${loadInvincPotion() > 0 ? 'color-owned' : 'color-price'}">
+            ${loadInvincPotion() > 0
+              ? `✓ 잔여 ${loadInvincPotion()}회 — 게임 중 [H]키로 사용`
+              : `🪙 90코인 · 1회 제공`}
+          </div>
+        </div>
+      </div>
       <div class="coupon-card ${glassesCount > 0 ? 'owned' : ''}" style="position:relative" onclick="onGlassesClick()">
         ${glassesCount === 0 ? discountBadge('glasses_glasses') : ''}
         <span class="coupon-icon">🥽</span>
@@ -1473,6 +1502,42 @@ window.confirmPurchase = function(yes) {
   _pendingPurchase = null;
 };
 
+window.onJumpPotionClick = function() {
+  const count = loadJumpPotion();
+  if (count > 0) { SFX.coin(); return; }
+  const coins = loadCoins();
+  if (coins < 90) {
+    const coinEl = document.getElementById('shop-coin-count');
+    if (coinEl) { coinEl.style.color = '#ef4444'; setTimeout(() => { coinEl.style.color = ''; }, 600); }
+    return;
+  }
+  showConfirm('구매하시겠습니까?', `💊 점프력 물약 (3게임)<br><br>🪙 90코인 → 잔액 ${coins - 90}코인`, () => {
+    saveCoins(loadCoins() - 90);
+    saveJumpPotion(3);
+    showShop();
+    showQuestToast('✅ 점프력 물약 구매 완료!');
+    SFX.stageClear();
+  });
+};
+
+window.onInvincPotionClick = function() {
+  const count = loadInvincPotion();
+  if (count > 0) { SFX.coin(); return; }
+  const coins = loadCoins();
+  if (coins < 90) {
+    const coinEl = document.getElementById('shop-coin-count');
+    if (coinEl) { coinEl.style.color = '#ef4444'; setTimeout(() => { coinEl.style.color = ''; }, 600); }
+    return;
+  }
+  showConfirm('구매하시겠습니까?', `🛡️ 무적 물약 (1회)<br><br>🪙 90코인 → 잔액 ${coins - 90}코인`, () => {
+    saveCoins(loadCoins() - 90);
+    saveInvincPotion(1);
+    showShop();
+    showQuestToast('✅ 무적 물약 구매 완료!');
+    SFX.stageClear();
+  });
+};
+
 window.onGlassesClick = function() {
   const count = loadGlasses();
   if (count > 0) { SFX.coin(); return; }
@@ -1539,6 +1604,44 @@ function useGlasses() {
   SFX.coin();
 }
 window.useGlasses = useGlasses;
+
+function updateJumpUI() {
+  const el = document.getElementById('jump-ui');
+  if (!el) return;
+  if (_jumpBoostActive) {
+    el.style.display = 'block';
+    el.textContent = `💊 점프부스트`;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function updateInvincUI() {
+  const el = document.getElementById('invinc-ui');
+  if (!el) return;
+  const count = loadInvincPotion();
+  if (invincPotionActive) {
+    el.style.display = 'block';
+    el.textContent = `🛡️ 무적 ${Math.ceil(invincPotionTimer / 60)}s`;
+  } else if (count > 0) {
+    el.style.display = 'block';
+    el.textContent = `🛡️ 무적 [H] (${count}회)`;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function useInvincPotion() {
+  if (!gameActive || invincPotionActive) return;
+  const count = loadInvincPotion();
+  if (count <= 0) return;
+  saveInvincPotion(count - 1);
+  invincPotionActive = true;
+  invincPotionTimer = 600;
+  updateInvincUI();
+  SFX.coin();
+}
+window.useInvincPotion = useInvincPotion;
 
 window.onCouponClick = function(id, price) {
   const owned = loadOwnedCoupons();
@@ -1726,7 +1829,7 @@ function exitGameEarly() {
   document.exitPointerLock();
   renderer.domElement.style.display = 'none';
   ['score-ui','coin-ui','shop-hud-btn','inv-hud-btn','quest-hud-btn',
-   'exit-hud-btn','teleport-ui','skip-ui','glasses-ui','touch-controls']
+   'exit-hud-btn','teleport-ui','skip-ui','glasses-ui','jump-ui','invinc-ui','touch-controls']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   _shopOpenedDuringGame = false;
   showTitleScreen();
@@ -2279,7 +2382,17 @@ window.onClickRestart = function() {
   document.getElementById('quest-hud-btn').style.display = 'block';
   updateCoinUI();
   updateGlassesUI();
+  const _jpC = loadJumpPotion();
+  if (_jpC > 0) { _jumpBoostActive = true; saveJumpPotion(_jpC - 1); } else { _jumpBoostActive = false; }
+  updateJumpUI();
+  invincPotionActive = false; invincPotionTimer = 0;
+  updateInvincUI();
   updateScoreUI();
+  _gameOverCalled = false;
+  _questSnapshot = JSON.parse(JSON.stringify(loadQuestProgress()));
+  _questCoinEarned = 0;
+  document.getElementById('exit-hud-btn').style.display = 'block';
+  if ('ontouchstart' in window) document.getElementById('touch-controls').style.display = 'flex';
   gameActive = true;
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
 };
@@ -2467,6 +2580,8 @@ const LS_SPIN_DATE        = 'ditto_spin_date';
 const LS_FREE_COUPON      = 'ditto_free_coupon';
 const LS_NAME_CHANGE_CNT  = 'ditto_name_change_cnt';
 const LS_DISCOUNT_USED    = 'ditto_discount_used';
+const LS_JUMP_POTION      = 'ditto_jump_potion';
+const LS_INVINC_POTION    = 'ditto_invinc_potion';
 
 const BALL_SKIN_IDS    = new Set(['potato', 'soccer', 'baseball', 'basketball', 'volleyball', 'tennis']);
 const SPECIAL_SKIN_IDS = new Set(['potato', ...BALL_SKIN_IDS]);
@@ -2983,6 +3098,11 @@ function saveActiveCoupon(id)  { id ? localStorage.setItem(LS_ACTIVE_COUPON, id)
 function loadGlasses() { return parseInt(localStorage.getItem(LS_GLASSES) || '0'); }
 function saveGlasses(n) { localStorage.setItem(LS_GLASSES, String(n)); }
 
+function loadJumpPotion()    { return parseInt(localStorage.getItem(LS_JUMP_POTION) || '0'); }
+function saveJumpPotion(n)   { localStorage.setItem(LS_JUMP_POTION, String(n)); }
+function loadInvincPotion()  { return parseInt(localStorage.getItem(LS_INVINC_POTION) || '0'); }
+function saveInvincPotion(n) { localStorage.setItem(LS_INVINC_POTION, String(n)); }
+
 function useCoupon() {
   const id = loadActiveCoupon();
   if (!id || id === 'teleport') return; // 순간이동권은 게임 중 별도 사용
@@ -3196,6 +3316,7 @@ function init() {
     keys[e.code] = true;
     if (e.code === 'KeyT' && gameActive) { e.preventDefault(); useTeleportCoupon(); }
     if (e.code === 'KeyG' && gameActive) { e.preventDefault(); useGlasses(); }
+    if (e.code === 'KeyH' && gameActive) { e.preventDefault(); useInvincPotion(); }
     if (e.code === 'KeyM') { e.preventDefault(); gameActive ? openShopDuringGame() : showShop(); }
     if (e.code === 'KeyI') { e.preventDefault(); gameActive ? openInventoryDuringGame() : showInventory(); }
     if (e.code === 'KeyQ') { e.preventDefault(); gameActive ? openQuestsDuringGame() : showQuests(); }
@@ -3696,8 +3817,8 @@ function _buildStage(stage, trueRand = 0.5) {
   const hGap = 2.9 + stage * 0.25 - (stage > 5 ? 0.3 : 0) - (stage >= 7 ? 0.6 : 0);   // 수평 간격 (7단계~는 추가로 좁힘)
   const vStep = 1.2 + stage * 0.1;  // 높이 상승 (완만하게)
   const hazardChance = 0.15 + stage * 0.08;
-  const poisonChance = stage >= 4 ? Math.min(0.18, 0.05 * (stage - 1)) : 0;
-  const flipChance   = stage >= 5 ? Math.min(0.15, 0.05 * (stage - 1)) : 0;
+  const poisonChance = stage >= 4 ? Math.min(0.23, 0.06 * (stage - 1)) : 0;
+  const flipChance   = stage >= 5 ? Math.min(0.20, 0.06 * (stage - 1)) : 0;
   const platformMinSize = Math.max(2.8, 4.8 - stage * 0.25);
   const hiddenTotal  = stage >= 3 && stage < 10 ? 1 + (stage - 3) * 3 : 0;
   let   hiddenPlaced = 0;
@@ -4728,6 +4849,12 @@ function startGame() {
   document.getElementById('exit-hud-btn').style.display = 'block';
   updateCoinUI();
   updateGlassesUI();
+  const _jpCount = loadJumpPotion();
+  if (_jpCount > 0) { _jumpBoostActive = true; saveJumpPotion(_jpCount - 1); }
+  else { _jumpBoostActive = false; }
+  updateJumpUI();
+  invincPotionActive = false; invincPotionTimer = 0;
+  updateInvincUI();
   _gameOverCalled = false;
   _questSnapshot = JSON.parse(JSON.stringify(loadQuestProgress()));
   _questCoinEarned = 0;
@@ -4831,6 +4958,18 @@ function animate() {
     }
   }
 
+  // 무적 물약 타이머
+  if (invincPotionActive) {
+    invincPotionTimer--;
+    if (invincPotionTimer <= 0) {
+      invincPotionActive = false;
+      updateInvincUI();
+    } else {
+      const el = document.getElementById('invinc-ui');
+      if (el) el.textContent = `🛡️ 무적 ${Math.ceil(invincPotionTimer / 60)}s`;
+    }
+  }
+
   // 깃발 애니메이션
   if (flagGroup) {
     const t = Date.now() * 0.003;
@@ -4898,8 +5037,9 @@ function updatePlayer() {
 
   // Jump
   const stageJumpForce = currentStage === 8 ? JUMP_FORCE * 0.90 : JUMP_FORCE;
+  const activeJumpForce = _jumpBoostActive ? stageJumpForce * 1.25 : stageJumpForce;
   if ((keys['Space'] || keys['KeyW']) && onGround) {
-    velocity.y = stageJumpForce;
+    velocity.y = activeJumpForce;
     onGround = false;
     keys['Space'] = false;
     SFX.jump();
@@ -5160,7 +5300,7 @@ function respawn() {
 }
 
 function takeDamage(amount) {
-  if (invincibleTimer > 0) return;
+  if (invincibleTimer > 0 || invincPotionActive) return;
   hp = Math.max(0, hp - amount);
   invincibleTimer = 60;
   SFX.damage();
@@ -5309,7 +5449,10 @@ async function gameClear() {
   document.getElementById('exit-hud-btn').style.display = 'none';
   document.getElementById('teleport-ui').style.display = 'none';
   document.getElementById('glasses-ui').style.display = 'none';
+  document.getElementById('jump-ui').style.display = 'none';
+  document.getElementById('invinc-ui').style.display = 'none';
   document.getElementById('touch-controls').style.display = 'none';
+  invincPotionActive = false;
   _questSnapshot = null; _questCoinEarned = 0;
   SFX.gameClear();
   saveCoins(loadCoins() + 50);
@@ -5371,7 +5514,10 @@ function gameOver() {
   document.getElementById('exit-hud-btn').style.display = 'none';
   document.getElementById('teleport-ui').style.display = 'none';
   document.getElementById('glasses-ui').style.display = 'none';
+  document.getElementById('jump-ui').style.display = 'none';
+  document.getElementById('invinc-ui').style.display = 'none';
   document.getElementById('touch-controls').style.display = 'none';
+  invincPotionActive = false;
   _questSnapshot = null; _questCoinEarned = 0;
   _shopOpenedDuringGame = false;
   const finalScore = sessionScore + calcScore();
