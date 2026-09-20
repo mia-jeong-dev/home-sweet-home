@@ -5737,82 +5737,41 @@ const _PVP_SLOTS = 20;
 window.pvpAutoMatch = function() {
   pvpCleanup();
   _pvpMatchActive = true;
-  const statusEl = document.getElementById('pvp-status');
-  if (statusEl) statusEl.innerHTML = '상대방 찾는 중...';
-  _pvpScanJoin(0);
+  const s = document.getElementById('pvp-status');
+  if (s) s.innerHTML = '상대방 찾는 중...';
+  _pvpHostOrJoin(0, 0);
 };
 
-// Phase 1: scan slots 0→19 looking for an existing host to join
-function _pvpScanJoin(slotN) {
-  if (!_pvpMatchActive) return;
-  if (slotN >= _PVP_SLOTS) {
-    // No hosts found anywhere — funnel everyone to slot 0 as host
-    _pvpBecomeHost(0, 0);
-    return;
-  }
-  if (pvpPeer) { try { pvpPeer.destroy(); } catch(e){} pvpPeer = null; }
-  pvpConn = null;
-  pvpIsHost = false;
-  const slotId = 'ditgame-q' + slotN;
-  const statusEl = document.getElementById('pvp-status');
-  try {
-    pvpPeer = new Peer();
-  } catch(e) {
-    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">PeerJS 로드 오류. 페이지를 새로고침하세요.</span>';
-    return;
-  }
-  pvpPeer.on('open', () => {
-    if (!_pvpMatchActive) return;
-    pvpConn = pvpPeer.connect(slotId, { reliable: true });
-    _pvpSetupConn(pvpConn);
-    let resolved = false;
-    pvpConn.on('open', () => {
-      if (!_pvpMatchActive || resolved) return;
-      resolved = true;
-      pvpConn.send({ type: 'hello', name: playerName || '나', coins: loadCoins() });
-      if (statusEl) statusEl.innerHTML = '<span style="color:#34d399">✓ 연결됨! 배팅 계산 중...</span>';
-    });
-    pvpConn.on('error', () => {
-      if (!resolved && _pvpMatchActive) { resolved = true; _pvpScanJoin(slotN + 1); }
-    });
-    // Safety timeout: PeerJS fires peer-unavailable quickly, but guard against hangs
-    setTimeout(() => {
-      if (!resolved && _pvpMatchActive) { resolved = true; _pvpScanJoin(slotN + 1); }
-    }, 1500);
-  });
-  pvpPeer.on('error', () => {
-    if (_pvpMatchActive) _pvpScanJoin(slotN + 1);
-  });
-}
-
-// Phase 2: claim a slot as host; if taken by a race, join that host instead
-function _pvpBecomeHost(slotN, attempts) {
+// Both players try to HOST slot 0 immediately.
+// One wins the race and waits; the other gets unavailable-id (~200ms) and joins.
+// Stale/dead slots fall back to slotN+1.
+function _pvpHostOrJoin(slotN, attempts) {
   if (!_pvpMatchActive) return;
   if (attempts >= _PVP_SLOTS) {
-    const statusEl = document.getElementById('pvp-status');
-    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">매칭 실패. 다시 시도해주세요.</span>';
+    const s = document.getElementById('pvp-status');
+    if (s) s.innerHTML = '<span style="color:#ef4444">매칭 실패. 다시 시도해주세요.</span>';
     return;
   }
   if (pvpPeer) { try { pvpPeer.destroy(); } catch(e){} pvpPeer = null; }
   pvpConn = null;
   pvpIsHost = true;
   const slotId = 'ditgame-q' + slotN;
-  const statusEl = document.getElementById('pvp-status');
+  const s = document.getElementById('pvp-status');
   try {
     pvpPeer = new Peer(slotId);
   } catch(e) {
-    if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444">PeerJS 로드 오류. 페이지를 새로고침하세요.</span>';
+    if (s) s.innerHTML = '<span style="color:#ef4444">PeerJS 로드 오류. 새로고침하세요.</span>';
     return;
   }
   pvpPeer.on('open', () => {
     if (!_pvpMatchActive) return;
-    if (statusEl) statusEl.innerHTML = '⏳ 상대방 기다리는 중...<br><span style="font-size:11px;color:#666">상대방이 나타나면 자동으로 시작돼요</span>';
+    if (s) s.innerHTML = '⏳ 상대방 기다리는 중...<br><span style="font-size:11px;color:#666">상대방이 나타나면 자동으로 시작돼요</span>';
   });
   pvpPeer.on('connection', (conn) => {
     if (!_pvpMatchActive) return;
     pvpConn = conn;
     _pvpSetupConn(conn);
-    if (statusEl) statusEl.innerHTML = '<span style="color:#34d399">✓ 상대방 발견! 연결 중...</span>';
+    if (s) s.innerHTML = '<span style="color:#34d399">✓ 상대방 발견! 연결 중...</span>';
     conn.on('open', () => {
       conn.send({ type: 'hello', name: playerName || '나', coins: loadCoins() });
     });
@@ -5820,33 +5779,36 @@ function _pvpBecomeHost(slotN, attempts) {
   pvpPeer.on('error', (err) => {
     if (!_pvpMatchActive) return;
     if (err.type === 'unavailable-id') {
-      // Race: another player just claimed this slot — join them
+      // Slot taken by a live host — join them
       pvpIsHost = false;
       if (pvpPeer) { try { pvpPeer.destroy(); } catch(e){} pvpPeer = null; }
       try { pvpPeer = new Peer(); } catch(e) { return; }
       pvpPeer.on('open', () => {
         if (!_pvpMatchActive) return;
+        if (s) s.innerHTML = '상대방 발견! 연결 중...';
         pvpConn = pvpPeer.connect(slotId, { reliable: true });
         _pvpSetupConn(pvpConn);
         let resolved = false;
         pvpConn.on('open', () => {
-          if (!_pvpMatchActive || resolved) return;
+          if (resolved || !_pvpMatchActive) return;
           resolved = true;
           pvpConn.send({ type: 'hello', name: playerName || '나', coins: loadCoins() });
-          if (statusEl) statusEl.innerHTML = '<span style="color:#34d399">✓ 연결됨! 배팅 계산 중...</span>';
+          if (s) s.innerHTML = '<span style="color:#34d399">✓ 연결됨! 배팅 계산 중...</span>';
         });
         pvpConn.on('error', () => {
-          if (!resolved && _pvpMatchActive) { resolved = true; _pvpBecomeHost((slotN + 1) % _PVP_SLOTS, attempts + 1); }
+          // Host was stale — try next slot
+          if (!resolved && _pvpMatchActive) { resolved = true; _pvpHostOrJoin((slotN + 1) % _PVP_SLOTS, attempts + 1); }
         });
         setTimeout(() => {
-          if (!resolved && _pvpMatchActive) { resolved = true; _pvpBecomeHost((slotN + 1) % _PVP_SLOTS, attempts + 1); }
-        }, 2000);
+          if (!resolved && _pvpMatchActive) { resolved = true; _pvpHostOrJoin((slotN + 1) % _PVP_SLOTS, attempts + 1); }
+        }, 3000);
       });
       pvpPeer.on('error', () => {
-        if (_pvpMatchActive) _pvpBecomeHost((slotN + 1) % _PVP_SLOTS, attempts + 1);
+        if (_pvpMatchActive) _pvpHostOrJoin((slotN + 1) % _PVP_SLOTS, attempts + 1);
       });
     } else {
-      _pvpBecomeHost((slotN + 1) % _PVP_SLOTS, attempts + 1);
+      // Any other peer error — try next slot
+      _pvpHostOrJoin((slotN + 1) % _PVP_SLOTS, attempts + 1);
     }
   });
 }
