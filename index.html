@@ -1615,15 +1615,17 @@ function applyCharacterColor(id) {
   if (!playerBody) return;
   _cachedActiveColorId = id;
 
-  // 큐브 ↔ 구체 형태 전환
-  const needsCube   = id === 'cube';
-  const currentCube = playerBody.geometry.type === 'BoxGeometry';
-  if (needsCube !== currentCube) {
+  // 큐브 / 정사면체 / 구체 형태 전환
+  const needsCube = id === 'cube';
+  const needsTet  = id === 'tetrahedron';
+  const targetType = needsCube ? 'BoxGeometry' : needsTet ? 'TetrahedronGeometry' : 'SphereGeometry';
+  if (playerBody.geometry.type !== targetType) {
     playerBody.geometry.dispose();
-    playerBody.geometry = needsCube
-      ? new THREE.BoxGeometry(0.887, 0.887, 0.887)
+    playerBody.geometry = needsCube ? new THREE.BoxGeometry(0.887, 0.887, 0.887)
+      : needsTet ? new THREE.TetrahedronGeometry(1.808 * Math.sqrt(6) / 4)
       : new THREE.SphereGeometry(0.55, 20, 20);
     _setFaceZ(needsCube);
+    _setFaceVisible(!needsTet);
   }
 
   if (playerBodyTexture) { playerBodyTexture.dispose(); playerBodyTexture = null; }
@@ -2448,7 +2450,8 @@ const SHOP_COLORS = [
   { id: 'basketball', name: '농구공',      hex: '#e06000', color: 0xe06000, emissive: 0x5a2000, price: 130 },
   { id: 'volleyball', name: '배구공',      hex: '#1a6fc4', color: 0x1a6fc4, emissive: 0x0a2a60, price: 130 },
   { id: 'tennis',     name: '테니스공',    hex: '#ccdd00', color: 0xccdd00, emissive: 0x445500, price: 130 },
-  { id: 'cube',       name: '정육면체',    hex: '#7090b0', color: 0x7090b0, emissive: 0x203040, price: 100 },
+  { id: 'cube',        name: '정육면체',    hex: '#7090b0', color: 0x7090b0, emissive: 0x203040, price: 100 },
+  { id: 'tetrahedron', name: '정사면체',    hex: '#a06090', color: 0xa06090, emissive: 0x401030, price: 120 },
 ];
 
 const LS_COINS            = 'ditto_coins';
@@ -2465,7 +2468,7 @@ const LS_DISCOUNT_USED    = 'ditto_discount_used';
 
 const BALL_SKIN_IDS    = new Set(['potato', 'soccer', 'baseball', 'basketball', 'volleyball', 'tennis']);
 const SPECIAL_SKIN_IDS = new Set(['potato', ...BALL_SKIN_IDS]);
-const SHAPE_SKIN_IDS   = new Set(['cube']);
+const SHAPE_SKIN_IDS   = new Set(['cube', 'tetrahedron']);
 
 function createBallTexture(type) {
   const S = 512, H = S / 2;
@@ -3191,6 +3194,11 @@ function buildStars() {
   scene.add(new THREE.Points(geo, mat));
 }
 
+function _setFaceVisible(visible) {
+  [playerLeftEye, playerRightEye, playerLeftShine, playerRightShine, playerMouthLine]
+    .forEach(m => { if (m) m.visible = visible; });
+}
+
 function _setFaceZ(isCube) {
   const ez = isCube ? 0.45 : 0.46;
   const sz = isCube ? 0.47 : 0.50;
@@ -3220,8 +3228,11 @@ function buildPlayer() {
   // Body - 저장된 색상 적용
   const activeId  = loadActiveColor();
   const activeCol = SHOP_COLORS.find(c => c.id === activeId) || SHOP_COLORS[0];
-  const isCube    = activeId === 'cube';
-  const bodyGeo   = isCube ? new THREE.BoxGeometry(0.887, 0.887, 0.887) : new THREE.SphereGeometry(0.55, 20, 20);
+  const isCube   = activeId === 'cube';
+  const isTet    = activeId === 'tetrahedron';
+  const bodyGeo  = isCube ? new THREE.BoxGeometry(0.887, 0.887, 0.887)
+                 : isTet  ? new THREE.TetrahedronGeometry(1.808 * Math.sqrt(6) / 4)
+                 : new THREE.SphereGeometry(0.55, 20, 20);
   const bodyMat   = new THREE.MeshStandardMaterial({
     color: activeCol.color, roughness: 0.3, metalness: 0.1,
     emissive: activeCol.emissive, emissiveIntensity: 0.3,
@@ -3273,6 +3284,8 @@ function buildPlayer() {
   const mouthMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
   playerMouthLine = new THREE.Line(mouthGeo, mouthMat);
   player.add(playerMouthLine);
+
+  if (isTet) _setFaceVisible(false);
 
   player.position.set(0, 2, 0);
   scene.add(player);
@@ -4712,7 +4725,7 @@ function animate() {
   if (!gameActive) return;
 
   dittoWobble += 0.08;
-  if (_cachedActiveColorId !== 'cube') {
+  if (_cachedActiveColorId !== 'cube' && _cachedActiveColorId !== 'tetrahedron') {
     const _baseScaleY = _cachedActiveColorId === 'potato' ? 1.15 : 1;
     playerBody.scale.y = _baseScaleY * (1 + Math.sin(dittoWobble) * 0.04);
     playerBody.scale.x = 1 - Math.sin(dittoWobble) * 0.02;
