@@ -1074,6 +1074,8 @@ let pvpOpponentStage = 1;
 let pvpMyStagesCleared = 0;
 let pvpGameStarted = false;
 let pvpSyncInterval = null;
+let pvpBetAmount = 0;   // 이번 판 배팅 금액 (호스트가 결정)
+let pvpActualBet = 0;   // 실제 차감된 금액 (보유 코인으로 제한)
 
 // ── 플레이어 & 랭킹 ──
 let playerName = localStorage.getItem('ditto_player_name') || '';
@@ -5466,6 +5468,10 @@ function _pvpRandCode() {
   const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({length: 6}, () => ch[Math.floor(Math.random() * ch.length)]).join('');
 }
+function _pvpRandBet() {
+  const tiers = [10, 20, 30, 40, 50, 75, 100];
+  return tiers[Math.floor(Math.random() * tiers.length)];
+}
 
 function pvpCleanup() {
   if (pvpSyncInterval)  { clearInterval(pvpSyncInterval);  pvpSyncInterval = null; }
@@ -5496,6 +5502,7 @@ function _pvpSetupConn(conn) {
     if (data.type === 'hello') {
       pvpOpponentName = data.name || '상대방';
     } else if (data.type === 'countdown') {
+      pvpBetAmount = data.bet || 0;
       _pvpShowCountdown(data.count);
     } else if (data.type === 'start') {
       _pvpBeginGame();
@@ -5522,13 +5529,16 @@ function _pvpSetupConn(conn) {
 function _pvpShowCountdown(startN) {
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
+  const betLine = pvpBetAmount > 0
+    ? `<div style="font-size:16px;color:#fbbf24;margin-top:12px;font-weight:bold">🪙 배팅: ${pvpBetAmount}코인 — 승자가 전부 획득!</div>`
+    : '';
   let n = startN;
   const tick = () => {
     if (n > 0) {
-      overlay.innerHTML = `<div style="font-size:96px;color:#fff;text-shadow:0 0 40px #a78bfa;font-weight:900">${n}</div>`;
+      overlay.innerHTML = `<div style="text-align:center"><div style="font-size:96px;color:#fff;text-shadow:0 0 40px #a78bfa;font-weight:900">${n}</div>${betLine}</div>`;
       n--; setTimeout(tick, 1000);
     } else {
-      overlay.innerHTML = `<div style="font-size:64px;color:#fbbf24;text-shadow:0 0 40px #fbbf24;font-weight:900">START!</div>`;
+      overlay.innerHTML = `<div style="text-align:center"><div style="font-size:64px;color:#fbbf24;text-shadow:0 0 40px #fbbf24;font-weight:900">START!</div>${betLine}</div>`;
       setTimeout(_pvpBeginGame, 600);
     }
   };
@@ -5541,6 +5551,8 @@ function _pvpBeginGame() {
   pvpMyStagesCleared = 0;
   pvpOpponentStage = 1;
   pvpTimerSecs = 180;
+  pvpActualBet = Math.min(pvpBetAmount, loadCoins());
+  if (pvpActualBet > 0) { saveCoins(loadCoins() - pvpActualBet); }
 
   // Hide overlay, show game
   const overlay = document.getElementById('overlay');
@@ -5620,6 +5632,23 @@ function _pvpShowResult(won, reason) {
   ['pvp-timer-ui','pvp-opp-ui','touch-controls'].forEach(id => {
     const el = document.getElementById(id); if (el) el.style.display = 'none';
   });
+
+  // 코인 정산
+  let coinMsg = '';
+  if (pvpActualBet > 0) {
+    if (won === true) {
+      const prize = pvpActualBet * 2;
+      saveCoins(loadCoins() + prize);
+      coinMsg = `<div style="font-size:18px;color:#fbbf24;font-weight:bold;margin-bottom:4px">🪙 +${prize} 코인 획득!</div>`;
+    } else if (won === null) {
+      saveCoins(loadCoins() + pvpActualBet);
+      coinMsg = `<div style="font-size:15px;color:#a78bfa;margin-bottom:4px">🪙 배팅금 ${pvpActualBet}코인 반환</div>`;
+    } else {
+      coinMsg = `<div style="font-size:15px;color:#ef4444;margin-bottom:4px">🪙 -${pvpActualBet} 코인 (배팅 패배)</div>`;
+    }
+    updateCoinUI();
+  }
+
   SFX[won === true ? 'stageClear' : won === false ? 'gameOver' : 'coin']?.();
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
@@ -5629,10 +5658,12 @@ function _pvpShowResult(won, reason) {
     <div class="panel" style="max-width:380px;width:90%;text-align:center">
       <div style="font-size:64px;margin-bottom:8px">${icon}</div>
       <h2 style="margin-bottom:6px">${title}</h2>
-      <div style="color:#94a3b8;font-size:13px;margin-bottom:20px">${reason || ''}</div>
+      ${coinMsg}
+      <div style="color:#94a3b8;font-size:13px;margin-bottom:16px">${reason || ''}</div>
       <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;line-height:1.8">
         <div>나 (${playerName || '나'}): <b>${currentStage}단계</b></div>
         <div>${pvpOpponentName}: <b>${pvpOpponentStage}단계</b></div>
+        ${pvpActualBet > 0 ? `<div style="margin-top:4px;color:#888;font-size:11px">배팅: ${pvpActualBet}코인 · 보유 코인: ${loadCoins()}</div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <button class="btn btn-purple" onclick="pvpCleanup();showPvpLobby()">🔄 다시 대결</button>
@@ -5653,7 +5684,7 @@ window.showPvpLobby = function() {
       <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:12px;color:#a78bfa;line-height:1.7">
         ⏱ 3분 타임어택 · 체력 없음 · 떨어지면 현재 단계 재시작<br>
         먼저 10단계 클리어 또는 시간 종료 시 더 높은 단계 승리<br>
-        반전 가시 효과 유지 · 히든 스테이지 없음
+        🪙 <b style="color:#fbbf24">랜덤 배팅</b> — 시작 전 무작위 코인 결정, 이긴 사람이 전부 획득!
       </div>
       <div id="pvp-status" style="text-align:center;min-height:44px;color:#a78bfa;font-size:14px;margin-bottom:12px;line-height:1.6"></div>
       <div id="pvp-ui-section">
@@ -5693,8 +5724,9 @@ window.pvpCreate = function() {
     if (statusEl) statusEl.innerHTML = `<span style="color:#34d399">✓ 상대방 연결됨!</span>`;
     conn.on('open', () => {
       conn.send({ type: 'hello', name: playerName || '나' });
+      pvpBetAmount = _pvpRandBet();
       setTimeout(() => {
-        conn.send({ type: 'countdown', count: 3 });
+        conn.send({ type: 'countdown', count: 3, bet: pvpBetAmount });
         _pvpShowCountdown(3);
       }, 400);
     });
