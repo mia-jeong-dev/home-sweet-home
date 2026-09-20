@@ -2752,11 +2752,48 @@ const QUEST_GENS = [
     { id: 'q3_clear',      icon: '👑', title: '동글이의 왕',    desc: '게임을 클리어하기',                type: 'clear_game',     value: null    },
     { id: 'q3_play',       icon: '🕹️', title: '게임 중독자',    desc: '게임을 시작하기',                  type: 'play_game',      value: null    },
   ],
+  [ // ── 세트 4 · 특수 스킨 I ──
+    { id: 'q4_reach4',      icon: '🌄', title: '4단계 고수',      desc: '4단계 이상 도달하기',                   type: 'reach_stage',    value: 4       },
+    { id: 'q4_reach7',      icon: '🏕️', title: '7단계 탐험가',    desc: '7단계 이상 도달하기',                   type: 'reach_stage',    value: 7       },
+    { id: 'q4_reach10',     icon: '🌌', title: '정상 정복',        desc: '10단계에 도달하기',                     type: 'reach_stage',    value: 10      },
+    { id: 'q4_skin_potato', icon: '🥔', title: '감자 전사',        desc: '감자 동글이 스킨으로 게임 시작하기',    type: 'play_skin',      value: 'potato'},
+    { id: 'q4_skin_soccer', icon: '⚽', title: '축구 동글이',      desc: '축구공 스킨으로 게임 시작하기',         type: 'play_skin',      value: 'soccer'},
+    { id: 'q4_skin_bball',  icon: '🏀', title: '농구 동글이',      desc: '농구공 스킨으로 게임 시작하기',         type: 'play_skin',      value: 'basketball'},
+    { id: 'q4_skin_cube',   icon: '🟦', title: '정육면체 동글이',  desc: '정육면체 스킨으로 게임 시작하기',       type: 'play_skin',      value: 'cube'  },
+    { id: 'q4_survive',     icon: '🛡️', title: '강인한 동글이',    desc: 'HP 75 이상으로 스테이지 클리어',        type: 'stage_clear_hp', value: 75      },
+    { id: 'q4_clear',       icon: '🏆', title: '특수 클리어',      desc: '게임을 클리어하기',                     type: 'clear_game',     value: null    },
+    { id: 'q4_play',        icon: '🎮', title: '오늘도 동글이',    desc: '게임을 시작하기',                       type: 'play_game',      value: null    },
+  ],
+  [ // ── 세트 5 · 특수 스킨 II ──
+    { id: 'q5_reach3',      icon: '🏔️', title: '3단계 도전자',    desc: '3단계 이상 도달하기',                   type: 'reach_stage',    value: 3       },
+    { id: 'q5_reach6',      icon: '🌋', title: '6단계 전문가',    desc: '6단계 이상 도달하기',                   type: 'reach_stage',    value: 6       },
+    { id: 'q5_reach9',      icon: '🌠', title: '9단계 전설',      desc: '9단계 이상 도달하기',                   type: 'reach_stage',    value: 9       },
+    { id: 'q5_skin_base',   icon: '⚾', title: '야구 동글이',      desc: '야구공 스킨으로 게임 시작하기',         type: 'play_skin',      value: 'baseball'},
+    { id: 'q5_skin_vball',  icon: '🏐', title: '배구 동글이',      desc: '배구공 스킨으로 게임 시작하기',         type: 'play_skin',      value: 'volleyball'},
+    { id: 'q5_skin_tennis', icon: '🎾', title: '테니스 동글이',    desc: '테니스공 스킨으로 게임 시작하기',       type: 'play_skin',      value: 'tennis'},
+    { id: 'q5_skin_tet',    icon: '🔺', title: '정사면체 동글이',  desc: '정사면체 스킨으로 게임 시작하기',       type: 'play_skin',      value: 'tetrahedron'},
+    { id: 'q5_survive',     icon: '🔰', title: '철벽 방어',        desc: 'HP 85 이상으로 스테이지 클리어',        type: 'stage_clear_hp', value: 85      },
+    { id: 'q5_clear',       icon: '👑', title: '동글이의 왕',      desc: '게임을 클리어하기',                     type: 'clear_game',     value: null    },
+    { id: 'q5_play',        icon: '🕹️', title: '게임 삼매경',      desc: '게임을 시작하기',                       type: 'play_game',      value: null    },
+  ],
 ];
 
-function loadQuestGen()  { return parseInt(localStorage.getItem(LS_QUEST_GEN) || '0'); }
+function _randomQuestIdx(exclude) {
+  if (QUEST_GENS.length <= 1) return 0;
+  let idx;
+  do { idx = Math.floor(Math.random() * QUEST_GENS.length); } while (idx === exclude);
+  return idx;
+}
+function loadQuestGen()  { return parseInt(localStorage.getItem(LS_QUEST_GEN) ?? '-1'); }
 function saveQuestGen(n) { localStorage.setItem(LS_QUEST_GEN, String(n)); }
-function getActiveQuests() { return QUEST_GENS[loadQuestGen() % QUEST_GENS.length]; }
+function getActiveQuests() {
+  let idx = loadQuestGen();
+  if (idx < 0 || idx >= QUEST_GENS.length) {
+    idx = Math.floor(Math.random() * QUEST_GENS.length);
+    saveQuestGen(idx);
+  }
+  return QUEST_GENS[idx];
+}
 function loadQuestProgress() { try { return JSON.parse(localStorage.getItem(LS_QUESTS)) || {}; } catch { return {}; } }
 function saveQuestProgress(o) { localStorage.setItem(LS_QUESTS, JSON.stringify(o)); }
 
@@ -2786,7 +2823,7 @@ function progressQuest(id) {
     const allDone = quests.every(q => (prog[q.id] || 0) >= 2);
     if (allDone) {
       setTimeout(() => {
-        saveQuestGen(loadQuestGen() + 1);
+        saveQuestGen(_randomQuestIdx(loadQuestGen()));
         localStorage.removeItem(LS_QUESTS);
         showQuestToast('🎉 모든 퀘스트 달성! 새로운 퀘스트가 열렸어요!');
       }, 1800);
