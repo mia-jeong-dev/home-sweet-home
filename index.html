@@ -823,6 +823,29 @@
     </div>
   </div>
 </div>
+<div id="pet-info-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center;z-index:300;">
+  <div style="background:rgba(15,10,30,0.98);border:2px solid #a78bfa;border-radius:18px;padding:28px 24px;width:min(340px,92vw);text-align:left;color:#fff;max-height:80vh;overflow-y:auto;">
+    <div style="text-align:center;font-size:22px;font-weight:bold;margin-bottom:16px;">🥔 감자신</div>
+    <div style="font-size:13px;color:#a78bfa;font-weight:bold;margin-bottom:6px;">📌 외형</div>
+    <div style="font-size:12px;color:#ccc;line-height:1.8;margin-bottom:14px;">
+      • 감자 모양의 작고 통통한 몸통<br>
+      • 갈색 반점 무늬 (감자 무늬)<br>
+      • 머리 위에 파릇한 새싹<br>
+      • 한쪽 손에 총을 들고 있어요<br>
+      • 입은 없고 눈만 있어요<br>
+      • 동글이보다 작은 크기
+    </div>
+    <div style="font-size:13px;color:#f59e0b;font-weight:bold;margin-bottom:6px;">⚡ 능력</div>
+    <div style="font-size:12px;color:#ccc;line-height:1.8;margin-bottom:14px;">
+      • 최대 체력 <b style="color:#6ee7b7">2배</b> (100 → 200)<br>
+      • 받는 피해량 <b style="color:#6ee7b7">절반</b>
+    </div>
+    <div id="pet-info-status" style="font-size:12px;color:#888;margin-bottom:18px;text-align:center;"></div>
+    <div style="text-align:center;">
+      <button class="btn btn-gray" onclick="document.getElementById('pet-info-modal').style.display='none'">닫기</button>
+    </div>
+  </div>
+</div>
 <div id="quest-toast"></div>
 <div id="ui">
   <div id="hp-container">
@@ -1024,6 +1047,7 @@ let keys = {};
 let velocity = new THREE.Vector3();
 let onGround = false;
 let hp = 100, maxHp = 100;
+let petGroup = null, petBobT = 0, _petActive = false;
 let currentStage = 1;
 let gameActive = false;
 let _gameOverCalled = false;
@@ -1421,6 +1445,21 @@ function showShop() {
         </div>`;
       }).join('')}
 
+      <div class="coupon-section-title">🐾 펫</div>
+      <div class="coupon-card ${loadPetOwned() ? (loadPetActive() ? 'owned active' : 'owned') : ''}" onclick="onPetClick()">
+        ${loadPetOwned() && loadPetActive() ? '<span class="coupon-status-badge">장착중</span>' : ''}
+        <span class="coupon-icon">🥔</span>
+        <div class="coupon-info">
+          <div class="coupon-name">감자신</div>
+          <div class="${loadPetOwned() ? 'color-owned' : 'color-price'}">
+            ${loadPetOwned()
+              ? (loadPetActive() ? '✓ 장착중 — 클릭하면 해제' : '✓ 보유 — 클릭하여 장착')
+              : '🪙 1코인 · 체력 2배 · 피해 절반'}
+          </div>
+          ${!loadPetOwned() ? '<div style="font-size:10px;color:#888;margin-top:2px">옆에서 따라다니며 도와줘요!</div>' : ''}
+        </div>
+      </div>
+
       <div class="coupon-section-title">🔭 특수 아이템</div>
       <div class="coupon-card ${loadJumpPotion() > 0 ? 'owned' : ''}" style="position:relative" onclick="onJumpPotionClick()">
         <span class="coupon-icon">💊</span>
@@ -1535,6 +1574,32 @@ window.confirmPurchase = function(yes) {
   document.getElementById('confirm-modal').classList.remove('active');
   if (yes && _pendingPurchase) _pendingPurchase();
   _pendingPurchase = null;
+};
+
+window.onPetClick = function() {
+  if (!loadPetOwned()) {
+    const coins = loadCoins();
+    if (coins < 1) {
+      showConfirm('코인 부족', '코인이 1개 이상 필요해요.', null, null, true);
+      return;
+    }
+    saveCoins(coins - 1);
+    savePetOwned(true);
+    savePetActive(true);
+    SFX.coin?.();
+  } else {
+    savePetActive(!loadPetActive());
+  }
+  if (gameActive) {
+    _petActive = loadPetActive();
+    maxHp = _petActive ? 200 : 100;
+    if (_petActive && hp < 100) hp = Math.min(maxHp, hp);
+    else if (_petActive) hp = Math.min(maxHp, hp * 2);
+    else { hp = Math.min(hp, maxHp); }
+    updateHpBar();
+    if (_petActive) buildPet(); else removePet();
+  }
+  gameActive ? openShopDuringGame() : showShop();
 };
 
 window.onJumpPotionClick = function() {
@@ -1861,6 +1926,7 @@ function exitGameEarly() {
    'exit-hud-btn','teleport-ui','skip-ui','glasses-ui','jump-ui','invinc-ui','touch-controls',
    'pvp-timer-ui','pvp-opp-ui']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  removePet();
   _shopOpenedDuringGame = false;
   if (pvpMode) {
     pvpCleanup();
@@ -1953,6 +2019,21 @@ function showInventory() {
           }).join('')}
           </div>`}
 
+      <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin:14px 0 8px">🐾 펫</div>
+      <div class="coupon-card ${loadPetOwned() ? (loadPetActive() ? 'owned active' : 'owned') : ''}" onclick="showPetInfo()" style="cursor:pointer;">
+        ${loadPetOwned() && loadPetActive() ? '<span class="coupon-status-badge">장착중</span>' : ''}
+        <span class="coupon-icon">🥔</span>
+        <div class="coupon-info">
+          <div class="coupon-name">감자신</div>
+          <div class="${loadPetOwned() ? 'color-owned' : 'color-price'}">
+            ${loadPetOwned()
+              ? (loadPetActive() ? '✓ 장착중' : '✓ 보유 · 비활성화')
+              : '🪙 1코인 · 미보유'}
+          </div>
+          <div style="font-size:10px;color:#888;margin-top:2px">클릭하여 상세 정보 보기</div>
+        </div>
+      </div>
+
       <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin:14px 0 8px">🎟️ 보유 쿠폰</div>
       ${ownedCouponList.length === 0
         ? `<p style="color:#666;font-size:13px;text-align:center">보유한 쿠폰이 없어요</p>`
@@ -1999,6 +2080,18 @@ function showInventory() {
     </div>`;
 }
 window.showInventory = showInventory;
+
+window.showPetInfo = function() {
+  const owned  = loadPetOwned();
+  const active = loadPetActive();
+  const statusEl = document.getElementById('pet-info-status');
+  if (statusEl) {
+    if (!owned)        statusEl.innerHTML = '📍 상태: <span style="color:#888">미보유</span> — 상점에서 🪙1코인으로 구매';
+    else if (!active)  statusEl.innerHTML = '📍 상태: <span style="color:#a78bfa">보유</span> — 현재 비활성화 중';
+    else               statusEl.innerHTML = '📍 상태: <span style="color:#f59e0b">장착중</span> ✓';
+  }
+  document.getElementById('pet-info-modal').style.display = 'flex';
+};
 
 window.invEquipColor = function(id) {
   saveActiveColor(id);
@@ -2430,6 +2523,10 @@ window.onClickRestart = function() {
   updateJumpUI();
   invincPotionActive = false; invincPotionTimer = 0;
   updateInvincUI();
+  _petActive = loadPetActive();
+  maxHp = _petActive ? 200 : 100;
+  hp = maxHp;
+  buildPet();
   updateScoreUI();
   _gameOverCalled = false;
   _questSnapshot = JSON.parse(JSON.stringify(loadQuestProgress()));
@@ -2624,6 +2721,8 @@ const LS_FREE_COUPON      = 'ditto_free_coupon';
 const LS_NAME_CHANGE_CNT  = 'ditto_name_change_cnt';
 const LS_DISCOUNT_USED    = 'ditto_discount_used';
 const LS_JUMP_POTION      = 'ditto_jump_potion';
+const LS_PET_OWNED        = 'ditto_pet_owned';
+const LS_PET_ACTIVE       = 'ditto_pet_active';
 const LS_INVINC_POTION    = 'ditto_invinc_potion';
 
 const BALL_SKIN_IDS    = new Set(['potato', 'soccer', 'baseball', 'basketball', 'volleyball', 'tennis']);
@@ -3239,6 +3338,10 @@ function saveActiveCoupon(id)  { id ? localStorage.setItem(LS_ACTIVE_COUPON, id)
 function loadGlasses() { return parseInt(localStorage.getItem(LS_GLASSES) || '0'); }
 function saveGlasses(n) { localStorage.setItem(LS_GLASSES, String(n)); }
 
+function loadPetOwned()   { return localStorage.getItem(LS_PET_OWNED)  === '1'; }
+function savePetOwned(b)  { localStorage.setItem(LS_PET_OWNED,  b ? '1' : '0'); }
+function loadPetActive()  { return localStorage.getItem(LS_PET_ACTIVE) === '1'; }
+function savePetActive(b) { localStorage.setItem(LS_PET_ACTIVE, b ? '1' : '0'); }
 function loadJumpPotion()    { return parseInt(localStorage.getItem(LS_JUMP_POTION) || '0'); }
 function saveJumpPotion(n)   { localStorage.setItem(LS_JUMP_POTION, String(n)); }
 function loadInvincPotion()  { return parseInt(localStorage.getItem(LS_INVINC_POTION) || '0'); }
@@ -3601,6 +3704,89 @@ function buildPlayer() {
 
   player.position.set(0, 2, 0);
   scene.add(player);
+}
+
+function removePet() {
+  if (!petGroup) return;
+  scene.remove(petGroup);
+  petGroup.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) { if (Array.isArray(o.material)) o.material.forEach(m=>m.dispose()); else o.material.dispose(); }
+  });
+  petGroup = null;
+}
+
+function buildPet() {
+  removePet();
+  if (!_petActive) return;
+
+  petGroup = new THREE.Group();
+
+  // ── 감자 몸통 (타원형) ──
+  const bGeo = new THREE.SphereGeometry(0.35, 13, 10);
+  const bArr = bGeo.attributes.position;
+  for (let i = 0; i < bArr.count; i++) {
+    const x = bArr.getX(i), y = bArr.getY(i), z = bArr.getZ(i);
+    // 감자 특유의 울퉁불퉁 + 납작한 타원
+    const bump = 1 + Math.sin(x*14+y*9)*0.03 + Math.sin(z*11+x*6)*0.025;
+    bArr.setXYZ(i, x*1.10*bump, y*0.88*bump, z*1.00*bump);
+  }
+  bArr.needsUpdate = true; bGeo.computeVertexNormals();
+
+  const bMat = new THREE.MeshStandardMaterial({ color:0xb07838, roughness:0.88, metalness:0, emissive:0x2a1000, emissiveIntensity:0.18 });
+  const body = new THREE.Mesh(bGeo, bMat);
+  body.castShadow = true;
+  petGroup.add(body);
+
+  // 감자 무늬 (어두운 점)
+  const smat = new THREE.MeshStandardMaterial({ color:0x5a2c08, roughness:1 });
+  [[0.24,0.06,0.28],[-0.22,-0.07,0.26],[0.06,-0.20,0.30],[-0.14,0.17,0.23],[0.27,-0.14,0.17]].forEach(([x,y,z])=>{
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.044,6,6), smat);
+    s.position.set(x,y,z); petGroup.add(s);
+  });
+
+  // ── 눈 (입 없음) ──
+  const emat = new THREE.MeshStandardMaterial({ color:0x111111 });
+  const lE = new THREE.Mesh(new THREE.SphereGeometry(0.068,10,10), emat);
+  lE.position.set(-0.13, 0.07, 0.30); petGroup.add(lE);
+  const rE = new THREE.Mesh(new THREE.SphereGeometry(0.068,10,10), emat);
+  rE.position.set(0.13, 0.07, 0.30); petGroup.add(rE);
+
+  const shmat = new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xffffff, emissiveIntensity:1 });
+  const lS = new THREE.Mesh(new THREE.SphereGeometry(0.027,6,6), shmat);
+  lS.position.set(-0.105,0.104,0.346); petGroup.add(lS);
+  const rS = new THREE.Mesh(new THREE.SphereGeometry(0.027,6,6), shmat);
+  rS.position.set(0.155,0.104,0.346); petGroup.add(rS);
+
+  // ── 머리 위 새싹 ──
+  const stemMat = new THREE.MeshStandardMaterial({ color:0x2a8030 });
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.030,0.24,6), stemMat);
+  stem.position.set(0.02, 0.40, 0.01); petGroup.add(stem);
+
+  const leafMat = new THREE.MeshStandardMaterial({ color:0x38c040, side:THREE.DoubleSide });
+  [[-0.11,0.57,0.01, 0.38],[0.12,0.57,0.01,-0.38],[0.02,0.65,0.01,0]].forEach(([x,y,z,rz])=>{
+    const lf = new THREE.Mesh(new THREE.SphereGeometry(0.088,8,6), leafMat);
+    lf.scale.set(1.1, 0.30, 0.58); lf.position.set(x,y,z); lf.rotation.z = rz;
+    petGroup.add(lf);
+  });
+
+  // ── 한쪽 손에 총 ──
+  const aMat = new THREE.MeshStandardMaterial({ color:0xb07838, roughness:0.9 });
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.040,0.036,0.22,6), aMat);
+  arm.rotation.z = -Math.PI/2; arm.position.set(0.34,-0.05,0.04); petGroup.add(arm);
+
+  const gMat = new THREE.MeshStandardMaterial({ color:0x383838, roughness:0.35, metalness:0.55 });
+  // 총열
+  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.058,0.056,0.17), gMat);
+  barrel.position.set(0.47,-0.05,0.08); petGroup.add(barrel);
+  // 손잡이
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.048,0.135,0.055), gMat);
+  handle.position.set(0.44,-0.14,0.03); petGroup.add(handle);
+  // 방아쇠 가드 (작은 디테일)
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.028,0.042,0.048), gMat);
+  guard.position.set(0.44,-0.09,0.04); petGroup.add(guard);
+
+  scene.add(petGroup);
 }
 
 // ─────────────────────────────────────────────
@@ -4996,6 +5182,8 @@ function startGame() {
   updateJumpUI();
   invincPotionActive = false; invincPotionTimer = 0;
   updateInvincUI();
+  _petActive = loadPetActive();
+  maxHp = _petActive ? 200 : 100;
   _gameOverCalled = false;
   _questSnapshot = JSON.parse(JSON.stringify(loadQuestProgress()));
   _questCoinEarned = 0;
@@ -5015,6 +5203,7 @@ function startGame() {
   setFlipScreen(false);
   setUnderwaterEffect(false);
   hp = maxHp;
+  buildPet();
   updateHpBar();
   buildStage(currentStage);
   applyCharacterColor(loadActiveColor());
@@ -5043,6 +5232,15 @@ function animate() {
   if (!gameActive) return;
 
   dittoWobble += 0.08;
+  if (petGroup) {
+    petBobT += 0.045;
+    petGroup.position.set(
+      player.position.x + 0.75,
+      player.position.y + Math.sin(petBobT) * 0.07,
+      player.position.z + 0.28
+    );
+    petGroup.rotation.y = Math.sin(petBobT * 0.4) * 0.12;
+  }
   if (pvpMode && player.position.z < pvpMyBestZ) pvpMyBestZ = player.position.z;
   if (_cachedActiveColorId !== 'cube' && _cachedActiveColorId !== 'tetrahedron') {
     const _baseScaleY = _cachedActiveColorId === 'potato' ? 1.15 : 1;
@@ -5448,7 +5646,7 @@ function respawn() {
 
 function takeDamage(amount) {
   if (invincibleTimer > 0 || invincPotionActive || pvpMode) return;
-  hp = Math.max(0, hp - amount);
+  hp = Math.max(0, hp - (_petActive ? Math.ceil(amount * 0.5) : amount));
   invincibleTimer = 60;
   SFX.damage();
   updateHpBar();
@@ -5936,6 +6134,7 @@ function _pvpHostOrJoin(slotN, attempts) {
 async function gameClear() {
   checkQuestClearGame();
   gameActive = false;
+  removePet();
   _shopOpenedDuringGame = false;
   document.exitPointerLock();
   renderer.domElement.style.display = 'none';
@@ -6017,6 +6216,7 @@ function gameOver() {
   document.getElementById('invinc-ui').style.display = 'none';
   document.getElementById('touch-controls').style.display = 'none';
   invincPotionActive = false;
+  removePet();
   _questSnapshot = null; _questCoinEarned = 0;
   _shopOpenedDuringGame = false;
   const finalScore = sessionScore + calcScore();
