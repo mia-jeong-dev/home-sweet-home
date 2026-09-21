@@ -4055,7 +4055,7 @@ const _PET_BUILDERS = {
 function buildPets() {
   removePets();
   if (!_activeSlotIds.length) return;
-  const _petOffsets = [[0.75, 0.28],[-0.75, 0.28],[0, -0.65]];
+  const _petOffsets = [[0.75, 0.28],[-0.75, 0.28],[0, -1.15]];
   _activeSlotIds.forEach((id, i) => {
     const builder = _PET_BUILDERS[id];
     if (!builder) return;
@@ -5519,7 +5519,7 @@ function animate() {
   if (!gameActive) return;
 
   dittoWobble += 0.08;
-  const _petOffsets = [[0.75, 0.28],[-0.75, 0.28],[0, -0.65]];
+  const _petOffsets = [[0.75, 0.28],[-0.75, 0.28],[0, -1.15]];
   petGroups.forEach((pg, i) => {
     if (!pg) return;
     petBobTs[i] = (petBobTs[i] || 0) + 0.040;
