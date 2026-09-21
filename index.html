@@ -824,23 +824,11 @@
   </div>
 </div>
 <div id="pet-info-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center;z-index:300;">
-  <div style="background:rgba(15,10,30,0.98);border:2px solid #a78bfa;border-radius:18px;padding:28px 24px;width:min(340px,92vw);text-align:left;color:#fff;max-height:80vh;overflow-y:auto;">
-    <div style="text-align:center;font-size:22px;font-weight:bold;margin-bottom:16px;">🥔 감자신</div>
-    <div style="font-size:13px;color:#a78bfa;font-weight:bold;margin-bottom:6px;">📌 외형</div>
-    <div style="font-size:12px;color:#ccc;line-height:1.8;margin-bottom:14px;">
-      • 감자 모양의 작고 통통한 몸통<br>
-      • 갈색 반점 무늬 (감자 무늬)<br>
-      • 머리 위에 파릇한 새싹<br>
-      • 한쪽 손에 총을 들고 있어요<br>
-      • 입은 없고 눈만 있어요<br>
-      • 동글이보다 작은 크기
-    </div>
-    <div style="font-size:13px;color:#f59e0b;font-weight:bold;margin-bottom:6px;">⚡ 능력</div>
-    <div style="font-size:12px;color:#ccc;line-height:1.8;margin-bottom:14px;">
-      • 최대 체력 <b style="color:#6ee7b7">2배</b> (100 → 200)<br>
-      • 받는 피해량 <b style="color:#6ee7b7">절반</b>
-    </div>
-    <div id="pet-info-status" style="font-size:12px;color:#888;margin-bottom:18px;text-align:center;"></div>
+  <div style="background:rgba(15,10,30,0.98);border:2px solid #a78bfa;border-radius:18px;padding:24px 22px;width:min(340px,92vw);text-align:left;color:#fff;max-height:82vh;overflow-y:auto;">
+    <div id="pet-info-title" style="text-align:center;font-size:20px;font-weight:bold;margin-bottom:14px;"></div>
+    <div style="font-size:12px;color:#f59e0b;font-weight:bold;margin-bottom:5px;">⚡ 능력</div>
+    <div id="pet-info-abil" style="font-size:12px;color:#ccc;line-height:1.8;margin-bottom:12px;"></div>
+    <div id="pet-info-status" style="font-size:12px;color:#888;margin-bottom:16px;text-align:center;"></div>
     <div style="text-align:center;">
       <button class="btn btn-gray" onclick="document.getElementById('pet-info-modal').style.display='none'">닫기</button>
     </div>
@@ -1047,7 +1035,7 @@ let keys = {};
 let velocity = new THREE.Vector3();
 let onGround = false;
 let hp = 100, maxHp = 100;
-let petGroup = null, petBobT = 0, _petActive = false;
+let petGroups = [], petBobTs = [0,0,0], _activeSlotIds = [], _petHealFrames = 0;
 let currentStage = 1;
 let gameActive = false;
 let _gameOverCalled = false;
@@ -1446,19 +1434,50 @@ function showShop() {
       }).join('')}
 
       <div class="coupon-section-title">🐾 펫</div>
-      <div class="coupon-card ${loadPetOwned() ? (loadPetActive() ? 'owned active' : 'owned') : ''}" onclick="onPetClick()">
-        ${loadPetOwned() && loadPetActive() ? '<span class="coupon-status-badge">장착중</span>' : ''}
-        <span class="coupon-icon">🥔</span>
+      <div class="coupon-card" onclick="onEggClick()" style="cursor:pointer;">
+        <span class="coupon-icon">🥚</span>
         <div class="coupon-info">
-          <div class="coupon-name">감자신</div>
-          <div class="${loadPetOwned() ? 'color-owned' : 'color-price'}">
-            ${loadPetOwned()
-              ? (loadPetActive() ? '✓ 장착중 — 클릭하면 해제' : '✓ 보유 — 클릭하여 장착')
-              : '🪙 1코인 · 체력 2배 · 피해 절반'}
-          </div>
-          ${!loadPetOwned() ? '<div style="font-size:10px;color:#888;margin-top:2px">옆에서 따라다니며 도와줘요!</div>' : ''}
+          <div class="coupon-name">신비한 알</div>
+          <div class="color-price">🪙 300코인 · 랜덤 펫 획득</div>
+          <div style="font-size:10px;color:#888;margin-top:2px">클릭하면 펫 목록과 확률을 볼 수 있어요!</div>
         </div>
       </div>
+      <div style="font-size:10px;color:#f97316;font-weight:bold;margin:6px 0 4px">⏰ 기간 한정 (~9/23)</div>
+      <div class="coupon-card" onclick="onDirectPetBuy('삼겹살')" style="cursor:pointer;">
+        <span class="coupon-icon">🥩</span>
+        <div class="coupon-info">
+          <div class="coupon-name" style="color:#f97316">삼겹살 <span style="font-size:10px;color:#888">[신]</span></div>
+          <div class="color-price">🪙 1코인 · 7.5초마다 HP 전부 회복</div>
+        </div>
+      </div>
+      <div class="coupon-card" onclick="onDirectPetBuy('감자')" style="cursor:pointer;">
+        <span class="coupon-icon">🥔</span>
+        <div class="coupon-info">
+          <div class="coupon-name" style="color:#fbbf24">감자 <span style="font-size:10px;color:#888">[전설]</span></div>
+          <div class="color-price">🪙 1코인 · 최대 체력 +50</div>
+        </div>
+      </div>
+      ${(() => {
+        const owned = loadPetsOwned();
+        const slots = loadPetSlots();
+        if (!owned.length) return '<p style="color:#666;font-size:12px;text-align:center">아직 보유한 펫이 없어요. 알을 까서 획득하세요!</p>';
+        return owned.map((id, idx) => {
+          const cfg = PETS_CONFIG[id];
+          if (!cfg) return '';
+          const slotPos = slots.indexOf(idx);
+          const isActive = slotPos >= 0;
+          const slotNum = slotPos + 1;
+          const canEquip = !isActive && slots.length < 3;
+          return `<div class="coupon-card owned ${isActive ? 'active' : ''}" onclick="onOwnedPetClick(${idx})" style="cursor:${canEquip || isActive ? 'pointer' : 'default'}">
+            ${isActive ? `<span class="coupon-status-badge">슬롯${slotNum}</span>` : ''}
+            <span class="coupon-icon">${cfg.icon}</span>
+            <div class="coupon-info">
+              <div class="coupon-name" style="color:${cfg.gradeColor}">${cfg.displayName} <span style="font-size:10px;color:#888">[${cfg.gradeLabel}]</span></div>
+              <div class="color-owned">${isActive ? `✓ 슬롯${slotNum} 장착중 — 클릭하면 해제` : (canEquip ? '✓ 보유 — 클릭하여 장착' : '✓ 보유 (슬롯 꽉 참)')}</div>
+            </div>
+          </div>`;
+        }).join('');
+      })()}
 
       <div class="coupon-section-title">🔭 특수 아이템</div>
       <div class="coupon-card ${loadJumpPotion() > 0 ? 'owned' : ''}" style="position:relative" onclick="onJumpPotionClick()">
@@ -1572,32 +1591,94 @@ function showConfirm(title, desc, onYes) {
 }
 window.confirmPurchase = function(yes) {
   document.getElementById('confirm-modal').classList.remove('active');
+  document.getElementById('confirm-yes').style.display = '';
   if (yes && _pendingPurchase) _pendingPurchase();
   _pendingPurchase = null;
 };
 
-window.onPetClick = function() {
-  if (!loadPetOwned()) {
-    const coins = loadCoins();
-    if (coins < 1) {
-      showConfirm('코인 부족', '코인이 1개 이상 필요해요.', null, null, true);
-      return;
-    }
-    saveCoins(coins - 1);
-    savePetOwned(true);
-    savePetActive(true);
-    SFX.coin?.();
-  } else {
-    savePetActive(!loadPetActive());
+window.onEggClick = function() {
+  const coins = loadCoins();
+  const cost = 300;
+  const rateList = EGG_POOL.map(id => {
+    const cfg = PETS_CONFIG[id];
+    return `<div style="display:flex;justify-content:space-between;align-items:center;margin:3px 0;font-size:12px;">
+      <span style="color:${cfg.gradeColor}">${cfg.displayName} <span style="color:#888;font-size:10px">[${cfg.gradeLabel}]</span></span>
+      <span style="color:#aaa">${cfg.eggRate}%</span>
+    </div>`;
+  }).join('');
+  if (coins < cost) {
+    showConfirm('🥚 신비한 알',
+      `<div style="text-align:left;margin-bottom:10px">${rateList}</div><span style="color:#ef4444">코인 부족 — 잔여 ${coins}코인 (${cost}코인 필요)</span>`,
+      null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    return;
   }
+  document.getElementById('confirm-yes').style.display = '';
+  showConfirm('🥚 신비한 알',
+    `<div style="text-align:left;margin-bottom:10px">${rateList}</div>🪙 ${cost}코인 → 잔액 ${coins - cost}코인`,
+    () => {
+      saveCoins(coins - cost);
+      const petId = rollEgg();
+      const cfg = PETS_CONFIG[petId];
+      addPet(petId);
+      SFX.coin?.();
+      showConfirm('🥚 알에서 나왔어요!',
+        `<span style="color:${cfg.gradeColor};font-size:18px">${cfg.displayName}</span><br><span style="color:#888;font-size:11px">[${cfg.gradeLabel}]</span><br><br>• ${_petStatDesc(petId).replace(/ · /g,'<br>• ')}`,
+        null);
+      gameActive ? openShopDuringGame() : showShop();
+    }
+  );
+};
+
+function _petStatDesc(id) {
+  const cfg = PETS_CONFIG[id];
+  if (!cfg) return '';
+  const parts = [];
+  if (cfg.jumpBoost > 0) parts.push(`점프력 +${Math.round(cfg.jumpBoost * 100)}%`);
+  if (cfg.dmgReduction > 0) parts.push(`피해량 -${Math.round(cfg.dmgReduction * 100)}%`);
+  if (cfg.hpMult > 1) parts.push(`체력 ${cfg.hpMult}배`);
+  if (cfg.hpBonus > 0) parts.push(`최대 체력 +${cfg.hpBonus}`);
+  if (cfg.healFrames > 0) parts.push(`${(cfg.healFrames / 60).toFixed(1)}초마다 HP 전부 회복`);
+  return parts.join(' · ') || '특수 효과 없음';
+}
+
+window.onDirectPetBuy = function(id) {
+  const cfg = PETS_CONFIG[id];
+  if (!cfg) return;
+  const coins = loadCoins();
+  if (coins < 1) {
+    showConfirm('코인 부족', '코인이 1개 이상 필요해요.', null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    return;
+  }
+  showConfirm('구매하시겠습니까?',
+    `${cfg.icon} <span style="color:${cfg.gradeColor}">${cfg.displayName} [${cfg.gradeLabel}]</span><br><br>• ${_petStatDesc(id).replace(/ · /g,'<br>• ')}<br><br>🪙 1코인 → 잔액 ${coins - 1}코인`, () => {
+    saveCoins(coins - 1);
+    addPet(id);
+    SFX.coin?.();
+    gameActive ? openShopDuringGame() : showShop();
+  });
+};
+
+window.onOwnedPetClick = function(idx) {
+  idx = parseInt(idx);
+  const slots = loadPetSlots();
+  const pos = slots.indexOf(idx);
+  if (pos >= 0) {
+    slots.splice(pos, 1);
+  } else if (slots.length < 3) {
+    slots.push(idx);
+  }
+  savePetSlots(slots);
   if (gameActive) {
-    _petActive = loadPetActive();
-    maxHp = _petActive ? 200 : 100;
-    if (_petActive && hp < 100) hp = Math.min(maxHp, hp);
-    else if (_petActive) hp = Math.min(maxHp, hp * 2);
-    else { hp = Math.min(hp, maxHp); }
+    const oldMaxHp = maxHp;
+    _activeSlotIds = getActiveSlotIds();
+    _petHealFrames = 0;
+    maxHp = computeMaxHp();
+    const diff = maxHp - oldMaxHp;
+    hp = diff > 0 ? Math.min(maxHp, hp + diff) : Math.max(1, Math.min(hp, maxHp));
     updateHpBar();
-    if (_petActive) buildPet(); else removePet();
+    buildPets();
   }
   gameActive ? openShopDuringGame() : showShop();
 };
@@ -2019,20 +2100,26 @@ function showInventory() {
           }).join('')}
           </div>`}
 
-      <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin:14px 0 8px">🐾 펫</div>
-      <div class="coupon-card ${loadPetOwned() ? (loadPetActive() ? 'owned active' : 'owned') : ''}" onclick="showPetInfo()" style="cursor:pointer;">
-        ${loadPetOwned() && loadPetActive() ? '<span class="coupon-status-badge">장착중</span>' : ''}
-        <span class="coupon-icon">🥔</span>
-        <div class="coupon-info">
-          <div class="coupon-name">감자신</div>
-          <div class="${loadPetOwned() ? 'color-owned' : 'color-price'}">
-            ${loadPetOwned()
-              ? (loadPetActive() ? '✓ 장착중' : '✓ 보유 · 비활성화')
-              : '🪙 1코인 · 미보유'}
-          </div>
-          <div style="font-size:10px;color:#888;margin-top:2px">클릭하여 상세 정보 보기</div>
-        </div>
-      </div>
+      <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin:14px 0 8px">🐾 보유 펫</div>
+      ${(() => {
+        const invOwned = loadPetsOwned();
+        const invSlots = loadPetSlots();
+        if (!invOwned.length) return '<p style="color:#666;font-size:12px;text-align:center">보유한 펫이 없어요. 상점에서 알을 까세요!</p>';
+        return invOwned.map((id, idx) => {
+          const cfg = PETS_CONFIG[id];
+          if (!cfg) return '';
+          const slotPos = invSlots.indexOf(idx);
+          const isActive = slotPos >= 0;
+          return `<div class="coupon-card owned ${isActive ? 'active' : ''}" onclick="showPetInfo('${id}')" style="cursor:pointer;">
+            ${isActive ? `<span class="coupon-status-badge">슬롯${slotPos+1}</span>` : ''}
+            <span class="coupon-icon">${cfg.icon}</span>
+            <div class="coupon-info">
+              <div class="coupon-name" style="color:${cfg.gradeColor}">${cfg.displayName} <span style="font-size:10px;color:#888">[${cfg.gradeLabel}]</span></div>
+              <div class="color-owned">${isActive ? `✓ 슬롯${slotPos+1} 장착중` : '✓ 보유'} — 클릭하여 상세 보기</div>
+            </div>
+          </div>`;
+        }).join('');
+      })()}
 
       <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin:14px 0 8px">🎟️ 보유 쿠폰</div>
       ${ownedCouponList.length === 0
@@ -2081,16 +2168,27 @@ function showInventory() {
 }
 window.showInventory = showInventory;
 
-window.showPetInfo = function() {
-  const owned  = loadPetOwned();
-  const active = loadPetActive();
+window.showPetInfo = function(id) {
+  const cfg = id ? PETS_CONFIG[id] : null;
+  const modal = document.getElementById('pet-info-modal');
+  const titleEl = document.getElementById('pet-info-title');
+  const appearEl = document.getElementById('pet-info-appear');
+  const abilEl = document.getElementById('pet-info-abil');
   const statusEl = document.getElementById('pet-info-status');
+  if (!cfg || !modal) return;
+  if (titleEl) titleEl.innerHTML = `<span style="color:${cfg.gradeColor}">${cfg.displayName}</span> <span style="font-size:12px;color:#888">[${cfg.gradeLabel}]</span>`;
+  if (abilEl) abilEl.innerHTML = _petStatDesc(id).replace(/ · /g, '<br>• ').replace(/^/, '• ') || '특수 효과 없음';
+  const slots = loadPetSlots();
+  const owned = loadPetsOwned();
+  const activeIndices = slots.map(i => owned[i]).filter(Boolean);
+  const isActive = activeIndices.includes(id);
+  const isOwned = owned.includes(id);
   if (statusEl) {
-    if (!owned)        statusEl.innerHTML = '📍 상태: <span style="color:#888">미보유</span> — 상점에서 🪙1코인으로 구매';
-    else if (!active)  statusEl.innerHTML = '📍 상태: <span style="color:#a78bfa">보유</span> — 현재 비활성화 중';
-    else               statusEl.innerHTML = '📍 상태: <span style="color:#f59e0b">장착중</span> ✓';
+    if (!isOwned)     statusEl.innerHTML = '📍 상태: <span style="color:#888">미보유</span> — 상점 알에서 획득 가능';
+    else if (!isActive) statusEl.innerHTML = '📍 상태: <span style="color:#a78bfa">보유</span> — 현재 비장착';
+    else              statusEl.innerHTML = '📍 상태: <span style="color:#f59e0b">장착중</span> ✓';
   }
-  document.getElementById('pet-info-modal').style.display = 'flex';
+  modal.style.display = 'flex';
 };
 
 window.invEquipColor = function(id) {
@@ -2523,10 +2621,11 @@ window.onClickRestart = function() {
   updateJumpUI();
   invincPotionActive = false; invincPotionTimer = 0;
   updateInvincUI();
-  _petActive = loadPetActive();
-  maxHp = _petActive ? 200 : 100;
+  _activeSlotIds = getActiveSlotIds();
+  _petHealFrames = 0;
+  maxHp = computeMaxHp();
   hp = maxHp;
-  buildPet();
+  buildPets();
   updateScoreUI();
   _gameOverCalled = false;
   _questSnapshot = JSON.parse(JSON.stringify(loadQuestProgress()));
@@ -2721,13 +2820,68 @@ const LS_FREE_COUPON      = 'ditto_free_coupon';
 const LS_NAME_CHANGE_CNT  = 'ditto_name_change_cnt';
 const LS_DISCOUNT_USED    = 'ditto_discount_used';
 const LS_JUMP_POTION      = 'ditto_jump_potion';
-const LS_PET_OWNED        = 'ditto_pet_owned';
-const LS_PET_ACTIVE       = 'ditto_pet_active';
+const LS_PET_OWNED        = 'ditto_pet_owned';   // legacy migration only
+const LS_PETS_OWNED       = 'ditto_pets_owned';  // JSON array of owned pet IDs (duplicates allowed)
+const LS_PET_SLOTS        = 'ditto_pet_slots';   // JSON array of indices (max 3)
+const LS_PET_ACTIVE       = 'ditto_pet_active';  // legacy migration only
 const LS_INVINC_POTION    = 'ditto_invinc_potion';
 
 const BALL_SKIN_IDS    = new Set(['potato', 'soccer', 'baseball', 'basketball', 'volleyball', 'tennis']);
 const SPECIAL_SKIN_IDS = new Set(['potato', ...BALL_SKIN_IDS]);
 const SHAPE_SKIN_IDS   = new Set(['cube', 'tetrahedron']);
+
+const PETS_CONFIG = {
+  '바나나':     { displayName: '바나나',     icon: '🍌', grade: 'rare',      gradeLabel: '레어', gradeColor: '#4ade80', eggRate: 40,  jumpBoost: 0.08, dmgReduction: 0,   hpMult: 1, hpBonus: 0,  healFrames: 0   },
+  '돼지':       { displayName: '돼지',       icon: '🐷', grade: 'rare',      gradeLabel: '레어', gradeColor: '#4ade80', eggRate: 35,  jumpBoost: 0,    dmgReduction: 0.1, hpMult: 1, hpBonus: 0,  healFrames: 0   },
+  '고철덩어리': { displayName: '고철덩어리', icon: '🔩', grade: 'epic',      gradeLabel: '에픽', gradeColor: '#a78bfa', eggRate: 10,  jumpBoost: 0,    dmgReduction: 0.3, hpMult: 1, hpBonus: 0,  healFrames: 0   },
+  '스프링':     { displayName: '스프링',     icon: '🌀', grade: 'epic',      gradeLabel: '에픽', gradeColor: '#a78bfa', eggRate: 10,  jumpBoost: 0.2,  dmgReduction: 0,   hpMult: 1, hpBonus: 0,  healFrames: 0   },
+  '감자':       { displayName: '감자',       icon: '🥔', grade: 'legendary', gradeLabel: '전설', gradeColor: '#fbbf24', eggRate: 3,   jumpBoost: 0,    dmgReduction: 0,   hpMult: 1, hpBonus: 50, healFrames: 0   },
+  '삼겹살':     { displayName: '삼겹살',     icon: '🥩', grade: 'god',       gradeLabel: '신',   gradeColor: '#f97316', eggRate: 1.5, jumpBoost: 0,    dmgReduction: 0,   hpMult: 1, hpBonus: 0,  healFrames: 450 },
+  '감자신':     { displayName: '???',        icon: '🥔', grade: 'hidden',    gradeLabel: '히든', gradeColor: '#ec4899', eggRate: 0.5, jumpBoost: 0.15, dmgReduction: 0.5, hpMult: 2, hpBonus: 0,  healFrames: 0   },
+};
+
+const EGG_POOL = ['바나나','돼지','고철덩어리','스프링','감자','삼겹살','감자신'];
+
+function rollEgg() {
+  const r = Math.random() * 100;
+  let cum = 0;
+  for (const id of EGG_POOL) {
+    cum += PETS_CONFIG[id].eggRate;
+    if (r < cum) return id;
+  }
+  return '바나나';
+}
+
+function computeMaxHp() {
+  let total = 100;
+  for (const id of _activeSlotIds) {
+    const cfg = PETS_CONFIG[id];
+    if (cfg) total += Math.round(100 * ((cfg.hpMult || 1) - 1)) + (cfg.hpBonus || 0);
+  }
+  return total;
+}
+
+function computeDamage(amount) {
+  let dmg = amount;
+  for (const id of _activeSlotIds) {
+    const red = PETS_CONFIG[id]?.dmgReduction || 0;
+    if (red > 0) dmg *= (1 - red);
+  }
+  return Math.max(1, Math.round(dmg));
+}
+
+function computeJumpBoost() {
+  return _activeSlotIds.reduce((s, id) => s + (PETS_CONFIG[id]?.jumpBoost || 0), 0);
+}
+
+function computeHealFrames() {
+  let best = 0;
+  for (const id of _activeSlotIds) {
+    const hf = PETS_CONFIG[id]?.healFrames || 0;
+    if (hf > 0) best = best === 0 ? hf : Math.min(best, hf);
+  }
+  return best;
+}
 
 function createBallTexture(type) {
   const S = 512, H = S / 2;
@@ -3338,10 +3492,30 @@ function saveActiveCoupon(id)  { id ? localStorage.setItem(LS_ACTIVE_COUPON, id)
 function loadGlasses() { return parseInt(localStorage.getItem(LS_GLASSES) || '0'); }
 function saveGlasses(n) { localStorage.setItem(LS_GLASSES, String(n)); }
 
-function loadPetOwned()   { return localStorage.getItem(LS_PET_OWNED)  === '1'; }
-function savePetOwned(b)  { localStorage.setItem(LS_PET_OWNED,  b ? '1' : '0'); }
-function loadPetActive()  { return localStorage.getItem(LS_PET_ACTIVE) === '1'; }
-function savePetActive(b) { localStorage.setItem(LS_PET_ACTIVE, b ? '1' : '0'); }
+function loadPetsOwned() {
+  let list; try { list = JSON.parse(localStorage.getItem(LS_PETS_OWNED)) || []; } catch { list = []; }
+  if (localStorage.getItem(LS_PET_OWNED) === '1' && !list.includes('감자신')) { list.push('감자신'); savePetsOwned(list); }
+  return list;
+}
+function savePetsOwned(arr) { localStorage.setItem(LS_PETS_OWNED, JSON.stringify(arr)); }
+function hasPet(id) { return loadPetsOwned().includes(id); }
+function addPet(id) { const l = loadPetsOwned(); l.push(id); savePetsOwned(l); }
+function loadPetSlots() {
+  let slots; try { slots = JSON.parse(localStorage.getItem(LS_PET_SLOTS)) || []; } catch { slots = []; }
+  // legacy migration: old active flag
+  if (!slots.length && localStorage.getItem(LS_PET_ACTIVE) === '1') {
+    const owned = loadPetsOwned();
+    const idx = owned.indexOf('감자신');
+    if (idx >= 0) { slots = [idx]; savePetSlots(slots); }
+  }
+  const owned = loadPetsOwned();
+  return slots.filter(i => i < owned.length);
+}
+function savePetSlots(arr) { localStorage.setItem(LS_PET_SLOTS, JSON.stringify(arr)); }
+function getActiveSlotIds() {
+  const owned = loadPetsOwned();
+  return loadPetSlots().map(i => owned[i]).filter(Boolean);
+}
 function loadJumpPotion()    { return parseInt(localStorage.getItem(LS_JUMP_POTION) || '0'); }
 function saveJumpPotion(n)   { localStorage.setItem(LS_JUMP_POTION, String(n)); }
 function loadInvincPotion()  { return parseInt(localStorage.getItem(LS_INVINC_POTION) || '0'); }
@@ -3706,88 +3880,200 @@ function buildPlayer() {
   scene.add(player);
 }
 
-function removePet() {
-  if (!petGroup) return;
-  scene.remove(petGroup);
-  petGroup.traverse(o => {
+function _disposeGroup(g) {
+  scene.remove(g);
+  g.traverse(o => {
     if (o.geometry) o.geometry.dispose();
     if (o.material) { if (Array.isArray(o.material)) o.material.forEach(m=>m.dispose()); else o.material.dispose(); }
   });
-  petGroup = null;
 }
 
-function buildPet() {
-  removePet();
-  if (!_petActive) return;
+function removePets() {
+  petGroups.forEach(pg => { if (pg) _disposeGroup(pg); });
+  petGroups = [];
+}
 
-  petGroup = new THREE.Group();
-
-  // ── 감자 몸통 (타원형) ──
+function _buildPotatoBody(g, withSprout, withGun) {
   const bGeo = new THREE.SphereGeometry(0.35, 13, 10);
   const bArr = bGeo.attributes.position;
   for (let i = 0; i < bArr.count; i++) {
-    const x = bArr.getX(i), y = bArr.getY(i), z = bArr.getZ(i);
-    // 감자 특유의 울퉁불퉁 + 납작한 타원
-    const bump = 1 + Math.sin(x*14+y*9)*0.03 + Math.sin(z*11+x*6)*0.025;
-    bArr.setXYZ(i, x*1.10*bump, y*0.88*bump, z*1.00*bump);
+    const x=bArr.getX(i),y=bArr.getY(i),z=bArr.getZ(i);
+    const b=1+Math.sin(x*14+y*9)*0.03+Math.sin(z*11+x*6)*0.025;
+    bArr.setXYZ(i,x*1.10*b,y*0.88*b,z*1.00*b);
   }
-  bArr.needsUpdate = true; bGeo.computeVertexNormals();
-
-  const bMat = new THREE.MeshStandardMaterial({ color:0xb07838, roughness:0.88, metalness:0, emissive:0x2a1000, emissiveIntensity:0.18 });
-  const body = new THREE.Mesh(bGeo, bMat);
-  body.castShadow = true;
-  petGroup.add(body);
-
-  // 감자 무늬 (어두운 점)
-  const smat = new THREE.MeshStandardMaterial({ color:0x5a2c08, roughness:1 });
+  bArr.needsUpdate=true; bGeo.computeVertexNormals();
+  const bMat=new THREE.MeshStandardMaterial({color:0xb07838,roughness:0.88,emissive:0x2a1000,emissiveIntensity:0.18});
+  const body=new THREE.Mesh(bGeo,bMat); body.castShadow=true; g.add(body);
+  const smat=new THREE.MeshStandardMaterial({color:0x5a2c08,roughness:1});
   [[0.24,0.06,0.28],[-0.22,-0.07,0.26],[0.06,-0.20,0.30],[-0.14,0.17,0.23],[0.27,-0.14,0.17]].forEach(([x,y,z])=>{
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.044,6,6), smat);
-    s.position.set(x,y,z); petGroup.add(s);
+    const s=new THREE.Mesh(new THREE.SphereGeometry(0.044,6,6),smat); s.position.set(x,y,z); g.add(s);
   });
-
-  // ── 눈 (입 없음) ──
-  const emat = new THREE.MeshStandardMaterial({ color:0x111111 });
-  const lE = new THREE.Mesh(new THREE.SphereGeometry(0.068,10,10), emat);
-  lE.position.set(-0.13, 0.07, 0.30); petGroup.add(lE);
-  const rE = new THREE.Mesh(new THREE.SphereGeometry(0.068,10,10), emat);
-  rE.position.set(0.13, 0.07, 0.30); petGroup.add(rE);
-
-  const shmat = new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xffffff, emissiveIntensity:1 });
-  const lS = new THREE.Mesh(new THREE.SphereGeometry(0.027,6,6), shmat);
-  lS.position.set(-0.105,0.104,0.346); petGroup.add(lS);
-  const rS = new THREE.Mesh(new THREE.SphereGeometry(0.027,6,6), shmat);
-  rS.position.set(0.155,0.104,0.346); petGroup.add(rS);
-
-  // ── 머리 위 새싹 ──
-  const stemMat = new THREE.MeshStandardMaterial({ color:0x2a8030 });
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.030,0.24,6), stemMat);
-  stem.position.set(0.02, 0.40, 0.01); petGroup.add(stem);
-
-  const leafMat = new THREE.MeshStandardMaterial({ color:0x38c040, side:THREE.DoubleSide });
-  [[-0.11,0.57,0.01, 0.38],[0.12,0.57,0.01,-0.38],[0.02,0.65,0.01,0]].forEach(([x,y,z,rz])=>{
-    const lf = new THREE.Mesh(new THREE.SphereGeometry(0.088,8,6), leafMat);
-    lf.scale.set(1.1, 0.30, 0.58); lf.position.set(x,y,z); lf.rotation.z = rz;
-    petGroup.add(lf);
-  });
-
-  // ── 한쪽 손에 총 ──
-  const aMat = new THREE.MeshStandardMaterial({ color:0xb07838, roughness:0.9 });
-  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.040,0.036,0.22,6), aMat);
-  arm.rotation.z = -Math.PI/2; arm.position.set(0.34,-0.05,0.04); petGroup.add(arm);
-
-  const gMat = new THREE.MeshStandardMaterial({ color:0x383838, roughness:0.35, metalness:0.55 });
-  // 총열
-  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.058,0.056,0.17), gMat);
-  barrel.position.set(0.47,-0.05,0.08); petGroup.add(barrel);
-  // 손잡이
-  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.048,0.135,0.055), gMat);
-  handle.position.set(0.44,-0.14,0.03); petGroup.add(handle);
-  // 방아쇠 가드 (작은 디테일)
-  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.028,0.042,0.048), gMat);
-  guard.position.set(0.44,-0.09,0.04); petGroup.add(guard);
-
-  scene.add(petGroup);
+  const emat=new THREE.MeshStandardMaterial({color:0x111111});
+  const shmat=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1});
+  const lE=new THREE.Mesh(new THREE.SphereGeometry(0.068,10,10),emat); lE.position.set(-0.13,0.07,0.30); g.add(lE);
+  const rE=new THREE.Mesh(new THREE.SphereGeometry(0.068,10,10),emat); rE.position.set(0.13,0.07,0.30); g.add(rE);
+  const lS=new THREE.Mesh(new THREE.SphereGeometry(0.027,6,6),shmat); lS.position.set(-0.105,0.104,0.346); g.add(lS);
+  const rS=new THREE.Mesh(new THREE.SphereGeometry(0.027,6,6),shmat); rS.position.set(0.155,0.104,0.346); g.add(rS);
+  if (withSprout) {
+    const stMat=new THREE.MeshStandardMaterial({color:0x2a8030});
+    const st=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.030,0.24,6),stMat); st.position.set(0.02,0.40,0.01); g.add(st);
+    const lfMat=new THREE.MeshStandardMaterial({color:0x38c040,side:THREE.DoubleSide});
+    [[-0.11,0.57,0.01,0.38],[0.12,0.57,0.01,-0.38],[0.02,0.65,0.01,0]].forEach(([x,y,z,rz])=>{
+      const lf=new THREE.Mesh(new THREE.SphereGeometry(0.088,8,6),lfMat); lf.scale.set(1.1,0.30,0.58); lf.position.set(x,y,z); lf.rotation.z=rz; g.add(lf);
+    });
+  }
+  if (withGun) {
+    const aMat=new THREE.MeshStandardMaterial({color:0xb07838,roughness:0.9});
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.040,0.036,0.22,6),aMat); arm.rotation.z=-Math.PI/2; arm.position.set(0.34,-0.05,0.04); g.add(arm);
+    const gMat=new THREE.MeshStandardMaterial({color:0x383838,roughness:0.35,metalness:0.55});
+    const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.058,0.056,0.17),gMat); barrel.position.set(0.47,-0.05,0.08); g.add(barrel);
+    const handle=new THREE.Mesh(new THREE.BoxGeometry(0.048,0.135,0.055),gMat); handle.position.set(0.44,-0.14,0.03); g.add(handle);
+    const guard=new THREE.Mesh(new THREE.BoxGeometry(0.028,0.042,0.048),gMat); guard.position.set(0.44,-0.09,0.04); g.add(guard);
+  }
 }
+
+const _PET_BUILDERS = {
+  '감자신': g => _buildPotatoBody(g, true, true),
+  '감자':   g => _buildPotatoBody(g, false, false),
+  '바나나': g => {
+    // 바나나 곡선 몸통
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(-0.30, -0.05, 0),
+      new THREE.Vector3(0, 0.22, 0),
+      new THREE.Vector3(0.30, -0.05, 0)
+    );
+    const tube = new THREE.TubeGeometry(curve, 16, 0.095, 8, false);
+    const mat = new THREE.MeshStandardMaterial({color:0xFFE135, roughness:0.6, emissive:0x332200, emissiveIntensity:0.08});
+    g.add(new THREE.Mesh(tube, mat));
+    // 끝 팁 (갈색)
+    const tipMat = new THREE.MeshStandardMaterial({color:0x8B5E00, roughness:0.9});
+    [-1,1].forEach(s => {
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), tipMat);
+      tip.position.set(s * 0.30, -0.07, 0); g.add(tip);
+    });
+    // 눈
+    const emat = new THREE.MeshStandardMaterial({color:0x111111});
+    const lE = new THREE.Mesh(new THREE.SphereGeometry(0.055,8,8),emat); lE.position.set(-0.06,0.13,0.09); g.add(lE);
+    const rE = new THREE.Mesh(new THREE.SphereGeometry(0.055,8,8),emat); rE.position.set(0.06,0.13,0.09); g.add(rE);
+    // 무늬 (세로 줄)
+    const stripMat = new THREE.MeshStandardMaterial({color:0xD4B800, roughness:0.7});
+    for (let i=0; i<3; i++) {
+      const cx = (i-1)*0.10;
+      const sc = new THREE.Mesh(new THREE.SphereGeometry(0.018,4,4), stripMat);
+      sc.scale.set(0.3,4,0.3); sc.position.set(cx, 0.10, 0.07); g.add(sc);
+    }
+  },
+  '돼지': g => {
+    const pinkMat = new THREE.MeshStandardMaterial({color:0xFFB7C5,roughness:0.6});
+    const darkPink = new THREE.MeshStandardMaterial({color:0xFF8FA3,roughness:0.7});
+    // 몸통
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.32,12,10), pinkMat));
+    // 코
+    const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.06,10), pinkMat);
+    snout.rotation.x=Math.PI/2; snout.position.set(0,-0.05,0.30); g.add(snout);
+    // 콧구멍
+    const nosMat = new THREE.MeshStandardMaterial({color:0xCC6677});
+    [[-0.05,-0.04,0.33],[0.05,-0.04,0.33]].forEach(([x,y,z])=>{
+      const n = new THREE.Mesh(new THREE.SphereGeometry(0.028,6,6),nosMat); n.position.set(x,y,z); g.add(n);
+    });
+    // 귀
+    [[-1,1]].flat().forEach(s => {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.10,0.18,8),pinkMat);
+      ear.position.set(s*0.22,0.33,0); ear.rotation.z = s*0.25; g.add(ear);
+      const inner = new THREE.Mesh(new THREE.ConeGeometry(0.06,0.11,8),darkPink);
+      inner.position.set(s*0.22,0.34,0.03); inner.rotation.z = s*0.25; g.add(inner);
+    });
+    // 눈
+    const emat=new THREE.MeshStandardMaterial({color:0x111111});
+    const lE=new THREE.Mesh(new THREE.SphereGeometry(0.060,8,8),emat); lE.position.set(-0.12,0.10,0.28); g.add(lE);
+    const rE=new THREE.Mesh(new THREE.SphereGeometry(0.060,8,8),emat); rE.position.set(0.12,0.10,0.28); g.add(rE);
+    // 꼬리
+    const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0,0,-0.30),new THREE.Vector3(0.15,0.10,-0.38),new THREE.Vector3(0.05,0.20,-0.28));
+    const tailTube = new THREE.TubeGeometry(curve,8,0.025,5,false);
+    g.add(new THREE.Mesh(tailTube, pinkMat));
+  },
+  '고철덩어리': g => {
+    const mat = new THREE.MeshStandardMaterial({color:0xAAAAAA,metalness:0.75,roughness:0.25});
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.52,0.52,0.52), mat));
+    // 나사 디테일
+    const screwMat = new THREE.MeshStandardMaterial({color:0x888888,metalness:0.9,roughness:0.15});
+    [[0.26,0.10,0.10],[0.26,-0.10,-0.10],[-0.26,0.10,-0.10],[-0.26,-0.10,0.10]].forEach(([x,y,z])=>{
+      const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.030,0.030,0.02,6),screwMat);
+      sc.position.set(x,y,z); sc.rotation.z=Math.PI/2; g.add(sc);
+    });
+    // 긁힌 선 느낌 (어두운 박스)
+    const lineMat = new THREE.MeshStandardMaterial({color:0x777777,metalness:0.5});
+    [0.05,0,-0.05].forEach(off => {
+      const ln = new THREE.Mesh(new THREE.BoxGeometry(0.54,0.018,0.018),lineMat);
+      ln.position.set(0,off,0.27); g.add(ln);
+    });
+  },
+  '스프링': g => {
+    class HelixCurve extends THREE.Curve {
+      getPoint(t) {
+        const angle = t * 5 * Math.PI * 2;
+        return new THREE.Vector3(0.16*Math.cos(angle), t*0.65-0.32, 0.16*Math.sin(angle));
+      }
+    }
+    const tube = new THREE.TubeGeometry(new HelixCurve(), 100, 0.038, 7, false);
+    const mat = new THREE.MeshStandardMaterial({color:0xDD2020,metalness:0.3,roughness:0.4});
+    g.add(new THREE.Mesh(tube, mat));
+    // 위아래 납작한 원판
+    const plateMat = new THREE.MeshStandardMaterial({color:0xBB1818,metalness:0.4,roughness:0.5});
+    [-0.32,0.32].forEach(y => {
+      const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.04,12),plateMat);
+      plate.position.y=y; g.add(plate);
+    });
+  },
+  '삼겹살': g => {
+    const layers = [
+      {h:0.10,c:0xCC5533},
+      {h:0.06,c:0xF5E6D3},
+      {h:0.08,c:0xCC5533},
+      {h:0.04,c:0xF5E6D3},
+      {h:0.06,c:0xCC5533},
+    ];
+    let yOff = -0.17;
+    layers.forEach(({h,c}) => {
+      const mat = new THREE.MeshStandardMaterial({color:c,roughness:0.8});
+      const layer = new THREE.Mesh(new THREE.BoxGeometry(0.52,h,0.30),mat);
+      layer.position.y = yOff + h/2; yOff += h; g.add(layer);
+    });
+    // 구운 자국 (어두운 줄)
+    const grillMat = new THREE.MeshStandardMaterial({color:0x553300,roughness:0.9});
+    [-0.12,0,0.12].forEach(x => {
+      const gr = new THREE.Mesh(new THREE.BoxGeometry(0.025,0.37,0.32),grillMat);
+      gr.position.set(x,0,0); g.add(gr);
+    });
+    // 눈 (삼겹살에도 눈 추가해서 귀엽게)
+    const emat = new THREE.MeshStandardMaterial({color:0x111111});
+    const lE=new THREE.Mesh(new THREE.SphereGeometry(0.045,6,6),emat); lE.position.set(-0.10,0.20,0.16); g.add(lE);
+    const rE=new THREE.Mesh(new THREE.SphereGeometry(0.045,6,6),emat); rE.position.set(0.10,0.20,0.16); g.add(rE);
+  },
+};
+
+function buildPets() {
+  removePets();
+  if (!_activeSlotIds.length) return;
+  const _petOffsets = [[0.75, 0.28],[-0.75, 0.28],[0, -0.65]];
+  _activeSlotIds.forEach((id, i) => {
+    const builder = _PET_BUILDERS[id];
+    if (!builder) return;
+    const g = new THREE.Group();
+    builder(g);
+    // 플레이어 근처에서 시작 (lerp 초기값)
+    if (player) {
+      const [ox, oz] = _petOffsets[i] || [0.75, 0.28];
+      g.position.set(player.position.x + ox, player.position.y + 0.10, player.position.z + oz);
+    }
+    scene.add(g);
+    petGroups[i] = g;
+    petBobTs[i] = i * 2.0; // 각 펫마다 다른 위상으로 시작
+  });
+}
+
+function removePet() { removePets(); }
+function buildPet() { buildPets(); }
 
 // ─────────────────────────────────────────────
 // BACKGROUND
@@ -5182,8 +5468,9 @@ function startGame() {
   updateJumpUI();
   invincPotionActive = false; invincPotionTimer = 0;
   updateInvincUI();
-  _petActive = loadPetActive();
-  maxHp = _petActive ? 200 : 100;
+  _activeSlotIds = getActiveSlotIds();
+  _petHealFrames = 0;
+  maxHp = computeMaxHp();
   _gameOverCalled = false;
   _questSnapshot = JSON.parse(JSON.stringify(loadQuestProgress()));
   _questCoinEarned = 0;
@@ -5232,14 +5519,36 @@ function animate() {
   if (!gameActive) return;
 
   dittoWobble += 0.08;
-  if (petGroup) {
-    petBobT += 0.045;
-    petGroup.position.set(
-      player.position.x + 0.75,
-      player.position.y + Math.sin(petBobT) * 0.07,
-      player.position.z + 0.28
-    );
-    petGroup.rotation.y = Math.sin(petBobT * 0.4) * 0.12;
+  const _petOffsets = [[0.75, 0.28],[-0.75, 0.28],[0, -0.65]];
+  petGroups.forEach((pg, i) => {
+    if (!pg) return;
+    petBobTs[i] = (petBobTs[i] || 0) + 0.040;
+    const [ox, oz] = _petOffsets[i] || [0.75, 0.28];
+    const tx = player.position.x + ox;
+    const ty = player.position.y + 0.10 + Math.sin(petBobTs[i]) * 0.09;
+    const tz = player.position.z + oz;
+    // 자연스러운 lerp 추적
+    pg.position.x += (tx - pg.position.x) * 0.09;
+    pg.position.y += (ty - pg.position.y) * 0.09;
+    pg.position.z += (tz - pg.position.z) * 0.09;
+    // 이동 방향으로 부드럽게 회전
+    const ddx = pg.position.x - player.position.x;
+    const ddz = pg.position.z - player.position.z;
+    const targetRY = Math.atan2(ddx, ddz) + Math.PI;
+    let diff = targetRY - pg.rotation.y;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    pg.rotation.y += diff * 0.08 + Math.sin(petBobTs[i] * 0.35) * 0.008;
+  });
+  // 삼겹살 heal
+  const _healFrames = computeHealFrames();
+  if (_healFrames > 0 && gameActive) {
+    _petHealFrames++;
+    if (_petHealFrames >= _healFrames) {
+      _petHealFrames = 0;
+      hp = maxHp;
+      updateHpBar();
+    }
   }
   if (pvpMode && player.position.z < pvpMyBestZ) pvpMyBestZ = player.position.z;
   if (_cachedActiveColorId !== 'cube' && _cachedActiveColorId !== 'tetrahedron') {
@@ -5377,7 +5686,9 @@ function updatePlayer() {
 
   // Jump
   const stageJumpForce = currentStage === 8 ? JUMP_FORCE * 0.90 : JUMP_FORCE;
-  const activeJumpForce = _jumpBoostActive ? stageJumpForce * 1.25 : stageJumpForce;
+  let activeJumpForce = _jumpBoostActive ? stageJumpForce * 1.25 : stageJumpForce;
+  const _petJump = computeJumpBoost();
+  if (_petJump > 0) activeJumpForce *= (1 + _petJump);
   if ((keys['Space'] || keys['KeyW']) && onGround) {
     velocity.y = activeJumpForce;
     onGround = false;
@@ -5646,7 +5957,7 @@ function respawn() {
 
 function takeDamage(amount) {
   if (invincibleTimer > 0 || invincPotionActive || pvpMode) return;
-  hp = Math.max(0, hp - (_petActive ? Math.ceil(amount * 0.5) : amount));
+  hp = Math.max(0, hp - computeDamage(amount));
   invincibleTimer = 60;
   SFX.damage();
   updateHpBar();
