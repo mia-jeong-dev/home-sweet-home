@@ -1465,27 +1465,6 @@ function showShop() {
           <div class="color-price">🪙 1코인 · 히든 펫</div>
         </div>
       </div>
-      ${(() => {
-        const owned = loadPetsOwned();
-        const slots = loadPetSlots();
-        if (!owned.length) return '<p style="color:#666;font-size:12px;text-align:center">아직 보유한 펫이 없어요. 알을 까서 획득하세요!</p>';
-        return owned.map((id, idx) => {
-          const cfg = PETS_CONFIG[id];
-          if (!cfg) return '';
-          const slotPos = slots.indexOf(idx);
-          const isActive = slotPos >= 0;
-          const slotNum = slotPos + 1;
-          const canEquip = !isActive && slots.length < 3;
-          return `<div class="coupon-card owned ${isActive ? 'active' : ''}" onclick="onOwnedPetClick(${idx})" style="cursor:${canEquip || isActive ? 'pointer' : 'default'}">
-            ${isActive ? `<span class="coupon-status-badge">슬롯${slotNum}</span>` : ''}
-            <span class="coupon-icon">${cfg.icon}</span>
-            <div class="coupon-info">
-              <div class="coupon-name" style="color:${cfg.gradeColor}">${cfg.displayName} <span style="font-size:10px;color:#888">[${cfg.gradeLabel}]</span></div>
-              <div class="color-owned">${isActive ? `✓ 슬롯${slotNum} 장착중 — 클릭하면 해제` : (canEquip ? '✓ 보유 — 클릭하여 장착' : '✓ 보유 (슬롯 꽉 참)')}</div>
-            </div>
-          </div>`;
-        }).join('');
-      })()}
 
       <div class="coupon-section-title">🔭 특수 아이템</div>
       <div class="coupon-card ${loadJumpPotion() > 0 ? 'owned' : ''}" style="position:relative" onclick="onJumpPotionClick()">
@@ -2119,12 +2098,22 @@ function showInventory() {
           if (!cfg) return '';
           const slotPos = invSlots.indexOf(idx);
           const isActive = slotPos >= 0;
-          return `<div class="coupon-card owned ${isActive ? 'active' : ''}" onclick="showPetInfo('${id}')" style="cursor:pointer;">
+          const canEquip = !isActive && invSlots.length < 3;
+          return `<div class="coupon-card owned ${isActive ? 'active' : ''}">
             ${isActive ? `<span class="coupon-status-badge">슬롯${slotPos+1}</span>` : ''}
-            <span class="coupon-icon">${cfg.icon}</span>
+            <span class="coupon-icon" onclick="showPetInfo('${id}')" style="cursor:pointer">${cfg.icon}</span>
             <div class="coupon-info">
               <div class="coupon-name" style="color:${cfg.gradeColor}">${cfg.displayName} <span style="font-size:10px;color:#888">[${cfg.gradeLabel}]</span></div>
-              <div class="color-owned">${isActive ? `✓ 슬롯${slotPos+1} 장착중` : '✓ 보유'} — 클릭하여 상세 보기</div>
+              <div class="color-owned" style="margin-bottom:6px">${isActive ? `✓ 슬롯${slotPos+1} 장착중` : '✓ 보유'}</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                ${isActive
+                  ? `<button onclick="invUnequipPet(${idx})" style="padding:3px 10px;font-size:11px;background:#444;border:1px solid #888;border-radius:6px;color:#fff;cursor:pointer">장착 해제</button>`
+                  : canEquip
+                    ? `<button onclick="invEquipPet(${idx})" style="padding:3px 10px;font-size:11px;background:#7c3aed;border:1px solid #a78bfa;border-radius:6px;color:#fff;cursor:pointer">장착</button>`
+                    : `<button style="padding:3px 10px;font-size:11px;background:#333;border:1px solid #555;border-radius:6px;color:#666;cursor:default" disabled>슬롯 꽉 참</button>`
+                }
+                <button onclick="showPetInfo('${id}')" style="padding:3px 10px;font-size:11px;background:transparent;border:1px solid #555;border-radius:6px;color:#aaa;cursor:pointer">상세</button>
+              </div>
             </div>
           </div>`;
         }).join('');
@@ -2198,6 +2187,46 @@ window.showPetInfo = function(id) {
     else              statusEl.innerHTML = '📍 상태: <span style="color:#f59e0b">장착중</span> ✓';
   }
   modal.style.display = 'flex';
+};
+
+window.invEquipPet = function(idx) {
+  idx = parseInt(idx);
+  const slots = loadPetSlots();
+  if (slots.length >= 3 || slots.includes(idx)) return;
+  slots.push(idx);
+  savePetSlots(slots);
+  if (gameActive) {
+    const oldMaxHp = maxHp;
+    _activeSlotIds = getActiveSlotIds();
+    _petHealFrames = 0;
+    _cachedHealFrames = computeHealFrames();
+    maxHp = computeMaxHp();
+    const diff = maxHp - oldMaxHp;
+    hp = diff > 0 ? Math.min(maxHp, hp + diff) : Math.max(1, Math.min(hp, maxHp));
+    updateHpBar();
+    buildPets();
+  }
+  showInventory();
+};
+
+window.invUnequipPet = function(idx) {
+  idx = parseInt(idx);
+  const slots = loadPetSlots();
+  const pos = slots.indexOf(idx);
+  if (pos < 0) return;
+  slots.splice(pos, 1);
+  savePetSlots(slots);
+  if (gameActive) {
+    const oldMaxHp = maxHp;
+    _activeSlotIds = getActiveSlotIds();
+    _petHealFrames = 0;
+    _cachedHealFrames = computeHealFrames();
+    maxHp = computeMaxHp();
+    hp = Math.max(1, Math.min(hp, maxHp));
+    updateHpBar();
+    buildPets();
+  }
+  showInventory();
 };
 
 window.invEquipColor = function(id) {
