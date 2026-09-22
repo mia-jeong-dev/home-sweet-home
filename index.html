@@ -1035,7 +1035,8 @@ let keys = {};
 let velocity = new THREE.Vector3();
 let onGround = false;
 let hp = 100, maxHp = 100;
-let petGroups = [], petBobTs = [0,0,0], _activeSlotIds = [], _petHealFrames = 0;
+let petGroups = [], petBobTs = [0,0,0], _activeSlotIds = [], _petHealFrames = 0, _cachedHealFrames = 0;
+const _PET_OFFSETS = [[0.75, 0.28], [-0.75, 0.28], [0, 1.15]];
 let currentStage = 1;
 let gameActive = false;
 let _gameOverCalled = false;
@@ -1457,6 +1458,13 @@ function showShop() {
           <div class="color-price">🪙 1코인 · 최대 체력 +50</div>
         </div>
       </div>
+      <div class="coupon-card" onclick="onDirectPetBuy('감자신')" style="cursor:pointer;">
+        <span class="coupon-icon">🥔</span>
+        <div class="coupon-info">
+          <div class="coupon-name" style="color:#ec4899">??? <span style="font-size:10px;color:#888">[히든]</span></div>
+          <div class="color-price">🪙 1코인 · 히든 펫</div>
+        </div>
+      </div>
       ${(() => {
         const owned = loadPetsOwned();
         const slots = loadPetSlots();
@@ -1674,6 +1682,7 @@ window.onOwnedPetClick = function(idx) {
     const oldMaxHp = maxHp;
     _activeSlotIds = getActiveSlotIds();
     _petHealFrames = 0;
+    _cachedHealFrames = computeHealFrames();
     maxHp = computeMaxHp();
     const diff = maxHp - oldMaxHp;
     hp = diff > 0 ? Math.min(maxHp, hp + diff) : Math.max(1, Math.min(hp, maxHp));
@@ -4054,8 +4063,8 @@ const _PET_BUILDERS = {
 
 function buildPets() {
   removePets();
+  _cachedHealFrames = computeHealFrames();
   if (!_activeSlotIds.length) return;
-  const _petOffsets = [[0.75, 0.28],[-0.75, 0.28],[0, 1.15]];
   _activeSlotIds.forEach((id, i) => {
     const builder = _PET_BUILDERS[id];
     if (!builder) return;
@@ -5519,35 +5528,31 @@ function animate() {
   if (!gameActive) return;
 
   dittoWobble += 0.08;
-  const _petOffsets = [[0.75, 0.28],[-0.75, 0.28],[0, 1.15]];
-  petGroups.forEach((pg, i) => {
-    if (!pg) return;
-    petBobTs[i] = (petBobTs[i] || 0) + 0.040;
-    const [ox, oz] = _petOffsets[i] || [0.75, 0.28];
-    const tx = player.position.x + ox;
-    const ty = player.position.y + 0.10 + Math.sin(petBobTs[i]) * 0.09;
-    const tz = player.position.z + oz;
-    // 자연스러운 lerp 추적
-    pg.position.x += (tx - pg.position.x) * 0.09;
-    pg.position.y += (ty - pg.position.y) * 0.09;
-    pg.position.z += (tz - pg.position.z) * 0.09;
-    // 이동 방향으로 부드럽게 회전
-    const ddx = pg.position.x - player.position.x;
-    const ddz = pg.position.z - player.position.z;
-    const targetRY = Math.atan2(ddx, ddz) + Math.PI;
-    let diff = targetRY - pg.rotation.y;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    pg.rotation.y += diff * 0.08 + Math.sin(petBobTs[i] * 0.35) * 0.008;
-  });
-  // 삼겹살 heal
-  const _healFrames = computeHealFrames();
-  if (_healFrames > 0 && gameActive) {
-    _petHealFrames++;
-    if (_petHealFrames >= _healFrames) {
-      _petHealFrames = 0;
-      hp = maxHp;
-      updateHpBar();
+  if (petGroups.length) {
+    for (let i = 0; i < petGroups.length; i++) {
+      const pg = petGroups[i];
+      if (!pg) continue;
+      petBobTs[i] += 0.040;
+      const off = _PET_OFFSETS[i];
+      const tx = player.position.x + off[0];
+      const ty = player.position.y + 0.10 + Math.sin(petBobTs[i]) * 0.09;
+      const tz = player.position.z + off[1];
+      pg.position.x += (tx - pg.position.x) * 0.09;
+      pg.position.y += (ty - pg.position.y) * 0.09;
+      pg.position.z += (tz - pg.position.z) * 0.09;
+      const ddx = pg.position.x - player.position.x;
+      const ddz = pg.position.z - player.position.z;
+      const targetRY = Math.atan2(ddx, ddz) + Math.PI;
+      let diff = targetRY - pg.rotation.y;
+      if (diff > Math.PI) diff -= Math.PI * 2;
+      else if (diff < -Math.PI) diff += Math.PI * 2;
+      pg.rotation.y += diff * 0.08 + Math.sin(petBobTs[i] * 0.35) * 0.008;
+    }
+    if (_cachedHealFrames > 0) {
+      _petHealFrames++;
+      if (_petHealFrames >= _cachedHealFrames) {
+        _petHealFrames = 0; hp = maxHp; updateHpBar();
+      }
     }
   }
   if (pvpMode && player.position.z < pvpMyBestZ) pvpMyBestZ = player.position.z;
