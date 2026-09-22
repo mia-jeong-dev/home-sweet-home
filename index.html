@@ -4467,8 +4467,8 @@ function _buildStage(stage, trueRand = 0.5) {
   const hiddenTotal  = stage >= 3 && stage < 10 ? Math.min(pvpMode ? 5 : Infinity, 1 + (stage - 3) * 3) : 0;
   let   hiddenPlaced = 0;
 
-  // Start platform
-  addPlatform(0, 0, 0, 6, 0.5, 6, palette.platform, false);
+  // Start platform (always white)
+  addPlatform(0, 0, 0, 6, 0.5, 6, 0xffffff, false);
   platforms[platforms.length - 1].userData.isStart = true;
 
   // 낚시 플랫폼은 7단계까지만 등장
@@ -5343,6 +5343,14 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoison
       emissiveIntensity: 0.6,
       roughness: 0.2,
       metalness: 0.5,
+    });
+  } else if (color === 0xffffff) {
+    mat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.12,
+      roughness: 0.4,
+      metalness: 0.15,
     });
   } else {
     mat = new THREE.MeshStandardMaterial({
