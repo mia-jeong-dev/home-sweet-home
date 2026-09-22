@@ -3926,9 +3926,9 @@ function _buildPotatoBody(g, withSprout, withGun) {
     const aMat=new THREE.MeshStandardMaterial({color:0xb07838,roughness:0.9});
     const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.040,0.036,0.22,6),aMat); arm.rotation.z=-Math.PI/2; arm.position.set(0.34,-0.05,0.04); g.add(arm);
     const gMat=new THREE.MeshStandardMaterial({color:0x383838,roughness:0.35,metalness:0.55});
-    const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.058,0.056,0.17),gMat); barrel.position.set(0.47,-0.05,0.08); g.add(barrel);
-    const handle=new THREE.Mesh(new THREE.BoxGeometry(0.048,0.135,0.055),gMat); handle.position.set(0.44,-0.14,0.03); g.add(handle);
-    const guard=new THREE.Mesh(new THREE.BoxGeometry(0.028,0.042,0.048),gMat); guard.position.set(0.44,-0.09,0.04); g.add(guard);
+    const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.076,0.073,0.22),gMat); barrel.position.set(0.48,-0.05,0.09); g.add(barrel);
+    const handle=new THREE.Mesh(new THREE.BoxGeometry(0.062,0.175,0.072),gMat); handle.position.set(0.45,-0.16,0.03); g.add(handle);
+    const guard=new THREE.Mesh(new THREE.BoxGeometry(0.036,0.055,0.062),gMat); guard.position.set(0.45,-0.10,0.04); g.add(guard);
   }
 }
 
