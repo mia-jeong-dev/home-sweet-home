@@ -4072,7 +4072,7 @@ function buildPets() {
     builder(g);
     // 플레이어 근처에서 시작 (lerp 초기값)
     if (player) {
-      const [ox, oz] = _petOffsets[i] || [0.75, 0.28];
+      const [ox, oz] = _PET_OFFSETS[i] || [0.75, 0.28];
       g.position.set(player.position.x + ox, player.position.y + 0.10, player.position.z + oz);
     }
     scene.add(g);
