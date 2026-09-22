@@ -1609,8 +1609,9 @@ window.onEggClick = function() {
       const cfg = PETS_CONFIG[petId];
       addPet(petId);
       SFX.coin?.();
+      const revealName = petId === '감자신' ? '감자신' : cfg.displayName;
       showConfirm('🥚 알에서 나왔어요!',
-        `<span style="color:${cfg.gradeColor};font-size:18px">${cfg.displayName}</span><br><span style="color:#888;font-size:11px">[${cfg.gradeLabel}]</span><br><br>• ${_petStatDesc(petId).replace(/ · /g,'<br>• ')}`,
+        `<span style="color:${cfg.gradeColor};font-size:18px">${revealName}</span><br><span style="color:#888;font-size:11px">[${cfg.gradeLabel}]</span><br><br>• ${_petStatDesc(petId).replace(/ · /g,'<br>• ')}`,
         null);
       gameActive ? openShopDuringGame() : showShop();
     }
