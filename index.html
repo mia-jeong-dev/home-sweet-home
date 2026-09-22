@@ -1439,7 +1439,7 @@ function showShop() {
         <span class="coupon-icon">🥚</span>
         <div class="coupon-info">
           <div class="coupon-name">신비한 알</div>
-          <div class="color-price">🪙 300코인 · 랜덤 펫 획득</div>
+          <div class="color-price">🪙 50코인 · 랜덤 펫 획득</div>
           <div style="font-size:10px;color:#888;margin-top:2px">클릭하면 펫 목록과 확률을 볼 수 있어요!</div>
         </div>
       </div>
@@ -1585,7 +1585,7 @@ window.confirmPurchase = function(yes) {
 
 window.onEggClick = function() {
   const coins = loadCoins();
-  const cost = 300;
+  const cost = 50;
   const rateList = EGG_POOL.map(id => {
     const cfg = PETS_CONFIG[id];
     return `<div style="display:flex;justify-content:space-between;align-items:center;margin:3px 0;font-size:12px;">
@@ -3932,7 +3932,7 @@ function removePets() {
 }
 
 function _buildPotatoBody(g, withSprout, withGun) {
-  const bGeo = new THREE.SphereGeometry(0.35, 13, 10);
+  const bGeo = new THREE.SphereGeometry(0.35, 8, 7);
   const bArr = bGeo.attributes.position;
   for (let i = 0; i < bArr.count; i++) {
     const x=bArr.getX(i),y=bArr.getY(i),z=bArr.getZ(i);
@@ -3941,28 +3941,28 @@ function _buildPotatoBody(g, withSprout, withGun) {
   }
   bArr.needsUpdate=true; bGeo.computeVertexNormals();
   const bMat=new THREE.MeshStandardMaterial({color:0xb07838,roughness:0.88,emissive:0x2a1000,emissiveIntensity:0.18});
-  const body=new THREE.Mesh(bGeo,bMat); body.castShadow=true; g.add(body);
+  const body=new THREE.Mesh(bGeo,bMat); g.add(body);
   const smat=new THREE.MeshStandardMaterial({color:0x5a2c08,roughness:1});
-  [[0.24,0.06,0.28],[-0.22,-0.07,0.26],[0.06,-0.20,0.30],[-0.14,0.17,0.23],[0.27,-0.14,0.17]].forEach(([x,y,z])=>{
-    const s=new THREE.Mesh(new THREE.SphereGeometry(0.044,6,6),smat); s.position.set(x,y,z); g.add(s);
+  [[0.24,0.06,0.28],[-0.22,-0.07,0.26],[0.06,-0.20,0.30]].forEach(([x,y,z])=>{
+    const s=new THREE.Mesh(new THREE.SphereGeometry(0.044,4,4),smat); s.position.set(x,y,z); g.add(s);
   });
   const emat=new THREE.MeshStandardMaterial({color:0x111111});
   const shmat=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1});
-  const lE=new THREE.Mesh(new THREE.SphereGeometry(0.068,10,10),emat); lE.position.set(-0.13,0.07,0.30); g.add(lE);
-  const rE=new THREE.Mesh(new THREE.SphereGeometry(0.068,10,10),emat); rE.position.set(0.13,0.07,0.30); g.add(rE);
-  const lS=new THREE.Mesh(new THREE.SphereGeometry(0.027,6,6),shmat); lS.position.set(-0.105,0.104,0.346); g.add(lS);
-  const rS=new THREE.Mesh(new THREE.SphereGeometry(0.027,6,6),shmat); rS.position.set(0.155,0.104,0.346); g.add(rS);
+  const lE=new THREE.Mesh(new THREE.SphereGeometry(0.068,6,6),emat); lE.position.set(-0.13,0.07,0.30); g.add(lE);
+  const rE=new THREE.Mesh(new THREE.SphereGeometry(0.068,6,6),emat); rE.position.set(0.13,0.07,0.30); g.add(rE);
+  const lS=new THREE.Mesh(new THREE.SphereGeometry(0.027,4,4),shmat); lS.position.set(-0.105,0.104,0.346); g.add(lS);
+  const rS=new THREE.Mesh(new THREE.SphereGeometry(0.027,4,4),shmat); rS.position.set(0.155,0.104,0.346); g.add(rS);
   if (withSprout) {
     const stMat=new THREE.MeshStandardMaterial({color:0x2a8030});
-    const st=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.030,0.24,6),stMat); st.position.set(0.02,0.40,0.01); g.add(st);
+    const st=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.030,0.24,5),stMat); st.position.set(0.02,0.40,0.01); g.add(st);
     const lfMat=new THREE.MeshStandardMaterial({color:0x38c040,side:THREE.DoubleSide});
     [[-0.11,0.57,0.01,0.38],[0.12,0.57,0.01,-0.38],[0.02,0.65,0.01,0]].forEach(([x,y,z,rz])=>{
-      const lf=new THREE.Mesh(new THREE.SphereGeometry(0.088,8,6),lfMat); lf.scale.set(1.1,0.30,0.58); lf.position.set(x,y,z); lf.rotation.z=rz; g.add(lf);
+      const lf=new THREE.Mesh(new THREE.SphereGeometry(0.088,5,4),lfMat); lf.scale.set(1.1,0.30,0.58); lf.position.set(x,y,z); lf.rotation.z=rz; g.add(lf);
     });
   }
   if (withGun) {
     const aMat=new THREE.MeshStandardMaterial({color:0xb07838,roughness:0.9});
-    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.040,0.036,0.22,6),aMat); arm.rotation.z=-Math.PI/2; arm.position.set(0.34,-0.05,0.04); g.add(arm);
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.040,0.036,0.22,5),aMat); arm.rotation.z=-Math.PI/2; arm.position.set(0.34,-0.05,0.04); g.add(arm);
     const gMat=new THREE.MeshStandardMaterial({color:0x383838,roughness:0.35,metalness:0.55});
     const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.076,0.073,0.22),gMat); barrel.position.set(0.48,-0.05,0.09); g.add(barrel);
     const handle=new THREE.Mesh(new THREE.BoxGeometry(0.062,0.175,0.072),gMat); handle.position.set(0.45,-0.16,0.03); g.add(handle);
@@ -3980,54 +3980,47 @@ const _PET_BUILDERS = {
       new THREE.Vector3(0, 0.22, 0),
       new THREE.Vector3(0.30, -0.05, 0)
     );
-    const tube = new THREE.TubeGeometry(curve, 16, 0.095, 8, false);
+    const tube = new THREE.TubeGeometry(curve, 10, 0.095, 6, false);
     const mat = new THREE.MeshStandardMaterial({color:0xFFE135, roughness:0.6, emissive:0x332200, emissiveIntensity:0.08});
     g.add(new THREE.Mesh(tube, mat));
     // 끝 팁 (갈색)
     const tipMat = new THREE.MeshStandardMaterial({color:0x8B5E00, roughness:0.9});
     [-1,1].forEach(s => {
-      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), tipMat);
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 5, 4), tipMat);
       tip.position.set(s * 0.30, -0.07, 0); g.add(tip);
     });
     // 눈
     const emat = new THREE.MeshStandardMaterial({color:0x111111});
-    const lE = new THREE.Mesh(new THREE.SphereGeometry(0.055,8,8),emat); lE.position.set(-0.06,0.13,0.09); g.add(lE);
-    const rE = new THREE.Mesh(new THREE.SphereGeometry(0.055,8,8),emat); rE.position.set(0.06,0.13,0.09); g.add(rE);
-    // 무늬 (세로 줄)
-    const stripMat = new THREE.MeshStandardMaterial({color:0xD4B800, roughness:0.7});
-    for (let i=0; i<3; i++) {
-      const cx = (i-1)*0.10;
-      const sc = new THREE.Mesh(new THREE.SphereGeometry(0.018,4,4), stripMat);
-      sc.scale.set(0.3,4,0.3); sc.position.set(cx, 0.10, 0.07); g.add(sc);
-    }
+    const lE = new THREE.Mesh(new THREE.SphereGeometry(0.055,6,5),emat); lE.position.set(-0.06,0.13,0.09); g.add(lE);
+    const rE = new THREE.Mesh(new THREE.SphereGeometry(0.055,6,5),emat); rE.position.set(0.06,0.13,0.09); g.add(rE);
   },
   '돼지': g => {
     const pinkMat = new THREE.MeshStandardMaterial({color:0xFFB7C5,roughness:0.6});
     const darkPink = new THREE.MeshStandardMaterial({color:0xFF8FA3,roughness:0.7});
     // 몸통
-    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.32,12,10), pinkMat));
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.32,8,7), pinkMat));
     // 코
-    const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.06,10), pinkMat);
+    const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.06,7), pinkMat);
     snout.rotation.x=Math.PI/2; snout.position.set(0,-0.05,0.30); g.add(snout);
     // 콧구멍
     const nosMat = new THREE.MeshStandardMaterial({color:0xCC6677});
     [[-0.05,-0.04,0.33],[0.05,-0.04,0.33]].forEach(([x,y,z])=>{
-      const n = new THREE.Mesh(new THREE.SphereGeometry(0.028,6,6),nosMat); n.position.set(x,y,z); g.add(n);
+      const n = new THREE.Mesh(new THREE.SphereGeometry(0.028,4,4),nosMat); n.position.set(x,y,z); g.add(n);
     });
     // 귀
     [[-1,1]].flat().forEach(s => {
-      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.10,0.18,8),pinkMat);
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.10,0.18,6),pinkMat);
       ear.position.set(s*0.22,0.33,0); ear.rotation.z = s*0.25; g.add(ear);
-      const inner = new THREE.Mesh(new THREE.ConeGeometry(0.06,0.11,8),darkPink);
+      const inner = new THREE.Mesh(new THREE.ConeGeometry(0.06,0.11,6),darkPink);
       inner.position.set(s*0.22,0.34,0.03); inner.rotation.z = s*0.25; g.add(inner);
     });
     // 눈
     const emat=new THREE.MeshStandardMaterial({color:0x111111});
-    const lE=new THREE.Mesh(new THREE.SphereGeometry(0.060,8,8),emat); lE.position.set(-0.12,0.10,0.28); g.add(lE);
-    const rE=new THREE.Mesh(new THREE.SphereGeometry(0.060,8,8),emat); rE.position.set(0.12,0.10,0.28); g.add(rE);
+    const lE=new THREE.Mesh(new THREE.SphereGeometry(0.060,6,5),emat); lE.position.set(-0.12,0.10,0.28); g.add(lE);
+    const rE=new THREE.Mesh(new THREE.SphereGeometry(0.060,6,5),emat); rE.position.set(0.12,0.10,0.28); g.add(rE);
     // 꼬리
     const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0,0,-0.30),new THREE.Vector3(0.15,0.10,-0.38),new THREE.Vector3(0.05,0.20,-0.28));
-    const tailTube = new THREE.TubeGeometry(curve,8,0.025,5,false);
+    const tailTube = new THREE.TubeGeometry(curve,6,0.025,4,false);
     g.add(new THREE.Mesh(tailTube, pinkMat));
   },
   '고철덩어리': g => {
@@ -4035,8 +4028,8 @@ const _PET_BUILDERS = {
     g.add(new THREE.Mesh(new THREE.BoxGeometry(0.52,0.52,0.52), mat));
     // 나사 디테일
     const screwMat = new THREE.MeshStandardMaterial({color:0x888888,metalness:0.9,roughness:0.15});
-    [[0.26,0.10,0.10],[0.26,-0.10,-0.10],[-0.26,0.10,-0.10],[-0.26,-0.10,0.10]].forEach(([x,y,z])=>{
-      const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.030,0.030,0.02,6),screwMat);
+    [[0.26,0.10,0.10],[-0.26,-0.10,0.10]].forEach(([x,y,z])=>{
+      const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.030,0.030,0.02,5),screwMat);
       sc.position.set(x,y,z); sc.rotation.z=Math.PI/2; g.add(sc);
     });
     // 긁힌 선 느낌 (어두운 박스)
@@ -4053,13 +4046,13 @@ const _PET_BUILDERS = {
         return new THREE.Vector3(0.16*Math.cos(angle), t*0.65-0.32, 0.16*Math.sin(angle));
       }
     }
-    const tube = new THREE.TubeGeometry(new HelixCurve(), 100, 0.038, 7, false);
+    const tube = new THREE.TubeGeometry(new HelixCurve(), 48, 0.038, 6, false);
     const mat = new THREE.MeshStandardMaterial({color:0xDD2020,metalness:0.3,roughness:0.4});
     g.add(new THREE.Mesh(tube, mat));
     // 위아래 납작한 원판
     const plateMat = new THREE.MeshStandardMaterial({color:0xBB1818,metalness:0.4,roughness:0.5});
     [-0.32,0.32].forEach(y => {
-      const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.04,12),plateMat);
+      const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.04,8),plateMat);
       plate.position.y=y; g.add(plate);
     });
   },
@@ -4079,14 +4072,14 @@ const _PET_BUILDERS = {
     });
     // 구운 자국 (어두운 줄)
     const grillMat = new THREE.MeshStandardMaterial({color:0x553300,roughness:0.9});
-    [-0.12,0,0.12].forEach(x => {
+    [-0.12,0.12].forEach(x => {
       const gr = new THREE.Mesh(new THREE.BoxGeometry(0.025,0.37,0.32),grillMat);
       gr.position.set(x,0,0); g.add(gr);
     });
     // 눈 (삼겹살에도 눈 추가해서 귀엽게)
     const emat = new THREE.MeshStandardMaterial({color:0x111111});
-    const lE=new THREE.Mesh(new THREE.SphereGeometry(0.045,6,6),emat); lE.position.set(-0.10,0.20,0.16); g.add(lE);
-    const rE=new THREE.Mesh(new THREE.SphereGeometry(0.045,6,6),emat); rE.position.set(0.10,0.20,0.16); g.add(rE);
+    const lE=new THREE.Mesh(new THREE.SphereGeometry(0.045,5,4),emat); lE.position.set(-0.10,0.20,0.16); g.add(lE);
+    const rE=new THREE.Mesh(new THREE.SphereGeometry(0.045,5,4),emat); rE.position.set(0.10,0.20,0.16); g.add(rE);
   },
 };
 
