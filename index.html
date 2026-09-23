@@ -3009,6 +3009,15 @@ function createBallTexture(type) {
       p0:[H*1.30, H*0.10], c0:[H*1.82, H*0.58],
       c1:[H*1.02, H*1.42], p1:[H*1.30, H*1.90]
     };
+    // 뒤쪽 시임 (L,R을 각각 반 폭 이동 — 반대 반구에 노출)
+    const LB = {
+      p0:[H*0.30, H*0.10], c0:[H*0.82, H*0.58],
+      c1:[H*0.02, H*1.42], p1:[H*0.30, H*1.90]
+    };
+    const RB = {
+      p0:[H*1.70, H*0.10], c0:[H*1.18, H*0.58],
+      c1:[H*1.98, H*1.42], p1:[H*1.70, H*1.90]
+    };
 
     function bezierPt(p0,c0,c1,p1,t) {
       const mt=1-t;
@@ -3027,20 +3036,18 @@ function createBallTexture(type) {
 
     // 빨간 시임 선
     ctx.strokeStyle = '#cc1111'; ctx.lineWidth = S*0.024; ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(...L.p0);
-    ctx.bezierCurveTo(...L.c0,...L.c1,...L.p1);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(...R.p0);
-    ctx.bezierCurveTo(...R.c0,...R.c1,...R.p1);
-    ctx.stroke();
+    for (const seam of [L, R, LB, RB]) {
+      ctx.beginPath();
+      ctx.moveTo(...seam.p0);
+      ctx.bezierCurveTo(...seam.c0,...seam.c1,...seam.p1);
+      ctx.stroke();
+    }
 
     // V자 스티치 — 시임을 따라 흰 실 (두 줄 대각선)
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = S*0.008; ctx.lineCap = 'round';
     const STITCH = 13;
     const GAP = S*0.028;
-    for (let seam of [L, R]) {
+    for (let seam of [L, R, LB, RB]) {
       for (let k = 0; k < STITCH; k++) {
         const t = 0.05 + k / (STITCH - 1) * 0.90;
         const [px, py] = bezierPt(seam.p0,seam.c0,seam.c1,seam.p1,t);
