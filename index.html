@@ -1443,28 +1443,6 @@ function showShop() {
           <div style="font-size:10px;color:#888;margin-top:2px">클릭하면 펫 목록과 확률을 볼 수 있어요!</div>
         </div>
       </div>
-      <div style="font-size:10px;color:#f97316;font-weight:bold;margin:6px 0 4px">⏰ 기간 한정 (~9/23)</div>
-      <div class="coupon-card" onclick="onDirectPetBuy('삼겹살')" style="cursor:pointer;">
-        <span class="coupon-icon">🥩</span>
-        <div class="coupon-info">
-          <div class="coupon-name" style="color:#f97316">삼겹살 <span style="font-size:10px;color:#888">[신]</span></div>
-          <div class="color-price">🪙 1코인 · 7.5초마다 HP 전부 회복</div>
-        </div>
-      </div>
-      <div class="coupon-card" onclick="onDirectPetBuy('감자')" style="cursor:pointer;">
-        <span class="coupon-icon">🥔</span>
-        <div class="coupon-info">
-          <div class="coupon-name" style="color:#fbbf24">감자 <span style="font-size:10px;color:#888">[전설]</span></div>
-          <div class="color-price">🪙 1코인 · 최대 체력 +50</div>
-        </div>
-      </div>
-      <div class="coupon-card" onclick="onDirectPetBuy('감자신')" style="cursor:pointer;">
-        <span class="coupon-icon">🥔</span>
-        <div class="coupon-info">
-          <div class="coupon-name" style="color:#ec4899">??? <span style="font-size:10px;color:#888">[히든]</span></div>
-          <div class="color-price">🪙 1코인 · 히든 펫</div>
-        </div>
-      </div>
 
       <div class="coupon-section-title">🔭 특수 아이템</div>
       <div class="coupon-card ${loadJumpPotion() > 0 ? 'owned' : ''}" style="position:relative" onclick="onJumpPotionClick()">
@@ -2636,7 +2614,7 @@ window.onClickRestart = function() {
   applyCharacterColor(loadActiveColor());
   updateTeleportUI();
   updateSkipUI();
-  player.position.set(0, 2, 0);
+  player.position.set(0, 1.0, 0);
   velocity.set(0, 0, 0);
   invincibleTimer = 0;
   spikeDamageTimer = 0;
@@ -3916,7 +3894,7 @@ function buildPlayer() {
 
   if (isTet) _setFaceVisible(false);
 
-  player.position.set(0, 2, 0);
+  player.position.set(0, 1.0, 0);
   scene.add(player);
 }
 
@@ -4962,7 +4940,7 @@ function buildStage67() {
   setTimeout(() => { banner.style.display = 'none'; }, 2800);
 
   updateStageUI(67, { name: 'Stage 67', sub: '???', platform: 0xffffff, sky2: 0x111122 });
-  player.position.set(0, 2, 0);
+  player.position.set(0, 1.0, 0);
   velocity.set(0, 0, 0);
 }
 
@@ -5537,7 +5515,7 @@ function startGame() {
   applyCharacterColor(loadActiveColor());
   updateTeleportUI();
   updateSkipUI();
-  player.position.set(0, 2, 0);
+  player.position.set(0, 1.0, 0);
   velocity.set(0, 0, 0);
   stageStartTime = Date.now();
   // 데스크탑에서만 포인터 락 (모바일은 미지원)
@@ -5979,7 +5957,7 @@ function respawn() {
   } else if (stage67Triggered) {
     player.position.set(stage67StartPos.x, stage67StartPos.y, stage67StartPos.z);
   } else {
-    player.position.set(0, 2, 0);
+    player.position.set(0, 1.0, 0);
   }
   velocity.set(0, 0, 0);
   poisonActive = false;
@@ -6123,7 +6101,7 @@ function nextStage() {
   const palette = STAGE_COLORS[Math.min(currentStage - 1, STAGE_COLORS.length - 1)];
   SFX.stageClear();
   buildStage(currentStage);
-  player.position.set(0, 2, 0);
+  player.position.set(0, 1.0, 0);
   velocity.set(0, 0, 0);
   hp = maxHp;
   updateHpBar();
@@ -6273,7 +6251,7 @@ function _pvpBeginGame() {
   setUnderwaterEffect(false);
   buildStage(1);
   applyCharacterColor(loadActiveColor());
-  player.position.set(0, 2, 0);
+  player.position.set(0, 1.0, 0);
   stageStartTime = Date.now();
   updatePvpHUD();
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
