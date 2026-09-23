@@ -2067,12 +2067,29 @@ function showInventory() {
           }).join('')}
           </div>`}
 
-      <div style="color:#a78bfa;font-size:13px;font-weight:bold;margin:14px 0 8px">🐾 보유 펫</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px">
+        <div style="color:#a78bfa;font-size:13px;font-weight:bold">🐾 보유 펫</div>
+        ${(() => {
+          const invOwned = loadPetsOwned();
+          const invSlots = loadPetSlots();
+          const equippedCount = invSlots.length;
+          const totalCount = invOwned.length;
+          if (totalCount <= equippedCount) return '';
+          return window._invShowAllPets
+            ? `<button onclick="invToggleAllPets()" style="padding:2px 10px;font-size:11px;background:transparent;border:1px solid #555;border-radius:6px;color:#aaa;cursor:pointer">접기</button>`
+            : `<button onclick="invToggleAllPets()" style="padding:2px 10px;font-size:11px;background:transparent;border:1px solid #a78bfa;border-radius:6px;color:#c4b5fd;cursor:pointer">모두 보기 (${totalCount})</button>`;
+        })()}
+      </div>
       ${(() => {
         const invOwned = loadPetsOwned();
         const invSlots = loadPetSlots();
         if (!invOwned.length) return '<p style="color:#666;font-size:12px;text-align:center">보유한 펫이 없어요. 상점에서 알을 까세요!</p>';
-        return invOwned.map((id, idx) => {
+        const showAll = window._invShowAllPets;
+        const visiblePairs = invOwned
+          .map((id, idx) => ({ id, idx }))
+          .filter(({ idx }) => showAll || invSlots.includes(idx));
+        if (!visiblePairs.length) return '<p style="color:#666;font-size:12px;text-align:center">장착 중인 펫이 없어요.</p>';
+        return visiblePairs.map(({ id, idx }) => {
           const cfg = PETS_CONFIG[id];
           if (!cfg) return '';
           const slotPos = invSlots.indexOf(idx);
@@ -2206,6 +2223,12 @@ window.invUnequipPet = function(idx) {
     updateHpBar();
     buildPets();
   }
+  showInventory();
+};
+
+window._invShowAllPets = false;
+window.invToggleAllPets = function() {
+  window._invShowAllPets = !window._invShowAllPets;
   showInventory();
 };
 
