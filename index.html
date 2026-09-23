@@ -4998,13 +4998,19 @@ function updateLavaDrops() {
         updateHpBar();
         showDamageFlash();
         SFX.damage();
-        const idx = platforms.indexOf(l.plat);
         scene.remove(l.mesh);
         lavaDropMeshes.splice(i, 1);
         lavaPlatforms.delete(l.plat);
         l.plat.userData.isLavaHazard = false;
+        const eligible = platforms.filter(p =>
+          p.userData.w && p.userData.w > 2 &&
+          !p.userData.isGoal && !p.userData.isStart &&
+          !p.userData.isHazard && !p.userData.isPoisonHazard &&
+          !p.userData.isFlipHazard && !p.userData.isFake
+        );
+        const eidx = eligible.indexOf(l.plat);
         [-1, 1].forEach(delta => {
-          const adj = platforms[idx + delta];
+          const adj = eligible[eidx + delta];
           if (adj) addLavaDropToPlatform(adj);
         });
         if (hp <= 0) { gameOver(); return; }
