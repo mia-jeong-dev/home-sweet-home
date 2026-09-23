@@ -4540,9 +4540,9 @@ function _buildStage(stage, trueRand = 0.5) {
   if (stage === 6) {
     for (const p of platforms) {
       if (!p.userData.w) continue;
-      if (p.userData.isGoal || p.userData.isStart || p.userData.isHazard ||
-          p.userData.isPoisonHazard || p.userData.isFlipHazard ||
-          p.userData.isFake || p.userData.isHidden || p.userData.isSliding) continue;
+      if (p.userData.isGoal || p.userData.isStart ||
+          p.userData.isFake || p.userData.isHidden ||
+          p.userData.isSliding || p.userData.isSpinning) continue;
       p.userData.isSlippery = true;
     }
   }
