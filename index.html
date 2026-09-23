@@ -2637,7 +2637,7 @@ window.onClickRestart = function() {
   applyCharacterColor(loadActiveColor());
   updateTeleportUI();
   updateSkipUI();
-  player.position.set(0, 1.0, 0);
+  player.position.set(0, 0.85, 0);
   velocity.set(0, 0, 0);
   invincibleTimer = 0;
   spikeDamageTimer = 30;
@@ -3924,7 +3924,7 @@ function buildPlayer() {
 
   if (isTet) _setFaceVisible(false);
 
-  player.position.set(0, 1.0, 0);
+  player.position.set(0, 0.85, 0);
   scene.add(player);
 }
 
@@ -4970,7 +4970,7 @@ function buildStage67() {
   setTimeout(() => { banner.style.display = 'none'; }, 2800);
 
   updateStageUI(67, { name: 'Stage 67', sub: '???', platform: 0xffffff, sky2: 0x111122 });
-  player.position.set(0, 1.0, 0);
+  player.position.set(0, 0.85, 0);
   velocity.set(0, 0, 0);
 }
 
@@ -5551,7 +5551,7 @@ function startGame() {
   applyCharacterColor(loadActiveColor());
   updateTeleportUI();
   updateSkipUI();
-  player.position.set(0, 1.0, 0);
+  player.position.set(0, 0.85, 0);
   velocity.set(0, 0, 0);
   stageStartTime = Date.now();
   // 데스크탑에서만 포인터 락 (모바일은 미지원)
@@ -5993,7 +5993,7 @@ function respawn() {
   } else if (stage67Triggered) {
     player.position.set(stage67StartPos.x, stage67StartPos.y, stage67StartPos.z);
   } else {
-    player.position.set(0, 1.0, 0);
+    player.position.set(0, 0.85, 0);
   }
   velocity.set(0, 0, 0);
   poisonActive = false;
@@ -6137,7 +6137,7 @@ function nextStage() {
   const palette = STAGE_COLORS[Math.min(currentStage - 1, STAGE_COLORS.length - 1)];
   SFX.stageClear();
   buildStage(currentStage);
-  player.position.set(0, 1.0, 0);
+  player.position.set(0, 0.85, 0);
   velocity.set(0, 0, 0);
   hp = maxHp;
   updateHpBar();
@@ -6287,7 +6287,7 @@ function _pvpBeginGame() {
   setUnderwaterEffect(false);
   buildStage(1);
   applyCharacterColor(loadActiveColor());
-  player.position.set(0, 1.0, 0);
+  player.position.set(0, 0.85, 0);
   stageStartTime = Date.now();
   updatePvpHUD();
   if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
