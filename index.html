@@ -1050,7 +1050,7 @@ let lastDamageTime = 0;
 let particles = [];
 let meteors = [];
 let meteorTimer = 0;
-const METEOR_INTERVAL = 300; // 5초 (60fps)
+const METEOR_INTERVAL = 420; // 7초 (60fps)
 let portalBlocks = [];
 let portalTriggered = false;
 let secretPortalTriggered = false;
@@ -2818,7 +2818,7 @@ function updateScoreUI() {
 
 const GRAVITY = -0.018;
 const JUMP_FORCE = 0.26;
-const MOVE_SPEED = 0.115;
+const MOVE_SPEED = 0.09;
 const MAX_FALL = -60;
 
 // ── 상점 색상 목록 ──
@@ -6594,7 +6594,7 @@ function updateCamera() {
   const cx = player.position.x + Math.sin(cameraYaw) * Math.cos(cameraPitch) * dist;
   const cy = player.position.y + Math.sin(cameraPitch) * dist + 1;
   const cz = player.position.z + Math.cos(cameraYaw) * Math.cos(cameraPitch) * dist;
-  camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.16);
+  camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.12);
   camera.lookAt(player.position.x, player.position.y + 0.5, player.position.z);
 }
 
