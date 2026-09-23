@@ -2104,7 +2104,7 @@ function showInventory() {
             ${isActive ? `<span class="coupon-status-badge">슬롯${slotPos+1}</span>` : ''}
             <span class="coupon-icon" onclick="showPetInfo('${id}')" style="cursor:pointer">${cfg.icon}</span>
             <div class="coupon-info">
-              <div class="coupon-name" style="color:${cfg.gradeColor}">${cfg.displayName} <span style="font-size:10px;color:#888">[${cfg.gradeLabel}]</span></div>
+              <div class="coupon-name" style="color:${cfg.gradeColor}">${id === '감자신' ? '감자신' : cfg.displayName} <span style="font-size:10px;color:#888">[${cfg.gradeLabel}]</span></div>
               <div class="color-owned" style="margin-bottom:6px">${isActive ? `✓ 슬롯${slotPos+1} 장착중` : '✓ 보유'}</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap">
                 ${isActive
@@ -2175,7 +2175,8 @@ window.showPetInfo = function(id) {
   const abilEl = document.getElementById('pet-info-abil');
   const statusEl = document.getElementById('pet-info-status');
   if (!cfg || !modal) return;
-  if (titleEl) titleEl.innerHTML = `<span style="color:${cfg.gradeColor}">${cfg.displayName}</span> <span style="font-size:12px;color:#888">[${cfg.gradeLabel}]</span>`;
+  const petDisplayName = id === '감자신' ? '감자신' : cfg.displayName;
+  if (titleEl) titleEl.innerHTML = `<span style="color:${cfg.gradeColor}">${petDisplayName}</span> <span style="font-size:12px;color:#888">[${cfg.gradeLabel}]</span>`;
   if (abilEl) abilEl.innerHTML = _petStatDesc(id).replace(/ · /g, '<br>• ').replace(/^/, '• ') || '특수 효과 없음';
   const slots = loadPetSlots();
   const owned = loadPetsOwned();
