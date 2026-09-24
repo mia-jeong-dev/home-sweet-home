@@ -1196,22 +1196,44 @@ function medal(rank) {
 
 function myScoresHtml(name) {
   const all = loadLocalScores();
-  const mine = name ? all.filter(r => r.name === name).slice(0, 10) : [];
-  const rows = mine.length
-    ? mine.map((r, i) => `
-        <tr>
-          <td><span class="rank-medal">${medal(i)}</span></td>
-          <td class="score-val">${r.score.toLocaleString()}</td>
-          <td style="color:#a78bfa">${r.stage}단계</td>
-          <td style="color:#666;font-size:12px">${r.date}</td>
-        </tr>`).join('')
-    : `<tr><td colspan="4" class="no-record">아직 기록이 없어요</td></tr>`;
+  const monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const mine = name
+    ? all.filter(r => r.name === name && (r.ts || 0) >= monthAgo)
+         .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+    : [];
+  if (!mine.length) return `<p style="color:#666;font-size:13px;text-align:center;padding:20px 0">최근 한 달간 기록이 없어요</p>`;
+  const best = Math.max(...mine.map(r => r.score));
+  const rows = mine.map(r => {
+    const d = r.ts ? new Date(r.ts) : null;
+    const timeStr = d ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : (r.date || '');
+    return `<tr${r.score === best ? ' style="background:rgba(253,224,71,0.08)"' : ''}>
+      <td class="score-val" style="color:${r.score===best?'#fcd34d':'#e2e8f0'}">${r.score.toLocaleString()}</td>
+      <td style="color:#a78bfa">${r.stage}단계</td>
+      <td style="color:#666;font-size:12px">${timeStr}</td>
+    </tr>`;
+  }).join('');
   return `
+    <div style="font-size:11px;color:#888;margin-bottom:8px;text-align:right">총 ${mine.length}게임 · 최고 <span style="color:#fcd34d">${best.toLocaleString()}</span></div>
     <table class="ranking-table">
-      <tr><th></th><th>점수</th><th>도달 단계</th><th>날짜</th></tr>
+      <tr><th>점수</th><th>도달 단계</th><th>일시</th></tr>
       ${rows}
     </table>`;
 }
+
+function showMyScores() {
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="panel" style="max-width:380px;width:92%">
+      <h2 style="color:#a78bfa;margin-bottom:4px">📊 내 점수</h2>
+      <p style="color:#888;font-size:12px;margin-bottom:14px">최근 한 달간 기록 · 최신순</p>
+      <div style="max-height:55vh;overflow-y:auto">
+        ${myScoresHtml(playerName)}
+      </div>
+      <button class="btn btn-gray" onclick="showTitleScreen()" style="margin-top:16px;font-size:14px">← 뒤로</button>
+    </div>`;
+}
+window.showMyScores = showMyScores;
 
 function rankingRows(list, highlightName) {
   if (!list.length) return `<tr><td colspan="5" class="no-record">기록 없음</td></tr>`;
@@ -1312,6 +1334,7 @@ function _renderTitleScreen(forceNameInput) {
             <button class="btn btn-gray" onclick="showShop()" style="margin:0">🛒 상점</button>
             <button class="btn btn-gray" onclick="showInventory()" style="margin:0;border-color:#34d399;color:#6ee7b7">🎒 인벤토리</button>
             <button class="btn btn-gray" onclick="showQuests()" style="margin:0;border-color:#f59e0b;color:#fcd34d">📋 퀘스트</button>
+            <button class="btn btn-gray" onclick="showMyScores()" style="margin:0;border-color:#a78bfa;color:#c4b5fd">📊 내 점수</button>
             <button class="btn" onclick="showGamble()" style="margin:0;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;box-shadow:0 3px 14px rgba(217,119,6,0.5)">🎲 도박</button>
           </div>
           <button class="btn" onclick="showPvpLobby()" style="margin-top:0;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-size:15px;box-shadow:0 3px 14px rgba(219,39,119,0.45)">⚔️ PVP 대결</button>
