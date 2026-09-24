@@ -4507,7 +4507,7 @@ function _buildStage(stage, trueRand = 0.5) {
     if (!fakePlaced && i === fakeIdx) {
       fakePlaced = true;
       const fakeMat = new THREE.MeshStandardMaterial({
-        color: palette.platform, transparent: true, opacity: 0.85,
+        color: palette.platform, transparent: true, opacity: 0.94,
         roughness: 0.6, metalness: 0.1,
       });
       const fakeMesh = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.4, d + 0.5), fakeMat);
