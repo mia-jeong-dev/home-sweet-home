@@ -5395,7 +5395,7 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoison
   // 일반 가시 (빨간)
   if (isHazard) {
     const spikeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff2200, emissiveIntensity: 0.8 });
-    const spacing = 2.0;
+    const spacing = 1.5;
     const cols = Math.max(1, Math.floor(w / spacing));
     const rows = Math.max(1, Math.floor(d / spacing));
     for (let ci = 0; ci < cols; ci++) {
