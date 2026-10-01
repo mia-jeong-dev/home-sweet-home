@@ -437,17 +437,18 @@
     });
   };
 
+  // 기존 보드 열기 (없으면 오류)
   async function loadBoard(boardId) {
     go('loading');
     try {
       const data = await firestoreLoad(boardId);
       if (data === null) {
-        // New board
-        _people = [];
-        await setDoc(doc(db, 'boards', boardId), { people: [], createdAt: Date.now() });
-      } else {
-        _people = data;
+        const err = document.getElementById('welcome-err');
+        if (err) err.textContent = '보드를 찾을 수 없어요.';
+        go('welcome');
+        return;
       }
+      _people = data;
       _boardId = boardId;
       updateUrl(boardId);
       renderMain();
@@ -460,8 +461,26 @@
     }
   }
 
+  // 새 보드 생성 (새 ID로만)
+  async function createBoard(boardId) {
+    go('loading');
+    try {
+      _people = [];
+      await setDoc(doc(db, 'boards', boardId), { people: [], createdAt: Date.now() });
+      _boardId = boardId;
+      updateUrl(boardId);
+      renderMain();
+      go('main');
+    } catch(e) {
+      console.error(e);
+      const err = document.getElementById('welcome-err');
+      if (err) err.textContent = '생성 실패. 다시 시도해주세요.';
+      go('welcome');
+    }
+  }
+
   window.createNewBoard = async function() {
-    await loadBoard(genId());
+    await createBoard(genId());
   };
 
   window.openExistingBoard = async function() {
@@ -470,7 +489,7 @@
     const err = document.getElementById('welcome-err');
     const data = await (async () => { try { return await firestoreLoad(id); } catch { return undefined; } })();
     if (data === undefined) { if (err) err.textContent = '연결 실패.'; return; }
-    if (data === null)       { if (err) err.textContent = '보드를 찾을 수 없어요.'; return; }
+    if (data === null)      { if (err) err.textContent = '보드를 찾을 수 없어요.'; return; }
     await loadBoard(id);
   };
 
