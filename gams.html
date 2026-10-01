@@ -283,10 +283,13 @@
   <div id="screen-person" class="screen">
     <div class="top-bar">
       <button class="back-btn" onclick="go('main')">‹</button>
-      <h1 id="person-title">—</h1>
+      <div style="display:flex;align-items:baseline;gap:10px;flex:1;min-width:0">
+        <h1 id="person-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</h1>
+        <span id="person-balance-inline" style="font-size:15px;font-weight:700;white-space:nowrap"></span>
+      </div>
     </div>
     <div style="padding:16px 20px">
-      <div class="balance-box">
+      <div class="balance-box" style="display:none">
         <span class="balance-label">현재 잔액</span>
         <span class="balance-amount" id="person-balance">0원</span>
       </div>
@@ -409,9 +412,9 @@
 
     document.getElementById('person-title').textContent = p.name;
     const bal = p.balance;
-    const balEl = document.getElementById('person-balance');
-    balEl.textContent = (bal >= 0 ? '+' : '') + bal.toLocaleString() + '원';
-    balEl.style.color = bal >= 0 ? '#34d399' : '#f87171';
+    const inlineEl = document.getElementById('person-balance-inline');
+    inlineEl.textContent = (bal >= 0 ? '+' : '') + bal.toLocaleString() + '원';
+    inlineEl.style.color = bal >= 0 ? '#34d399' : '#f87171';
 
     const txList = document.getElementById('tx-list');
     if (p.transactions.length === 0) {
