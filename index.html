@@ -1235,6 +1235,174 @@ function showMyScores() {
 }
 window.showMyScores = showMyScores;
 
+// ─────────────────────────────────────────────
+// 감스 — 신용 카드 잔액 기록부
+// ─────────────────────────────────────────────
+const LS_GAMS = 'gams_people';
+function loadGams() { try { return JSON.parse(localStorage.getItem(LS_GAMS)) || []; } catch { return []; } }
+function saveGams(d) { localStorage.setItem(LS_GAMS, JSON.stringify(d)); }
+
+function showGams() {
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  const people = loadGams();
+  overlay.innerHTML = `
+    <div class="panel" style="max-width:400px;width:92%">
+      <h2 style="color:#22d3ee;margin-bottom:4px">💳 감스</h2>
+      <p style="color:#888;font-size:12px;margin-bottom:14px">신용 카드 잔액 기록부</p>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;margin-bottom:12px">
+        ${people.length === 0
+          ? '<p style="color:#666;text-align:center;padding:20px 0;font-size:13px">아직 등록된 사람이 없어요</p>'
+          : people.map((p, i) => `
+            <div onclick="showGamsPerson(${i})" style="cursor:pointer;background:rgba(34,211,238,0.07);border:1px solid #0e7490;border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+              <span style="color:#e2e8f0;font-size:15px;font-weight:bold">${p.name}</span>
+              <span style="color:${p.balance>=0?'#34d399':'#f87171'};font-size:14px;font-weight:bold">${p.balance>=0?'+':''}${p.balance.toLocaleString()}원</span>
+            </div>`).join('')}
+      </div>
+      <button onclick="gamsAddPerson()" style="width:100%;padding:11px;background:linear-gradient(135deg,#0891b2,#22d3ee);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;margin-bottom:8px">+ 추가하기</button>
+      <button class="btn btn-gray" onclick="showTitleScreen()" style="font-size:14px">← 뒤로</button>
+    </div>`;
+}
+window.showGams = showGams;
+
+function gamsAddPerson() {
+  const overlay = document.getElementById('overlay');
+  overlay.innerHTML = `
+    <div class="panel" style="max-width:340px;width:92%">
+      <h2 style="color:#22d3ee;margin-bottom:14px">👤 사람 추가</h2>
+      <input id="gams-name-input" maxlength="20" placeholder="이름 입력"
+        style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#fff;font-size:15px;margin-bottom:12px"/>
+      <div style="display:flex;gap:8px">
+        <button onclick="gamsConfirmAdd()" style="flex:1;padding:10px;background:#0891b2;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer">추가</button>
+        <button onclick="showGams()" style="flex:1;padding:10px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#ccc;font-size:14px;cursor:pointer">취소</button>
+      </div>
+    </div>`;
+  const inp = document.getElementById('gams-name-input');
+  if (inp) { inp.focus(); inp.addEventListener('keydown', e => { if (e.key==='Enter') gamsConfirmAdd(); }); }
+}
+window.gamsAddPerson = gamsAddPerson;
+
+function gamsConfirmAdd() {
+  const name = (document.getElementById('gams-name-input')?.value || '').trim();
+  if (!name) return;
+  const people = loadGams();
+  people.push({ name, balance: 0, transactions: [] });
+  saveGams(people);
+  showGams();
+}
+window.gamsConfirmAdd = gamsConfirmAdd;
+
+function showGamsPerson(idx) {
+  const people = loadGams();
+  const p = people[idx];
+  if (!p) return;
+  const txRows = p.transactions.length === 0
+    ? '<p style="color:#666;text-align:center;padding:14px 0;font-size:13px">거래 내역이 없어요</p>'
+    : [...p.transactions].reverse().map(tx => {
+        const d = tx.ts ? new Date(tx.ts) : null;
+        const ds = d ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : '';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b">
+          <div>
+            <span style="color:${tx.type==='in'?'#34d399':'#f87171'};font-weight:bold;font-size:13px">${tx.type==='in'?'들어온 돈':'나간 돈'}</span>
+            ${tx.memo?`<span style="color:#666;font-size:11px;margin-left:6px">${tx.memo}</span>`:''}
+          </div>
+          <div style="text-align:right">
+            <div style="color:${tx.type==='in'?'#34d399':'#f87171'};font-weight:bold">${tx.type==='in'?'+':'-'}${tx.amount.toLocaleString()}원</div>
+            <div style="color:#555;font-size:11px">${ds}</div>
+          </div>
+        </div>`;
+      }).join('');
+  const overlay = document.getElementById('overlay');
+  overlay.innerHTML = `
+    <div class="panel" style="max-width:400px;width:92%">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+        <h2 style="color:#22d3ee">${p.name}</h2>
+        <span style="color:${p.balance>=0?'#34d399':'#f87171'};font-size:18px;font-weight:bold">${p.balance>=0?'+':''}${p.balance.toLocaleString()}원</span>
+      </div>
+      <p style="color:#888;font-size:12px;margin-bottom:12px">현재 잔액</p>
+      <div style="max-height:42vh;overflow-y:auto;margin-bottom:12px">${txRows}</div>
+      <button onclick="gamsAddTx(${idx})" style="width:100%;padding:11px;background:linear-gradient(135deg,#0891b2,#22d3ee);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;margin-bottom:8px">💳 거래 추가</button>
+      <button onclick="showGams()" class="btn btn-gray" style="font-size:14px">← 뒤로</button>
+    </div>`;
+}
+window.showGamsPerson = showGamsPerson;
+
+function gamsAddTx(idx) {
+  const overlay = document.getElementById('overlay');
+  overlay.innerHTML = `
+    <div class="panel" style="max-width:340px;width:92%">
+      <h2 style="color:#22d3ee;margin-bottom:12px">🔑 암호 입력</h2>
+      <input id="gams-pw" type="password" maxlength="10" placeholder="암호"
+        style="width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#fff;font-size:18px;text-align:center;letter-spacing:6px;margin-bottom:8px"/>
+      <div id="gams-pw-err" style="color:#ef4444;font-size:12px;text-align:center;min-height:16px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="gamsCheckPw(${idx})" style="flex:1;padding:10px;background:#0891b2;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer">확인</button>
+        <button onclick="showGamsPerson(${idx})" style="flex:1;padding:10px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#ccc;font-size:14px;cursor:pointer">취소</button>
+      </div>
+    </div>`;
+  const inp = document.getElementById('gams-pw');
+  if (inp) { inp.focus(); inp.addEventListener('keydown', e => { if (e.key==='Enter') gamsCheckPw(idx); }); }
+}
+window.gamsAddTx = gamsAddTx;
+
+function gamsCheckPw(idx) {
+  const pw = document.getElementById('gams-pw')?.value || '';
+  if (pw !== '6718') {
+    const err = document.getElementById('gams-pw-err');
+    if (err) { err.textContent = '암호가 틀렸어요'; setTimeout(() => { if (err) err.textContent = ''; }, 1500); }
+    return;
+  }
+  gamsShowTxForm(idx);
+}
+window.gamsCheckPw = gamsCheckPw;
+
+function gamsShowTxForm(idx) {
+  window._gamsType = 'out';
+  const overlay = document.getElementById('overlay');
+  overlay.innerHTML = `
+    <div class="panel" style="max-width:340px;width:92%">
+      <h2 style="color:#22d3ee;margin-bottom:14px">💳 거래 입력</h2>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button id="gams-type-out" onclick="gamsSetType('out')" style="flex:1;padding:10px;background:#ef4444;border:2px solid transparent;border-radius:8px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer">나간 돈</button>
+        <button id="gams-type-in"  onclick="gamsSetType('in')"  style="flex:1;padding:10px;background:rgba(52,211,153,0.15);border:2px solid transparent;border-radius:8px;color:#888;font-size:14px;cursor:pointer">들어온 돈</button>
+      </div>
+      <input id="gams-amount" type="number" min="0" placeholder="금액 (원)"
+        style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#fff;font-size:15px;margin-bottom:10px"/>
+      <input id="gams-memo" maxlength="30" placeholder="메모 (선택)"
+        style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#fff;font-size:14px;margin-bottom:14px"/>
+      <div style="display:flex;gap:8px">
+        <button onclick="gamsSubmitTx(${idx})" style="flex:1;padding:10px;background:#0891b2;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer">추가</button>
+        <button onclick="showGamsPerson(${idx})" style="flex:1;padding:10px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#ccc;font-size:14px;cursor:pointer">취소</button>
+      </div>
+    </div>`;
+  document.getElementById('gams-amount')?.focus();
+}
+window.gamsShowTxForm = gamsShowTxForm;
+
+function gamsSetType(type) {
+  window._gamsType = type;
+  const o = document.getElementById('gams-type-out');
+  const i = document.getElementById('gams-type-in');
+  if (o) { o.style.background = type==='out' ? '#ef4444' : 'rgba(239,68,68,0.15)'; o.style.color = type==='out' ? '#fff' : '#888'; }
+  if (i) { i.style.background = type==='in'  ? '#10b981' : 'rgba(52,211,153,0.15)'; i.style.color = type==='in'  ? '#fff' : '#888'; }
+}
+window.gamsSetType = gamsSetType;
+
+function gamsSubmitTx(idx) {
+  const amount = parseInt(document.getElementById('gams-amount')?.value || '0');
+  if (!amount || amount <= 0) return;
+  const memo = (document.getElementById('gams-memo')?.value || '').trim();
+  const type = window._gamsType || 'out';
+  const people = loadGams();
+  const p = people[idx];
+  if (!p) return;
+  p.transactions.push({ type, amount, memo, ts: Date.now() });
+  p.balance += type === 'in' ? amount : -amount;
+  saveGams(people);
+  showGamsPerson(idx);
+}
+window.gamsSubmitTx = gamsSubmitTx;
+
 function rankingRows(list, highlightName) {
   if (!list.length) return `<tr><td colspan="5" class="no-record">기록 없음</td></tr>`;
   return list.map((r, i) => `
@@ -1335,6 +1503,7 @@ function _renderTitleScreen(forceNameInput) {
             <button class="btn btn-gray" onclick="showInventory()" style="margin:0;border-color:#34d399;color:#6ee7b7">🎒 인벤토리</button>
             <button class="btn btn-gray" onclick="showQuests()" style="margin:0;border-color:#f59e0b;color:#fcd34d">📋 퀘스트</button>
             <button class="btn btn-gray" onclick="showMyScores()" style="margin:0;border-color:#a78bfa;color:#c4b5fd">📊 내 점수</button>
+            <button class="btn btn-gray" onclick="showGams()" style="margin:0;border-color:#22d3ee;color:#67e8f9">💳 감스</button>
             <button class="btn" onclick="showGamble()" style="margin:0;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;box-shadow:0 3px 14px rgba(217,119,6,0.5)">🎲 도박</button>
           </div>
           <button class="btn" onclick="showPvpLobby()" style="margin-top:0;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-size:15px;box-shadow:0 3px 14px rgba(219,39,119,0.45)">⚔️ PVP 대결</button>
