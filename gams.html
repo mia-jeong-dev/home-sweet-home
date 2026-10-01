@@ -360,8 +360,8 @@
       <!-- Shadow -->
       <ellipse cx="80" cy="196" rx="48" ry="7" fill="#000" opacity="0.20"/>
 
-      <!-- Arm: horizontal, starts inside body, extends right -->
-      <rect x="108" y="131" width="30" height="10" rx="5" fill="#b07838"/>
+      <!-- Handle (grip) — drawn first so arm overlaps it -->
+      <rect x="131" y="147" width="11" height="24" rx="3" fill="#2e2e2e"/>
 
       <!-- Body (scale x:1.10, y:0.88 → wider than tall) -->
       <ellipse cx="78" cy="130" rx="50" ry="40" fill="#b07838"/>
@@ -373,6 +373,9 @@
       <circle cx="50"  cy="140" r="5.5" fill="#5a2c08" opacity="0.65"/>
       <circle cx="87"  cy="157" r="5.5" fill="#5a2c08" opacity="0.60"/>
 
+      <!-- Arm: lower position, grips handle (bottom part of gun) -->
+      <rect x="108" y="149" width="28" height="10" rx="5" fill="#b07838"/>
+
       <!-- Eyes (black sphere) -->
       <circle cx="62" cy="121" r="8.5" fill="#111111"/>
       <circle cx="94" cy="121" r="8.5" fill="#111111"/>
@@ -380,14 +383,16 @@
       <circle cx="65" cy="117" r="3.5" fill="#ffffff"/>
       <circle cx="97" cy="117" r="3.5" fill="#ffffff"/>
 
-      <!-- Gun: barrel face (BoxGeometry depth=0.22 → seen from front as cross-section) -->
-      <rect x="134" y="131" width="12" height="10" rx="2" fill="#2e2e2e"/>
-      <!-- Muzzle hole -->
-      <circle cx="140" cy="136" r="3" fill="#181818"/>
-      <!-- Trigger guard -->
-      <rect x="131" y="139" width="14" height="6" rx="1.5" fill="#3a3a3a"/>
-      <!-- Handle -->
-      <rect x="131" y="143" width="10" height="23" rx="2.5" fill="#333333"/>
+      <!-- Gun frame/slide (upper body, points right) -->
+      <rect x="127" y="134" width="27" height="15" rx="2.5" fill="#2e2e2e"/>
+      <!-- Trigger guard (junction between frame and handle) -->
+      <path d="M131 148 Q124 153 131 159 L140 159 L140 148Z" fill="#272727"/>
+      <!-- Barrel extends right from frame -->
+      <rect x="151" y="136" width="16" height="9" rx="1.5" fill="#383838"/>
+      <!-- Muzzle tip -->
+      <rect x="164" y="137" width="5" height="7" rx="1" fill="#222222"/>
+      <!-- Muzzle highlight line -->
+      <line x1="164" y1="140" x2="169" y2="140" stroke="#555" stroke-width="1"/>
     </svg>
     <div class="potato-label">
       감스지기
