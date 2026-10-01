@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>💳 감스</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 440px;
+      padding: 0 0 40px;
+      flex: 1;
+    }
+
+    /* ── Header ── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 20px 20px 12px;
+      border-bottom: 1px solid #1e293b;
+      margin-bottom: 4px;
+    }
+    .top-bar h1 {
+      font-size: 22px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #22d3ee, #67e8f9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .top-bar .sub {
+      font-size: 12px;
+      color: #64748b;
+      margin-left: auto;
+    }
+    .back-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      line-height: 1;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.07); }
+
+    /* ── Screens ── */
+    .screen { display: none; padding: 16px 20px; }
+    .screen.active { display: block; }
+
+    /* ── People list ── */
+    .people-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .person-card {
+      cursor: pointer;
+      background: rgba(34,211,238,0.06);
+      border: 1px solid #164e63;
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .person-card:hover { background: rgba(34,211,238,0.12); border-color: #0e7490; }
+    .person-card .name { font-size: 16px; font-weight: 700; color: #e2e8f0; }
+    .person-card .bal { font-size: 15px; font-weight: 700; }
+    .bal.pos { color: #34d399; }
+    .bal.neg { color: #f87171; }
+    .empty-hint {
+      text-align: center;
+      color: #475569;
+      font-size: 14px;
+      padding: 40px 0;
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #0891b2, #22d3ee);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-secondary {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      color: #94a3b8;
+      font-size: 14px;
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: background 0.15s;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.10); }
+    .btn-danger {
+      width: 100%;
+      padding: 12px;
+      background: rgba(239,68,68,0.10);
+      border: 1px solid #7f1d1d;
+      border-radius: 12px;
+      color: #f87171;
+      font-size: 14px;
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: background 0.15s;
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.18); }
+
+    /* ── Input ── */
+    .field-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+    input[type="text"], input[type="number"], input[type="password"] {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid #334155;
+      border-radius: 10px;
+      color: #e2e8f0;
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 14px;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: #22d3ee; }
+    input::placeholder { color: #475569; }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #22d3ee;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 18px 0 10px;
+    }
+
+    /* ── Balance display ── */
+    .balance-box {
+      background: rgba(34,211,238,0.07);
+      border: 1px solid #164e63;
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .balance-box .person-name { font-size: 17px; font-weight: 700; color: #e2e8f0; }
+    .balance-box .balance-label { font-size: 12px; color: #64748b; }
+    .balance-box .balance-amount { font-size: 26px; font-weight: 800; margin-top: 4px; }
+
+    /* ── Transaction list ── */
+    .tx-list { display: flex; flex-direction: column; }
+    .tx-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 2px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .tx-row:last-child { border-bottom: none; }
+    .tx-left { display: flex; flex-direction: column; gap: 2px; }
+    .tx-type { font-size: 13px; font-weight: 600; }
+    .tx-type.in { color: #34d399; }
+    .tx-type.out { color: #f87171; }
+    .tx-memo { font-size: 12px; color: #475569; }
+    .tx-right { text-align: right; }
+    .tx-amount { font-size: 14px; font-weight: 700; }
+    .tx-amount.in { color: #34d399; }
+    .tx-amount.out { color: #f87171; }
+    .tx-date { font-size: 11px; color: #475569; margin-top: 2px; }
+
+    /* ── Type toggle ── */
+    .type-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+    .type-btn {
+      flex: 1;
+      padding: 11px;
+      border: 2px solid transparent;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .type-btn.out-active { background: #ef4444; color: #fff; }
+    .type-btn.out-inactive { background: rgba(239,68,68,0.10); color: #94a3b8; }
+    .type-btn.in-active { background: #10b981; color: #fff; }
+    .type-btn.in-inactive { background: rgba(52,211,153,0.10); color: #94a3b8; }
+
+    /* ── Error ── */
+    .err-msg { color: #ef4444; font-size: 12px; text-align: center; min-height: 18px; margin-bottom: 10px; }
+
+    /* ── Password input ── */
+    input#pw-input { text-align: center; letter-spacing: 8px; font-size: 22px; }
+
+    /* ── Confirm dialog ── */
+    .confirm-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .confirm-overlay.show { display: flex; }
+    .confirm-box {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 24px 24px 18px;
+      max-width: 300px;
+      width: 88%;
+      text-align: center;
+    }
+    .confirm-box h3 { font-size: 16px; margin-bottom: 8px; }
+    .confirm-box p { font-size: 13px; color: #64748b; margin-bottom: 18px; }
+    .confirm-actions { display: flex; gap: 8px; }
+    .confirm-actions button { flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .confirm-cancel { background: rgba(255,255,255,0.07); color: #94a3b8; }
+    .confirm-ok { background: #ef4444; color: #fff; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- ── 메인: 인물 목록 ── -->
+  <div id="screen-main" class="screen active">
+    <div class="top-bar">
+      <h1>💳 감스</h1>
+      <span class="sub">신용 카드 잔액 기록부</span>
+    </div>
+    <div style="padding:16px 20px">
+      <div class="people-list" id="people-list"></div>
+      <button class="btn-primary" onclick="goAddPerson()">+ 추가하기</button>
+    </div>
+  </div>
+
+  <!-- ── 사람 추가 ── -->
+  <div id="screen-add-person" class="screen">
+    <div class="top-bar">
+      <button class="back-btn" onclick="go('main')">‹</button>
+      <h1>👤 사람 추가</h1>
+    </div>
+    <div style="padding:16px 20px">
+      <div class="field-label">이름</div>
+      <input type="text" id="add-name-input" maxlength="20" placeholder="이름 입력"/>
+      <button class="btn-primary" onclick="confirmAddPerson()">추가</button>
+      <button class="btn-secondary" onclick="go('main')">취소</button>
+    </div>
+  </div>
+
+  <!-- ── 인물 상세 ── -->
+  <div id="screen-person" class="screen">
+    <div class="top-bar">
+      <button class="back-btn" onclick="go('main')">‹</button>
+      <h1 id="person-title">—</h1>
+    </div>
+    <div style="padding:16px 20px">
+      <div class="balance-box">
+        <span class="balance-label">현재 잔액</span>
+        <span class="balance-amount" id="person-balance">0원</span>
+      </div>
+      <button class="btn-primary" onclick="goAddTx()">💳 거래 추가</button>
+      <div class="section-title">거래 내역</div>
+      <div class="tx-list" id="tx-list"></div>
+      <div style="margin-top:20px">
+        <button class="btn-danger" onclick="askDeletePerson()">🗑 삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 암호 입력 ── -->
+  <div id="screen-pw" class="screen">
+    <div class="top-bar">
+      <button class="back-btn" id="pw-back-btn">‹</button>
+      <h1>🔑 암호 입력</h1>
+    </div>
+    <div style="padding:24px 20px">
+      <input type="password" id="pw-input" maxlength="10" placeholder="• • • •"/>
+      <div class="err-msg" id="pw-err"></div>
+      <button class="btn-primary" onclick="checkPw()">확인</button>
+      <button class="btn-secondary" id="pw-cancel-btn">취소</button>
+    </div>
+  </div>
+
+  <!-- ── 거래 입력 ── -->
+  <div id="screen-tx" class="screen">
+    <div class="top-bar">
+      <button class="back-btn" onclick="goPersonScreen()">‹</button>
+      <h1>💳 거래 입력</h1>
+    </div>
+    <div style="padding:16px 20px">
+      <div class="type-toggle">
+        <button id="btn-out" class="type-btn out-active" onclick="setTxType('out')">나간 돈</button>
+        <button id="btn-in"  class="type-btn in-inactive" onclick="setTxType('in')">들어온 돈</button>
+      </div>
+      <div class="field-label">금액 (원)</div>
+      <input type="number" id="tx-amount" min="0" placeholder="0"/>
+      <div class="field-label">메모 (선택)</div>
+      <input type="text" id="tx-memo" maxlength="30" placeholder="메모"/>
+      <button class="btn-primary" onclick="submitTx()">추가</button>
+      <button class="btn-secondary" onclick="goPersonScreen()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 삭제 확인 다이얼로그 ── -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">정말 삭제할까요?</h3>
+    <p id="confirm-body">이 작업은 되돌릴 수 없어요.</p>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeConfirm()">취소</button>
+      <button class="confirm-ok" id="confirm-ok-btn">삭제</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const LS_KEY = 'gams_people';
+  let _curIdx = -1;
+  let _txType = 'out';
+
+  function load() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } }
+  function save(d) { localStorage.setItem(LS_KEY, JSON.stringify(d)); }
+
+  function go(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + screenId).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  // ── 메인 화면 ──
+  function renderMain() {
+    const people = load();
+    const list = document.getElementById('people-list');
+    if (people.length === 0) {
+      list.innerHTML = '<p class="empty-hint">아직 등록된 사람이 없어요</p>';
+      return;
+    }
+    list.innerHTML = people.map((p, i) => {
+      const pos = p.balance >= 0;
+      return `<div class="person-card" onclick="openPerson(${i})">
+        <span class="name">${p.name}</span>
+        <span class="bal ${pos ? 'pos' : 'neg'}">${pos ? '+' : ''}${p.balance.toLocaleString()}원</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ── 사람 추가 ──
+  function goAddPerson() {
+    go('add-person');
+    const inp = document.getElementById('add-name-input');
+    inp.value = '';
+    setTimeout(() => inp.focus(), 80);
+    inp.onkeydown = e => { if (e.key === 'Enter') confirmAddPerson(); };
+  }
+
+  function confirmAddPerson() {
+    const name = (document.getElementById('add-name-input').value || '').trim();
+    if (!name) return;
+    const people = load();
+    people.push({ name, balance: 0, transactions: [] });
+    save(people);
+    renderMain();
+    go('main');
+  }
+
+  // ── 인물 상세 ──
+  function openPerson(idx) {
+    _curIdx = idx;
+    goPersonScreen();
+  }
+
+  function goPersonScreen() {
+    const people = load();
+    const p = people[_curIdx];
+    if (!p) { go('main'); return; }
+
+    document.getElementById('person-title').textContent = p.name;
+    const bal = p.balance;
+    const balEl = document.getElementById('person-balance');
+    balEl.textContent = (bal >= 0 ? '+' : '') + bal.toLocaleString() + '원';
+    balEl.style.color = bal >= 0 ? '#34d399' : '#f87171';
+
+    const txList = document.getElementById('tx-list');
+    if (p.transactions.length === 0) {
+      txList.innerHTML = '<p class="empty-hint" style="padding:20px 0">거래 내역이 없어요</p>';
+    } else {
+      txList.innerHTML = [...p.transactions].reverse().map(tx => {
+        const d = tx.ts ? new Date(tx.ts) : null;
+        const ds = d
+          ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+          : '';
+        return `<div class="tx-row">
+          <div class="tx-left">
+            <span class="tx-type ${tx.type}">${tx.type === 'in' ? '들어온 돈' : '나간 돈'}</span>
+            ${tx.memo ? `<span class="tx-memo">${tx.memo}</span>` : ''}
+          </div>
+          <div class="tx-right">
+            <div class="tx-amount ${tx.type}">${tx.type === 'in' ? '+' : '-'}${tx.amount.toLocaleString()}원</div>
+            <div class="tx-date">${ds}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    go('person');
+  }
+
+  // ── 암호 화면 → 거래 입력 ──
+  function goAddTx() {
+    const pwInput = document.getElementById('pw-input');
+    const errEl = document.getElementById('pw-err');
+    pwInput.value = '';
+    errEl.textContent = '';
+    document.getElementById('pw-back-btn').onclick = goPersonScreen;
+    document.getElementById('pw-cancel-btn').onclick = goPersonScreen;
+    go('pw');
+    setTimeout(() => pwInput.focus(), 80);
+    pwInput.onkeydown = e => { if (e.key === 'Enter') checkPw(); };
+  }
+
+  function checkPw() {
+    const pw = document.getElementById('pw-input').value || '';
+    if (pw !== '6718') {
+      const err = document.getElementById('pw-err');
+      err.textContent = '암호가 틀렸어요';
+      setTimeout(() => { err.textContent = ''; }, 1500);
+      return;
+    }
+    goTxForm();
+  }
+
+  // ── 거래 입력 ──
+  function goTxForm() {
+    _txType = 'out';
+    document.getElementById('tx-amount').value = '';
+    document.getElementById('tx-memo').value = '';
+    updateTypeUI();
+    go('tx');
+    setTimeout(() => document.getElementById('tx-amount').focus(), 80);
+  }
+
+  function setTxType(type) {
+    _txType = type;
+    updateTypeUI();
+  }
+
+  function updateTypeUI() {
+    const o = document.getElementById('btn-out');
+    const i = document.getElementById('btn-in');
+    o.className = 'type-btn ' + (_txType === 'out' ? 'out-active' : 'out-inactive');
+    i.className = 'type-btn ' + (_txType === 'in'  ? 'in-active'  : 'in-inactive');
+  }
+
+  function submitTx() {
+    const amount = parseInt(document.getElementById('tx-amount').value || '0');
+    if (!amount || amount <= 0) return;
+    const memo = (document.getElementById('tx-memo').value || '').trim();
+    const people = load();
+    const p = people[_curIdx];
+    if (!p) return;
+    p.transactions.push({ type: _txType, amount, memo, ts: Date.now() });
+    p.balance += _txType === 'in' ? amount : -amount;
+    save(people);
+    goPersonScreen();
+  }
+
+  // ── 삭제 ──
+  function askDeletePerson() {
+    const people = load();
+    const p = people[_curIdx];
+    document.getElementById('confirm-title').textContent = `"${p?.name}" 삭제`;
+    document.getElementById('confirm-body').textContent = '모든 거래 내역이 사라져요. 되돌릴 수 없어요.';
+    document.getElementById('confirm-ok-btn').onclick = doDeletePerson;
+    document.getElementById('confirm-overlay').classList.add('show');
+  }
+
+  function doDeletePerson() {
+    const people = load();
+    people.splice(_curIdx, 1);
+    save(people);
+    closeConfirm();
+    renderMain();
+    go('main');
+  }
+
+  function closeConfirm() {
+    document.getElementById('confirm-overlay').classList.remove('show');
+  }
+
+  // ── init ──
+  renderMain();
+</script>
+</body>
+</html>
