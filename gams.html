@@ -17,7 +17,6 @@
       align-items: flex-start;
     }
 
-    /* ── Three-column wrapper ── */
     #layout {
       display: flex;
       width: 100%;
@@ -28,7 +27,6 @@
       padding: 0 16px;
     }
 
-    /* ── Side panels ── */
     .side-panel {
       display: none;
       width: 200px;
@@ -37,15 +35,9 @@
       position: sticky;
       top: 36px;
     }
+    @media (min-width: 780px)  { #right-panel { display: block; } }
+    @media (min-width: 1080px) { #left-panel  { display: block; } }
 
-    @media (min-width: 780px) {
-      #right-panel { display: block; }
-    }
-    @media (min-width: 1080px) {
-      #left-panel { display: block; }
-    }
-
-    /* ── Left stats panel ── */
     .stat-block {
       background: rgba(255,255,255,0.04);
       border: 1px solid #1e293b;
@@ -54,98 +46,41 @@
       margin-bottom: 12px;
     }
     .stat-block h3 {
-      font-size: 11px;
-      font-weight: 600;
-      color: #475569;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 10px;
-    }
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-      padding: 4px 0;
-      border-bottom: 1px solid #1e293b;
-    }
-    .stat-row:last-child { border-bottom: none; }
-    .stat-row .label { color: #64748b; }
-    .stat-row .val { font-weight: 700; }
-    .stat-row .val.pos { color: #34d399; }
-    .stat-row .val.neg { color: #f87171; }
-    .stat-row .val.neu { color: #94a3b8; }
-
-    /* ── Right potato panel ── */
-    #right-panel {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .potato-label {
-      font-size: 13px;
-      color: #64748b;
-      font-weight: 600;
-      text-align: center;
-      line-height: 1.5;
-    }
-    .potato-label span {
-      display: block;
-      color: #94a3b8;
-      font-size: 11px;
-      font-weight: 400;
+      font-size: 11px; font-weight: 600; color: #475569;
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;
     }
 
-    /* ── Main app ── */
-    #app {
-      width: 100%;
-      max-width: 440px;
-      flex-shrink: 0;
-      padding-bottom: 40px;
-    }
+    #right-panel { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .potato-label { font-size: 13px; color: #64748b; font-weight: 600; text-align: center; line-height: 1.5; }
+    .potato-label span { display: block; color: #94a3b8; font-size: 11px; font-weight: 400; }
 
-    /* ── Header ── */
+    #app { width: 100%; max-width: 440px; flex-shrink: 0; padding-bottom: 40px; }
+
     .top-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      display: flex; align-items: center; gap: 10px;
       padding: 20px 20px 12px;
-      border-bottom: 1px solid #1e293b;
-      margin-bottom: 4px;
+      border-bottom: 1px solid #1e293b; margin-bottom: 4px;
     }
     .top-bar h1 {
-      font-size: 22px;
-      font-weight: 800;
+      font-size: 22px; font-weight: 800;
       background: linear-gradient(135deg, #22d3ee, #67e8f9);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     .top-bar .sub { font-size: 12px; color: #64748b; margin-left: auto; }
     .back-btn {
       background: none; border: none; color: #94a3b8;
-      font-size: 20px; cursor: pointer; padding: 2px 6px;
-      border-radius: 6px; line-height: 1;
+      font-size: 20px; cursor: pointer; padding: 2px 6px; border-radius: 6px; line-height: 1;
     }
     .back-btn:hover { background: rgba(255,255,255,0.07); }
 
-    /* ── Screens ── */
     .screen { display: none; padding: 16px 20px; }
     .screen.active { display: block; }
 
-    /* ── People list ── */
     .people-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
     .person-card {
-      cursor: pointer;
-      background: rgba(34,211,238,0.06);
-      border: 1px solid #164e63;
-      border-radius: 14px;
-      padding: 14px 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: background 0.15s, border-color 0.15s;
+      cursor: pointer; background: rgba(34,211,238,0.06); border: 1px solid #164e63;
+      border-radius: 14px; padding: 14px 18px; display: flex;
+      justify-content: space-between; align-items: center; transition: background 0.15s, border-color 0.15s;
     }
     .person-card:hover { background: rgba(34,211,238,0.12); border-color: #0e7490; }
     .person-card .name { font-size: 16px; font-weight: 700; color: #e2e8f0; }
@@ -154,48 +89,40 @@
     .bal.neg { color: #f87171; }
     .empty-hint { text-align: center; color: #475569; font-size: 14px; padding: 40px 0; }
 
-    /* ── Buttons ── */
     .btn-primary {
       width: 100%; padding: 13px;
       background: linear-gradient(135deg, #0891b2, #22d3ee);
-      border: none; border-radius: 12px;
-      color: #fff; font-size: 15px; font-weight: 700;
+      border: none; border-radius: 12px; color: #fff; font-size: 15px; font-weight: 700;
       cursor: pointer; margin-bottom: 10px; transition: opacity 0.15s;
     }
     .btn-primary:hover { opacity: 0.88; }
     .btn-secondary {
       width: 100%; padding: 12px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid #334155; border-radius: 12px;
+      background: rgba(255,255,255,0.06); border: 1px solid #334155; border-radius: 12px;
       color: #94a3b8; font-size: 14px; cursor: pointer; margin-bottom: 8px;
     }
     .btn-secondary:hover { background: rgba(255,255,255,0.10); }
     .btn-danger {
       width: 100%; padding: 12px;
-      background: rgba(239,68,68,0.10);
-      border: 1px solid #7f1d1d; border-radius: 12px;
+      background: rgba(239,68,68,0.10); border: 1px solid #7f1d1d; border-radius: 12px;
       color: #f87171; font-size: 14px; cursor: pointer; margin-bottom: 8px;
     }
     .btn-danger:hover { background: rgba(239,68,68,0.18); }
 
-    /* ── Input ── */
     .field-label { font-size: 12px; color: #64748b; margin-bottom: 6px; }
     input[type="text"], input[type="number"], input[type="password"] {
       width: 100%; padding: 12px 14px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid #334155; border-radius: 10px;
+      background: rgba(255,255,255,0.06); border: 1px solid #334155; border-radius: 10px;
       color: #e2e8f0; font-size: 15px; outline: none; margin-bottom: 14px;
     }
     input:focus { border-color: #22d3ee; }
     input::placeholder { color: #475569; }
 
-    /* ── Section title ── */
     .section-title {
       font-size: 13px; font-weight: 600; color: #22d3ee;
       text-transform: uppercase; letter-spacing: 0.08em; margin: 18px 0 10px;
     }
 
-    /* ── Transaction list ── */
     .tx-list { display: flex; flex-direction: column; }
     .tx-row {
       display: flex; justify-content: space-between; align-items: center;
@@ -204,50 +131,71 @@
     .tx-row:last-child { border-bottom: none; }
     .tx-left { display: flex; flex-direction: column; gap: 2px; }
     .tx-type { font-size: 13px; font-weight: 600; }
-    .tx-type.in { color: #34d399; }
+    .tx-type.in  { color: #34d399; }
     .tx-type.out { color: #f87171; }
     .tx-memo { font-size: 12px; color: #475569; }
     .tx-right { text-align: right; }
     .tx-amount { font-size: 14px; font-weight: 700; }
-    .tx-amount.in { color: #34d399; }
+    .tx-amount.in  { color: #34d399; }
     .tx-amount.out { color: #f87171; }
     .tx-date { font-size: 11px; color: #475569; margin-top: 2px; }
 
-    /* ── Type toggle ── */
     .type-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
     .type-btn {
-      flex: 1; padding: 11px; border: 2px solid transparent;
-      border-radius: 10px; font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: all 0.15s;
+      flex: 1; padding: 11px; border: 2px solid transparent; border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s;
     }
-    .type-btn.out-active  { background: #ef4444; color: #fff; }
+    .type-btn.out-active   { background: #ef4444; color: #fff; }
     .type-btn.out-inactive { background: rgba(239,68,68,0.10); color: #94a3b8; }
-    .type-btn.in-active   { background: #10b981; color: #fff; }
+    .type-btn.in-active    { background: #10b981; color: #fff; }
     .type-btn.in-inactive  { background: rgba(52,211,153,0.10); color: #94a3b8; }
 
-    /* ── Error ── */
     .err-msg { color: #ef4444; font-size: 12px; text-align: center; min-height: 18px; margin-bottom: 10px; }
-
     input#pw-input { text-align: center; letter-spacing: 8px; font-size: 22px; }
 
-    /* ── Confirm dialog ── */
     .confirm-overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.6);
-      align-items: center; justify-content: center; z-index: 100;
+      background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100;
     }
     .confirm-overlay.show { display: flex; }
     .confirm-box {
-      background: #1e293b; border: 1px solid #334155;
-      border-radius: 16px; padding: 24px 24px 18px;
-      max-width: 300px; width: 88%; text-align: center;
+      background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+      padding: 24px 24px 18px; max-width: 300px; width: 88%; text-align: center;
     }
     .confirm-box h3 { font-size: 16px; margin-bottom: 8px; }
-    .confirm-box p { font-size: 13px; color: #64748b; margin-bottom: 18px; }
+    .confirm-box p  { font-size: 13px; color: #64748b; margin-bottom: 18px; }
     .confirm-actions { display: flex; gap: 8px; }
     .confirm-actions button { flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
     .confirm-cancel { background: rgba(255,255,255,0.07); color: #94a3b8; }
     .confirm-ok { background: #ef4444; color: #fff; }
+
+    /* Welcome / Loading */
+    .welcome-wrap { padding: 48px 24px; text-align: center; }
+    .welcome-wrap .logo { font-size: 52px; margin-bottom: 14px; }
+    .welcome-wrap h1 { font-size: 28px; font-weight: 900; color: #22d3ee; margin-bottom: 6px; }
+    .welcome-wrap p  { font-size: 14px; color: #64748b; margin-bottom: 32px; }
+    .divider { color: #334155; font-size: 12px; margin: 18px 0; position: relative; }
+    .divider::before, .divider::after {
+      content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: #1e293b;
+    }
+    .divider::before { left: 0; }
+    .divider::after  { right: 0; }
+
+    /* URL share chip */
+    .share-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(34,211,238,0.08); border: 1px solid #164e63; border-radius: 20px;
+      padding: 5px 12px 5px 10px; font-size: 12px; color: #67e8f9; cursor: pointer;
+      transition: background 0.15s; user-select: none;
+    }
+    .share-chip:hover { background: rgba(34,211,238,0.16); }
+    .share-chip.copied { background: rgba(52,211,153,0.15); border-color: #065f46; color: #34d399; }
+
+    .spinner {
+      width: 28px; height: 28px; border: 3px solid #1e293b; border-top-color: #22d3ee;
+      border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -264,11 +212,39 @@
 
   <!-- ── Center: 앱 ── -->
   <div id="app">
+
+    <!-- 웰컴 화면 -->
+    <div id="screen-welcome" class="screen active">
+      <div class="welcome-wrap">
+        <div class="logo">💳</div>
+        <h1>감스</h1>
+        <p>신용 카드 잔액 기록부<br/>URL을 공유하면 어디서든 접속 가능해요</p>
+        <button class="btn-primary" onclick="createNewBoard()" style="max-width:280px;margin:0 auto 10px">✨ 새 보드 만들기</button>
+        <div class="divider">또는</div>
+        <div class="field-label" style="text-align:left;max-width:280px;margin:0 auto 6px">보드 ID 입력</div>
+        <input type="text" id="board-id-input" placeholder="보드 ID (예: ab3k9x2q)" maxlength="20"
+          style="max-width:280px;margin:0 auto 10px;display:block"
+          onkeydown="if(event.key==='Enter') openExistingBoard()"/>
+        <button class="btn-secondary" onclick="openExistingBoard()" style="max-width:280px;margin:0 auto">접속하기</button>
+        <div id="welcome-err" class="err-msg" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- 로딩 -->
+    <div id="screen-loading" class="screen">
+      <div style="padding:60px 20px;text-align:center">
+        <div class="spinner"></div>
+        <p style="color:#64748b;font-size:14px">불러오는 중...</p>
+      </div>
+    </div>
+
     <!-- 메인: 인물 목록 -->
-    <div id="screen-main" class="screen active">
+    <div id="screen-main" class="screen">
       <div class="top-bar">
         <h1>💳 감스</h1>
-        <span class="sub">신용 카드 잔액 기록부</span>
+        <span id="share-btn" class="share-chip" onclick="copyUrl()" title="URL 복사">
+          🔗 <span id="board-id-label"></span>
+        </span>
       </div>
       <div style="padding:16px 20px">
         <div class="people-list" id="people-list"></div>
@@ -331,7 +307,7 @@
       </div>
       <div style="padding:16px 20px">
         <div class="type-toggle">
-          <button id="btn-out" class="type-btn out-active" onclick="setTxType('out')">나간 돈</button>
+          <button id="btn-out" class="type-btn out-active"  onclick="setTxType('out')">나간 돈</button>
           <button id="btn-in"  class="type-btn in-inactive" onclick="setTxType('in')">들어온 돈</button>
         </div>
         <div class="field-label">금액 (원)</div>
@@ -344,54 +320,29 @@
     </div>
   </div>
 
-  <!-- ── Right: 감자 ── -->
+  <!-- ── Right: 감자신 ── -->
   <div id="right-panel" class="side-panel">
-    <!-- 감자신: 스프라우트 + 총 (게임 3D 코드 기반 2D 재현) -->
     <svg width="180" height="240" viewBox="0 0 180 240" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- Sprout stem -->
       <path d="M80 96 L80 64" stroke="#2a8030" stroke-width="5.5" stroke-linecap="round"/>
-      <!-- Leaf left (rz=-0.38) -->
       <ellipse cx="64" cy="58" rx="13" ry="3.5" fill="#38c040" transform="rotate(-22 64 58)"/>
-      <!-- Leaf right (rz=0.38) -->
       <ellipse cx="96" cy="58" rx="13" ry="3.5" fill="#38c040" transform="rotate(22 96 58)"/>
-      <!-- Leaf top center -->
       <ellipse cx="80" cy="47" rx="13" ry="3.5" fill="#38c040"/>
-
-      <!-- Shadow -->
       <ellipse cx="80" cy="196" rx="48" ry="7" fill="#000" opacity="0.20"/>
-
-      <!-- Handle (grip) — drawn first so arm overlaps it -->
       <rect x="131" y="147" width="11" height="24" rx="3" fill="#2e2e2e"/>
-
-      <!-- Body (scale x:1.10, y:0.88 → wider than tall) -->
       <ellipse cx="78" cy="130" rx="50" ry="40" fill="#b07838"/>
-      <!-- Highlight -->
       <ellipse cx="63" cy="116" rx="22" ry="14" fill="#e0a868" opacity="0.28"/>
-
-      <!-- Spots (3개, _buildPotatoBody 위치 기반) -->
       <circle cx="111" cy="122" r="5.5" fill="#5a2c08" opacity="0.72"/>
       <circle cx="50"  cy="140" r="5.5" fill="#5a2c08" opacity="0.65"/>
       <circle cx="87"  cy="157" r="5.5" fill="#5a2c08" opacity="0.60"/>
-
-      <!-- Arm: lower position, grips handle (bottom part of gun) -->
       <rect x="108" y="149" width="28" height="10" rx="5" fill="#b07838"/>
-
-      <!-- Eyes (black sphere) -->
       <circle cx="62" cy="121" r="8.5" fill="#111111"/>
       <circle cx="94" cy="121" r="8.5" fill="#111111"/>
-      <!-- Eye shine (shmat, white emissive) -->
       <circle cx="65" cy="117" r="3.5" fill="#ffffff"/>
       <circle cx="97" cy="117" r="3.5" fill="#ffffff"/>
-
-      <!-- Gun frame/slide (upper body, points right) -->
       <rect x="127" y="134" width="27" height="15" rx="2.5" fill="#2e2e2e"/>
-      <!-- Trigger guard (junction between frame and handle) -->
       <path d="M131 148 Q124 153 131 159 L140 159 L140 148Z" fill="#272727"/>
-      <!-- Barrel extends right from frame -->
       <rect x="151" y="136" width="16" height="9" rx="1.5" fill="#383838"/>
-      <!-- Muzzle tip -->
       <rect x="164" y="137" width="5" height="7" rx="1" fill="#222222"/>
-      <!-- Muzzle highlight line -->
       <line x1="164" y1="140" x2="169" y2="140" stroke="#555" stroke-width="1"/>
     </svg>
     <div class="potato-label">
@@ -414,21 +365,122 @@
   </div>
 </div>
 
-<script>
-  const LS_KEY = 'gams_people';
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoiB8frxNH4W2lTzoO9R3rZeyxypY6rgs",
+    authDomain: "gams-db.firebaseapp.com",
+    projectId: "gams-db",
+    storageBucket: "gams-db.firebasestorage.app",
+    messagingSenderId: "868598873850",
+    appId: "1:868598873850:web:cd0007b105bdc1518d5343"
+  };
+
+  const firebaseApp = initializeApp(firebaseConfig);
+  const db = getFirestore(firebaseApp);
+
+  // ── State ──
+  let _people = [];
+  let _boardId = null;
   let _curIdx = -1;
   let _txType = 'out';
   let _pwCallback = null;
   let _deleteTxIdx = -1;
+  let _saveTimer = null;
 
-  function load() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } }
-  function save(d) { localStorage.setItem(LS_KEY, JSON.stringify(d)); }
+  // ── Firestore ──
+  function genId() {
+    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+    return Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  }
 
+  async function firestoreLoad(boardId) {
+    const snap = await getDoc(doc(db, 'boards', boardId));
+    return snap.exists() ? (snap.data().people || []) : null;
+  }
+
+  function firestoreSave() {
+    if (!_boardId) return;
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(async () => {
+      try {
+        await setDoc(doc(db, 'boards', _boardId), { people: _people, updatedAt: Date.now() });
+      } catch(e) { console.error('Save failed', e); }
+    }, 300);
+  }
+
+  // ── Local helpers (keep sync interface) ──
+  function load() { return _people; }
+  function save(d) { _people = d; firestoreSave(); }
+
+  // ── URL / Board ──
+  function updateUrl(boardId) {
+    const url = new URL(window.location);
+    url.searchParams.set('board', boardId);
+    window.history.replaceState({}, '', url);
+    const lbl = document.getElementById('board-id-label');
+    if (lbl) lbl.textContent = boardId;
+  }
+
+  window.copyUrl = function() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      const chip = document.getElementById('share-btn');
+      if (!chip) return;
+      chip.classList.add('copied');
+      chip.querySelector('#board-id-label').textContent = '복사됨!';
+      setTimeout(() => {
+        chip.classList.remove('copied');
+        chip.querySelector('#board-id-label').textContent = _boardId;
+      }, 1500);
+    });
+  };
+
+  async function loadBoard(boardId) {
+    go('loading');
+    try {
+      const data = await firestoreLoad(boardId);
+      if (data === null) {
+        // New board
+        _people = [];
+        await setDoc(doc(db, 'boards', boardId), { people: [], createdAt: Date.now() });
+      } else {
+        _people = data;
+      }
+      _boardId = boardId;
+      updateUrl(boardId);
+      renderMain();
+      go('main');
+    } catch(e) {
+      console.error(e);
+      const err = document.getElementById('welcome-err');
+      if (err) err.textContent = '연결 실패. 다시 시도해주세요.';
+      go('welcome');
+    }
+  }
+
+  window.createNewBoard = async function() {
+    await loadBoard(genId());
+  };
+
+  window.openExistingBoard = async function() {
+    const id = (document.getElementById('board-id-input')?.value || '').trim().toLowerCase();
+    if (!id) return;
+    const err = document.getElementById('welcome-err');
+    const data = await (async () => { try { return await firestoreLoad(id); } catch { return undefined; } })();
+    if (data === undefined) { if (err) err.textContent = '연결 실패.'; return; }
+    if (data === null)       { if (err) err.textContent = '보드를 찾을 수 없어요.'; return; }
+    await loadBoard(id);
+  };
+
+  // ── UI helpers ──
   function go(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-' + screenId).classList.add('active');
     window.scrollTo(0, 0);
   }
+  window.go = go;
 
   function renderLeftList() {
     const people = load();
@@ -440,10 +492,10 @@
     }
     el.innerHTML = people.map((p, i) => {
       const pos = p.balance >= 0;
-      return `<div onclick="openPerson(${i})" style="cursor:pointer;padding:8px 10px;background:rgba(34,211,238,0.05);border:1px solid #164e63;border-radius:8px;transition:background 0.15s"
+      return `<div onclick="openPerson(${i})" style="cursor:pointer;padding:8px 10px;background:rgba(34,211,238,0.05);border:1px solid #164e63;border-radius:8px"
         onmouseover="this.style.background='rgba(34,211,238,0.12)'" onmouseout="this.style.background='rgba(34,211,238,0.05)'">
         <div style="font-size:13px;font-weight:700;color:#e2e8f0">${p.name}</div>
-        <div style="font-size:12px;font-weight:700;color:${pos ? '#34d399' : '#f87171'}">${pos ? '+' : ''}${p.balance.toLocaleString()}원</div>
+        <div style="font-size:12px;font-weight:700;color:${pos?'#34d399':'#f87171'}">${pos?'+':''}${p.balance.toLocaleString()}원</div>
       </div>`;
     }).join('');
   }
@@ -451,29 +503,28 @@
   function renderMain() {
     const people = load();
     const list = document.getElementById('people-list');
-    if (people.length === 0) {
-      list.innerHTML = '<p class="empty-hint">아직 등록된 사람이 없어요</p>';
-    } else {
-      list.innerHTML = people.map((p, i) => {
-        const pos = p.balance >= 0;
-        return `<div class="person-card" onclick="openPerson(${i})">
-          <span class="name">${p.name}</span>
-          <span class="bal ${pos ? 'pos' : 'neg'}">${pos ? '+' : ''}${p.balance.toLocaleString()}원</span>
-        </div>`;
-      }).join('');
-    }
+    list.innerHTML = people.length === 0
+      ? '<p class="empty-hint">아직 등록된 사람이 없어요</p>'
+      : people.map((p, i) => {
+          const pos = p.balance >= 0;
+          return `<div class="person-card" onclick="openPerson(${i})">
+            <span class="name">${p.name}</span>
+            <span class="bal ${pos?'pos':'neg'}">${pos?'+':''}${p.balance.toLocaleString()}원</span>
+          </div>`;
+        }).join('');
     renderLeftList();
   }
 
-  function goAddPerson() {
+  // ── 사람 추가 ──
+  window.goAddPerson = function() {
     go('add-person');
     const inp = document.getElementById('add-name-input');
     inp.value = '';
     setTimeout(() => inp.focus(), 80);
-    inp.onkeydown = e => { if (e.key === 'Enter') confirmAddPerson(); };
-  }
+    inp.onkeydown = e => { if (e.key === 'Enter') window.confirmAddPerson(); };
+  };
 
-  function confirmAddPerson() {
+  window.confirmAddPerson = function() {
     const name = (document.getElementById('add-name-input').value || '').trim();
     if (!name) return;
     const people = load();
@@ -481,12 +532,13 @@
     save(people);
     renderMain();
     go('main');
-  }
+  };
 
-  function openPerson(idx) {
+  // ── 인물 상세 ──
+  window.openPerson = function(idx) {
     _curIdx = idx;
     goPersonScreen();
-  }
+  };
 
   function goPersonScreen() {
     const people = load();
@@ -507,27 +559,28 @@
       txList.innerHTML = [...p.transactions].reverse().map((tx, ri) => {
         const origIdx = total - 1 - ri;
         const d = tx.ts ? new Date(tx.ts) : null;
-        const ds = d
-          ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
-          : '';
+        const ds = d ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : '';
         return `<div class="tx-row">
           <div class="tx-left">
-            <span class="tx-type ${tx.type}">${tx.type === 'in' ? '들어온 돈' : '나간 돈'}</span>
-            ${tx.memo ? `<span class="tx-memo">${tx.memo}</span>` : ''}
+            <span class="tx-type ${tx.type}">${tx.type==='in'?'들어온 돈':'나간 돈'}</span>
+            ${tx.memo?`<span class="tx-memo">${tx.memo}</span>`:''}
           </div>
           <div class="tx-right" style="display:flex;align-items:center;gap:10px">
             <div>
-              <div class="tx-amount ${tx.type}">${tx.type === 'in' ? '+' : '-'}${tx.amount.toLocaleString()}원</div>
+              <div class="tx-amount ${tx.type}">${tx.type==='in'?'+':'-'}${tx.amount.toLocaleString()}원</div>
               <div class="tx-date">${ds}</div>
             </div>
-            <button onclick="askDeleteTx(${origIdx})" style="background:none;border:none;color:#475569;font-size:14px;cursor:pointer;padding:4px;line-height:1;border-radius:4px" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#475569'">✕</button>
+            <button onclick="askDeleteTx(${origIdx})" style="background:none;border:none;color:#475569;font-size:14px;cursor:pointer;padding:4px;line-height:1;border-radius:4px"
+              onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#475569'">✕</button>
           </div>
         </div>`;
       }).join('');
     }
     go('person');
   }
+  window.goPersonScreen = goPersonScreen;
 
+  // ── 암호 ──
   function openPwScreen(onSuccess, onCancel) {
     _pwCallback = onSuccess;
     const pwInput = document.getElementById('pw-input');
@@ -538,14 +591,12 @@
     document.getElementById('pw-cancel-btn').onclick = onCancel;
     go('pw');
     setTimeout(() => pwInput.focus(), 80);
-    pwInput.onkeydown = e => { if (e.key === 'Enter') checkPw(); };
+    pwInput.onkeydown = e => { if (e.key === 'Enter') window.checkPw(); };
   }
 
-  function goAddTx() {
-    openPwScreen(goTxForm, goPersonScreen);
-  }
+  window.goAddTx = function() { openPwScreen(goTxForm, goPersonScreen); };
 
-  function checkPw() {
+  window.checkPw = function() {
     const pw = document.getElementById('pw-input').value || '';
     if (pw !== '6718') {
       const err = document.getElementById('pw-err');
@@ -554,8 +605,9 @@
       return;
     }
     if (_pwCallback) { _pwCallback(); _pwCallback = null; }
-  }
+  };
 
+  // ── 거래 입력 ──
   function goTxForm() {
     _txType = 'out';
     document.getElementById('tx-amount').value = '';
@@ -565,17 +617,14 @@
     setTimeout(() => document.getElementById('tx-amount').focus(), 80);
   }
 
-  function setTxType(type) {
-    _txType = type;
-    updateTypeUI();
-  }
+  window.setTxType = function(type) { _txType = type; updateTypeUI(); };
 
   function updateTypeUI() {
-    document.getElementById('btn-out').className = 'type-btn ' + (_txType === 'out' ? 'out-active' : 'out-inactive');
-    document.getElementById('btn-in').className  = 'type-btn ' + (_txType === 'in'  ? 'in-active'  : 'in-inactive');
+    document.getElementById('btn-out').className = 'type-btn ' + (_txType==='out' ? 'out-active' : 'out-inactive');
+    document.getElementById('btn-in').className  = 'type-btn ' + (_txType==='in'  ? 'in-active'  : 'in-inactive');
   }
 
-  function submitTx() {
+  window.submitTx = function() {
     const amount = parseInt(document.getElementById('tx-amount').value || '0');
     if (!amount || amount <= 0) return;
     const memo = (document.getElementById('tx-memo').value || '').trim();
@@ -587,48 +636,56 @@
     save(people);
     renderLeftList();
     goPersonScreen();
-  }
+  };
 
-  function askDeleteTx(origIdx) {
+  // ── 거래 삭제 ──
+  window.askDeleteTx = function(origIdx) {
     _deleteTxIdx = origIdx;
-    openPwScreen(doDeleteTx, goPersonScreen);
-  }
+    openPwScreen(() => {
+      const people = load();
+      const p = people[_curIdx];
+      if (!p || _deleteTxIdx < 0 || _deleteTxIdx >= p.transactions.length) return;
+      const tx = p.transactions[_deleteTxIdx];
+      p.balance -= tx.type === 'in' ? tx.amount : -tx.amount;
+      p.transactions.splice(_deleteTxIdx, 1);
+      save(people);
+      renderLeftList();
+      goPersonScreen();
+    }, goPersonScreen);
+  };
 
-  function doDeleteTx() {
-    const people = load();
-    const p = people[_curIdx];
-    if (!p || _deleteTxIdx < 0 || _deleteTxIdx >= p.transactions.length) return;
-    const tx = p.transactions[_deleteTxIdx];
-    p.balance -= tx.type === 'in' ? tx.amount : -tx.amount;
-    p.transactions.splice(_deleteTxIdx, 1);
-    save(people);
-    renderLeftList();
-    goPersonScreen();
-  }
-
-  function askDeletePerson() {
+  // ── 인물 삭제 ──
+  window.askDeletePerson = function() {
     openPwScreen(() => {
       document.getElementById('confirm-title').textContent = `"${load()[_curIdx]?.name}" 삭제`;
       document.getElementById('confirm-body').textContent = '모든 거래 내역이 사라져요. 되돌릴 수 없어요.';
-      document.getElementById('confirm-ok-btn').onclick = doDeletePerson;
+      document.getElementById('confirm-ok-btn').onclick = window.doDeletePerson;
       document.getElementById('confirm-overlay').classList.add('show');
     }, goPersonScreen);
-  }
+  };
 
-  function doDeletePerson() {
+  window.doDeletePerson = function() {
     const people = load();
     people.splice(_curIdx, 1);
     save(people);
     closeConfirm();
     renderMain();
     go('main');
-  }
+  };
 
-  function closeConfirm() {
+  window.closeConfirm = function() {
     document.getElementById('confirm-overlay').classList.remove('show');
-  }
+  };
 
-  renderMain();
+  // ── Init ──
+  (async () => {
+    const params = new URLSearchParams(window.location.search);
+    const boardId = params.get('board');
+    if (boardId) {
+      await loadBoard(boardId);
+    }
+    // else: welcome screen is already active
+  })();
 </script>
 </body>
 </html>
