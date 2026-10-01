@@ -413,6 +413,8 @@
   const LS_KEY = 'gams_people';
   let _curIdx = -1;
   let _txType = 'out';
+  let _pwCallback = null;
+  let _deleteTxIdx = -1;
 
   function load() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } }
   function save(d) { localStorage.setItem(LS_KEY, JSON.stringify(d)); }
@@ -493,10 +495,12 @@
     inlineEl.style.color = bal >= 0 ? '#34d399' : '#f87171';
 
     const txList = document.getElementById('tx-list');
-    if (p.transactions.length === 0) {
+    const total = p.transactions.length;
+    if (total === 0) {
       txList.innerHTML = '<p class="empty-hint" style="padding:20px 0">거래 내역이 없어요</p>';
     } else {
-      txList.innerHTML = [...p.transactions].reverse().map(tx => {
+      txList.innerHTML = [...p.transactions].reverse().map((tx, ri) => {
+        const origIdx = total - 1 - ri;
         const d = tx.ts ? new Date(tx.ts) : null;
         const ds = d
           ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
@@ -506,9 +510,12 @@
             <span class="tx-type ${tx.type}">${tx.type === 'in' ? '들어온 돈' : '나간 돈'}</span>
             ${tx.memo ? `<span class="tx-memo">${tx.memo}</span>` : ''}
           </div>
-          <div class="tx-right">
-            <div class="tx-amount ${tx.type}">${tx.type === 'in' ? '+' : '-'}${tx.amount.toLocaleString()}원</div>
-            <div class="tx-date">${ds}</div>
+          <div class="tx-right" style="display:flex;align-items:center;gap:10px">
+            <div>
+              <div class="tx-amount ${tx.type}">${tx.type === 'in' ? '+' : '-'}${tx.amount.toLocaleString()}원</div>
+              <div class="tx-date">${ds}</div>
+            </div>
+            <button onclick="askDeleteTx(${origIdx})" style="background:none;border:none;color:#475569;font-size:14px;cursor:pointer;padding:4px;line-height:1;border-radius:4px" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#475569'">✕</button>
           </div>
         </div>`;
       }).join('');
@@ -516,16 +523,21 @@
     go('person');
   }
 
-  function goAddTx() {
+  function openPwScreen(onSuccess, onCancel) {
+    _pwCallback = onSuccess;
     const pwInput = document.getElementById('pw-input');
     const errEl = document.getElementById('pw-err');
     pwInput.value = '';
     errEl.textContent = '';
-    document.getElementById('pw-back-btn').onclick = goPersonScreen;
-    document.getElementById('pw-cancel-btn').onclick = goPersonScreen;
+    document.getElementById('pw-back-btn').onclick = onCancel;
+    document.getElementById('pw-cancel-btn').onclick = onCancel;
     go('pw');
     setTimeout(() => pwInput.focus(), 80);
     pwInput.onkeydown = e => { if (e.key === 'Enter') checkPw(); };
+  }
+
+  function goAddTx() {
+    openPwScreen(goTxForm, goPersonScreen);
   }
 
   function checkPw() {
@@ -536,7 +548,7 @@
       setTimeout(() => { err.textContent = ''; }, 1500);
       return;
     }
-    goTxForm();
+    if (_pwCallback) { _pwCallback(); _pwCallback = null; }
   }
 
   function goTxForm() {
@@ -572,13 +584,30 @@
     goPersonScreen();
   }
 
-  function askDeletePerson() {
+  function askDeleteTx(origIdx) {
+    _deleteTxIdx = origIdx;
+    openPwScreen(doDeleteTx, goPersonScreen);
+  }
+
+  function doDeleteTx() {
     const people = load();
     const p = people[_curIdx];
-    document.getElementById('confirm-title').textContent = `"${p?.name}" 삭제`;
-    document.getElementById('confirm-body').textContent = '모든 거래 내역이 사라져요. 되돌릴 수 없어요.';
-    document.getElementById('confirm-ok-btn').onclick = doDeletePerson;
-    document.getElementById('confirm-overlay').classList.add('show');
+    if (!p || _deleteTxIdx < 0 || _deleteTxIdx >= p.transactions.length) return;
+    const tx = p.transactions[_deleteTxIdx];
+    p.balance -= tx.type === 'in' ? tx.amount : -tx.amount;
+    p.transactions.splice(_deleteTxIdx, 1);
+    save(people);
+    renderLeftList();
+    goPersonScreen();
+  }
+
+  function askDeletePerson() {
+    openPwScreen(() => {
+      document.getElementById('confirm-title').textContent = `"${load()[_curIdx]?.name}" 삭제`;
+      document.getElementById('confirm-body').textContent = '모든 거래 내역이 사라져요. 되돌릴 수 없어요.';
+      document.getElementById('confirm-ok-btn').onclick = doDeletePerson;
+      document.getElementById('confirm-overlay').classList.add('show');
+    }, goPersonScreen);
   }
 
   function doDeletePerson() {
