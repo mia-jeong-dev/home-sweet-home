@@ -6918,6 +6918,7 @@ async function gameClear() {
   _questSnapshot = null; _questCoinEarned = 0;
   SFX.gameClear();
   saveCoins(loadCoins() + 50);
+  savePotato(loadPotato() + 2);
   const finalScore = sessionScore;
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
