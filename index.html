@@ -4715,6 +4715,11 @@ function showPotatoShop() {
   const coins  = loadCoins();
   const owned  = loadOwned();
   const hasPotSkin = owned.includes('potato');
+  // 2026-10-05 자정(KST) = 2026-10-05T15:00:00Z
+  const flashSaleEnd = new Date('2026-10-05T15:00:00Z');
+  const flashSaleActive = Date.now() < flashSaleEnd.getTime();
+  const petsOwned = loadPetsOwned();
+  const hasGamjasin = petsOwned.includes('감자신');
   const overlay = document.getElementById('overlay');
   overlay.style.display = 'flex';
   overlay.innerHTML = `
@@ -4727,6 +4732,19 @@ function showPotatoShop() {
       <div style="color:#aaa;font-size:11px;margin-bottom:10px">
         💡 감자 획득 방법: 감자 스테이지 플랫폼 위 감자 2개 · 스테이지 클리어 보상 1개
       </div>
+
+      ${flashSaleActive ? `
+      <div style="background:rgba(236,72,153,0.12);border:2px solid #ec4899;border-radius:10px;padding:4px 12px 8px;margin-bottom:10px">
+        <div style="color:#f472b6;font-size:11px;font-weight:bold;margin-bottom:6px;margin-top:6px">⚡ 오늘 자정까지 한정 특가!</div>
+        <div class="coupon-card" onclick="buyGamjasin()" style="cursor:pointer;margin:0;border-color:#ec4899">
+          <span class="coupon-icon">🥔</span>
+          <div class="coupon-info">
+            <div class="coupon-name" style="color:#f9a8d4">감자신 펫 <span style="color:#ec4899;font-size:11px">[히든]</span></div>
+            <div class="color-price"><span style="text-decoration:line-through;opacity:0.4;margin-right:4px">🥔 20감자</span><span style="color:#f472b6;font-weight:bold">🥔 1감자</span></div>
+            ${potato < 1 ? '<div style="color:#ef4444;font-size:11px">감자 부족</div>' : ''}
+          </div>
+        </div>
+      </div>` : ''}
 
       <div class="coupon-card" onclick="buyAlgamja()" style="cursor:pointer">
         <span class="coupon-icon">🥚</span>
@@ -4763,6 +4781,28 @@ function showPotatoShop() {
     </div>`;
 }
 window.showPotatoShop = showPotatoShop;
+
+window.buyGamjasin = function() {
+  const flashSaleEnd = new Date('2026-10-05T15:00:00Z');
+  if (Date.now() >= flashSaleEnd.getTime()) { showPotatoShop(); return; }
+  const potato = loadPotato();
+  const cfg = PETS_CONFIG['감자신'];
+  if (potato < 1) {
+    showConfirm('감자 부족', '🥔 1감자가 필요해요.', null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    return;
+  }
+  showConfirm('감자신 구매 (한정 특가)', `🥔 1감자 → 잔액 ${potato - 1}감자<br><br>⚡ 오늘 자정까지만 이 가격!<br><br>• ${_petStatDesc('감자신').replace(/ · /g,'<br>• ')}`, () => {
+    savePotato(loadPotato() - 1);
+    addPet('감자신');
+    SFX.coin?.();
+    showConfirm('🥔 감자신 획득!',
+      `<span style="color:${cfg.gradeColor};font-size:18px">감자신</span><br><span style="color:#888;font-size:11px">[${cfg.gradeLabel}]</span><br><br>• ${_petStatDesc('감자신').replace(/ · /g,'<br>• ')}`,
+      null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    showPotatoShop();
+  });
+};
 
 window.buyAlgamja = function() {
   const potato = loadPotato();
