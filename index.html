@@ -6527,6 +6527,7 @@ function nextStage() {
     return;
   }
 
+  savePotato(loadPotato() + 1);
   currentStage++;
   if (pvpMode) { pvpMyBestZ = 0; pvpOppBestZ = 0; }
   checkQuestReachStage(currentStage);
