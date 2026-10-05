@@ -848,6 +848,8 @@
   <div id="ui-right">
     <div id="score-ui">SCORE: <span id="score-val-ui">0</span></div>
     <div id="coin-ui">🪙 <span id="coin-val-ui">0</span></div>
+    <div id="potato-ui" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #8c6420;border-radius:10px;padding:7px 12px;color:#d4a853;font-size:13px;font-weight:bold;pointer-events:none;white-space:nowrap;">🥔 <span id="potato-val-ui">0</span></div>
+    <div id="potato-shop-hud-btn" onclick="openPotatoShopDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #8c6420;border-radius:10px;padding:7px 12px;color:#d4a853;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🥔 감자상점</div>
     <div id="teleport-ui" onclick="useTeleportCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f59e0b;border-radius:10px;padding:7px 12px;color:#fcd34d;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">⚡ 순간이동 [T]</div>
     <div id="skip-ui" onclick="useSkipCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🚀 스킵</div>
     <div id="glasses-ui" onclick="useGlasses()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #00e5ff;border-radius:10px;padding:7px 12px;color:#67e8f9;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🥽 안경 [G]</div>
@@ -1038,6 +1040,8 @@ let hp = 100, maxHp = 100;
 let petGroups = [], petBobTs = [0,0,0], _activeSlotIds = [], _petHealFrames = 0, _cachedHealFrames = 0;
 const _PET_OFFSETS = [[0.75, 0.28], [-0.75, 0.28], [0, 1.15]];
 let currentStage = 1;
+let isPotatoStage = false;   // 감자 스테이지 여부
+let potatoCoinMeshes = [];   // 감자 스테이지의 감자 오브젝트
 let gameActive = false;
 let _gameOverCalled = false;
 let _questSnapshot = null;
@@ -1235,173 +1239,6 @@ function showMyScores() {
 }
 window.showMyScores = showMyScores;
 
-// ─────────────────────────────────────────────
-// 감스 — 신용 카드 잔액 기록부
-// ─────────────────────────────────────────────
-const LS_GAMS = 'gams_people';
-function loadGams() { try { return JSON.parse(localStorage.getItem(LS_GAMS)) || []; } catch { return []; } }
-function saveGams(d) { localStorage.setItem(LS_GAMS, JSON.stringify(d)); }
-
-function showGams() {
-  const overlay = document.getElementById('overlay');
-  overlay.style.display = 'flex';
-  const people = loadGams();
-  overlay.innerHTML = `
-    <div class="panel" style="max-width:400px;width:92%">
-      <h2 style="color:#22d3ee;margin-bottom:4px">💳 감스</h2>
-      <p style="color:#888;font-size:12px;margin-bottom:14px">신용 카드 잔액 기록부</p>
-      <div style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;margin-bottom:12px">
-        ${people.length === 0
-          ? '<p style="color:#666;text-align:center;padding:20px 0;font-size:13px">아직 등록된 사람이 없어요</p>'
-          : people.map((p, i) => `
-            <div onclick="showGamsPerson(${i})" style="cursor:pointer;background:rgba(34,211,238,0.07);border:1px solid #0e7490;border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
-              <span style="color:#e2e8f0;font-size:15px;font-weight:bold">${p.name}</span>
-              <span style="color:${p.balance>=0?'#34d399':'#f87171'};font-size:14px;font-weight:bold">${p.balance>=0?'+':''}${p.balance.toLocaleString()}원</span>
-            </div>`).join('')}
-      </div>
-      <button onclick="gamsAddPerson()" style="width:100%;padding:11px;background:linear-gradient(135deg,#0891b2,#22d3ee);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;margin-bottom:8px">+ 추가하기</button>
-      <button class="btn btn-gray" onclick="showTitleScreen()" style="font-size:14px">← 뒤로</button>
-    </div>`;
-}
-window.showGams = showGams;
-
-function gamsAddPerson() {
-  const overlay = document.getElementById('overlay');
-  overlay.innerHTML = `
-    <div class="panel" style="max-width:340px;width:92%">
-      <h2 style="color:#22d3ee;margin-bottom:14px">👤 사람 추가</h2>
-      <input id="gams-name-input" maxlength="20" placeholder="이름 입력"
-        style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#fff;font-size:15px;margin-bottom:12px"/>
-      <div style="display:flex;gap:8px">
-        <button onclick="gamsConfirmAdd()" style="flex:1;padding:10px;background:#0891b2;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer">추가</button>
-        <button onclick="showGams()" style="flex:1;padding:10px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#ccc;font-size:14px;cursor:pointer">취소</button>
-      </div>
-    </div>`;
-  const inp = document.getElementById('gams-name-input');
-  if (inp) { inp.focus(); inp.addEventListener('keydown', e => { if (e.key==='Enter') gamsConfirmAdd(); }); }
-}
-window.gamsAddPerson = gamsAddPerson;
-
-function gamsConfirmAdd() {
-  const name = (document.getElementById('gams-name-input')?.value || '').trim();
-  if (!name) return;
-  const people = loadGams();
-  people.push({ name, balance: 0, transactions: [] });
-  saveGams(people);
-  showGams();
-}
-window.gamsConfirmAdd = gamsConfirmAdd;
-
-function showGamsPerson(idx) {
-  const people = loadGams();
-  const p = people[idx];
-  if (!p) return;
-  const txRows = p.transactions.length === 0
-    ? '<p style="color:#666;text-align:center;padding:14px 0;font-size:13px">거래 내역이 없어요</p>'
-    : [...p.transactions].reverse().map(tx => {
-        const d = tx.ts ? new Date(tx.ts) : null;
-        const ds = d ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : '';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b">
-          <div>
-            <span style="color:${tx.type==='in'?'#34d399':'#f87171'};font-weight:bold;font-size:13px">${tx.type==='in'?'들어온 돈':'나간 돈'}</span>
-            ${tx.memo?`<span style="color:#666;font-size:11px;margin-left:6px">${tx.memo}</span>`:''}
-          </div>
-          <div style="text-align:right">
-            <div style="color:${tx.type==='in'?'#34d399':'#f87171'};font-weight:bold">${tx.type==='in'?'+':'-'}${tx.amount.toLocaleString()}원</div>
-            <div style="color:#555;font-size:11px">${ds}</div>
-          </div>
-        </div>`;
-      }).join('');
-  const overlay = document.getElementById('overlay');
-  overlay.innerHTML = `
-    <div class="panel" style="max-width:400px;width:92%">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
-        <h2 style="color:#22d3ee">${p.name}</h2>
-        <span style="color:${p.balance>=0?'#34d399':'#f87171'};font-size:18px;font-weight:bold">${p.balance>=0?'+':''}${p.balance.toLocaleString()}원</span>
-      </div>
-      <p style="color:#888;font-size:12px;margin-bottom:12px">현재 잔액</p>
-      <div style="max-height:42vh;overflow-y:auto;margin-bottom:12px">${txRows}</div>
-      <button onclick="gamsAddTx(${idx})" style="width:100%;padding:11px;background:linear-gradient(135deg,#0891b2,#22d3ee);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;margin-bottom:8px">💳 거래 추가</button>
-      <button onclick="showGams()" class="btn btn-gray" style="font-size:14px">← 뒤로</button>
-    </div>`;
-}
-window.showGamsPerson = showGamsPerson;
-
-function gamsAddTx(idx) {
-  const overlay = document.getElementById('overlay');
-  overlay.innerHTML = `
-    <div class="panel" style="max-width:340px;width:92%">
-      <h2 style="color:#22d3ee;margin-bottom:12px">🔑 암호 입력</h2>
-      <input id="gams-pw" type="password" maxlength="10" placeholder="암호"
-        style="width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#fff;font-size:18px;text-align:center;letter-spacing:6px;margin-bottom:8px"/>
-      <div id="gams-pw-err" style="color:#ef4444;font-size:12px;text-align:center;min-height:16px;margin-bottom:10px"></div>
-      <div style="display:flex;gap:8px">
-        <button onclick="gamsCheckPw(${idx})" style="flex:1;padding:10px;background:#0891b2;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer">확인</button>
-        <button onclick="showGamsPerson(${idx})" style="flex:1;padding:10px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#ccc;font-size:14px;cursor:pointer">취소</button>
-      </div>
-    </div>`;
-  const inp = document.getElementById('gams-pw');
-  if (inp) { inp.focus(); inp.addEventListener('keydown', e => { if (e.key==='Enter') gamsCheckPw(idx); }); }
-}
-window.gamsAddTx = gamsAddTx;
-
-function gamsCheckPw(idx) {
-  const pw = document.getElementById('gams-pw')?.value || '';
-  if (pw !== '6718') {
-    const err = document.getElementById('gams-pw-err');
-    if (err) { err.textContent = '암호가 틀렸어요'; setTimeout(() => { if (err) err.textContent = ''; }, 1500); }
-    return;
-  }
-  gamsShowTxForm(idx);
-}
-window.gamsCheckPw = gamsCheckPw;
-
-function gamsShowTxForm(idx) {
-  window._gamsType = 'out';
-  const overlay = document.getElementById('overlay');
-  overlay.innerHTML = `
-    <div class="panel" style="max-width:340px;width:92%">
-      <h2 style="color:#22d3ee;margin-bottom:14px">💳 거래 입력</h2>
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <button id="gams-type-out" onclick="gamsSetType('out')" style="flex:1;padding:10px;background:#ef4444;border:2px solid transparent;border-radius:8px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer">나간 돈</button>
-        <button id="gams-type-in"  onclick="gamsSetType('in')"  style="flex:1;padding:10px;background:rgba(52,211,153,0.15);border:2px solid transparent;border-radius:8px;color:#888;font-size:14px;cursor:pointer">들어온 돈</button>
-      </div>
-      <input id="gams-amount" type="number" min="0" placeholder="금액 (원)"
-        style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#fff;font-size:15px;margin-bottom:10px"/>
-      <input id="gams-memo" maxlength="30" placeholder="메모 (선택)"
-        style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#fff;font-size:14px;margin-bottom:14px"/>
-      <div style="display:flex;gap:8px">
-        <button onclick="gamsSubmitTx(${idx})" style="flex:1;padding:10px;background:#0891b2;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer">추가</button>
-        <button onclick="showGamsPerson(${idx})" style="flex:1;padding:10px;background:rgba(255,255,255,0.08);border:1px solid #555;border-radius:8px;color:#ccc;font-size:14px;cursor:pointer">취소</button>
-      </div>
-    </div>`;
-  document.getElementById('gams-amount')?.focus();
-}
-window.gamsShowTxForm = gamsShowTxForm;
-
-function gamsSetType(type) {
-  window._gamsType = type;
-  const o = document.getElementById('gams-type-out');
-  const i = document.getElementById('gams-type-in');
-  if (o) { o.style.background = type==='out' ? '#ef4444' : 'rgba(239,68,68,0.15)'; o.style.color = type==='out' ? '#fff' : '#888'; }
-  if (i) { i.style.background = type==='in'  ? '#10b981' : 'rgba(52,211,153,0.15)'; i.style.color = type==='in'  ? '#fff' : '#888'; }
-}
-window.gamsSetType = gamsSetType;
-
-function gamsSubmitTx(idx) {
-  const amount = parseInt(document.getElementById('gams-amount')?.value || '0');
-  if (!amount || amount <= 0) return;
-  const memo = (document.getElementById('gams-memo')?.value || '').trim();
-  const type = window._gamsType || 'out';
-  const people = loadGams();
-  const p = people[idx];
-  if (!p) return;
-  p.transactions.push({ type, amount, memo, ts: Date.now() });
-  p.balance += type === 'in' ? amount : -amount;
-  saveGams(people);
-  showGamsPerson(idx);
-}
-window.gamsSubmitTx = gamsSubmitTx;
 
 function rankingRows(list, highlightName) {
   if (!list.length) return `<tr><td colspan="5" class="no-record">기록 없음</td></tr>`;
@@ -1503,7 +1340,7 @@ function _renderTitleScreen(forceNameInput) {
             <button class="btn btn-gray" onclick="showInventory()" style="margin:0;border-color:#34d399;color:#6ee7b7">🎒 인벤토리</button>
             <button class="btn btn-gray" onclick="showQuests()" style="margin:0;border-color:#f59e0b;color:#fcd34d">📋 퀘스트</button>
             <button class="btn btn-gray" onclick="showMyScores()" style="margin:0;border-color:#a78bfa;color:#c4b5fd">📊 내 점수</button>
-            <button class="btn btn-gray" onclick="showGams()" style="margin:0;border-color:#22d3ee;color:#67e8f9">💳 감스</button>
+            <button class="btn btn-gray" onclick="showPotatoShop()" style="margin:0;border-color:#8c6420;color:#d4a853">🥔 감자 상점</button>
             <button class="btn" onclick="showGamble()" style="margin:0;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;box-shadow:0 3px 14px rgba(217,119,6,0.5)">🎲 도박</button>
           </div>
           <button class="btn" onclick="showPvpLobby()" style="margin-top:0;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-size:15px;box-shadow:0 3px 14px rgba(219,39,119,0.45)">⚔️ PVP 대결</button>
@@ -2162,7 +1999,10 @@ function exitGameEarly() {
   _gameOverCalled = true;
   document.exitPointerLock();
   renderer.domElement.style.display = 'none';
-  ['score-ui','coin-ui','shop-hud-btn','inv-hud-btn','quest-hud-btn',
+  isPotatoStage = false;
+  potatoCoinMeshes.forEach(p => scene.remove(p.mesh));
+  potatoCoinMeshes = [];
+  ['score-ui','coin-ui','potato-ui','potato-shop-hud-btn','shop-hud-btn','inv-hud-btn','quest-hud-btn',
    'exit-hud-btn','teleport-ui','skip-ui','glasses-ui','jump-ui','invinc-ui','touch-controls',
    'pvp-timer-ui','pvp-opp-ui']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
@@ -3058,6 +2898,13 @@ const LS_PETS_OWNED       = 'ditto_pets_owned';  // JSON array of owned pet IDs 
 const LS_PET_SLOTS        = 'ditto_pet_slots';   // JSON array of indices (max 3)
 const LS_PET_ACTIVE       = 'ditto_pet_active';  // legacy migration only
 const LS_INVINC_POTION    = 'ditto_invinc_potion';
+const LS_POTATO           = 'ditto_potato';       // 감자 화폐
+function loadPotato()   { return parseInt(localStorage.getItem(LS_POTATO) || '0'); }
+function savePotato(n)  { localStorage.setItem(LS_POTATO, String(Math.max(0, n))); updatePotatoUI(); }
+function updatePotatoUI() {
+  const el = document.getElementById('potato-val-ui');
+  if (el) el.textContent = loadPotato();
+}
 
 const BALL_SKIN_IDS    = new Set(['potato', 'soccer', 'baseball', 'basketball', 'volleyball', 'tennis']);
 const SPECIAL_SKIN_IDS = new Set(['potato', ...BALL_SKIN_IDS]);
@@ -3857,6 +3704,19 @@ window.confirmTeleport = function() {
     velocity.set(0, 0, 0);
     SFX.stageClear();
     showDamageFlash();
+  } else if (pw === '8540') {
+    // 감자 스테이지로 이동 (3단계에서만)
+    if (currentStage !== 3) {
+      inp.style.borderColor = '#ef4444';
+      inp.value = '';
+      inp.placeholder = '3단계에서만 사용 가능!';
+      return;
+    }
+    document.getElementById('teleport-pw-modal').style.display = 'none';
+    renderer.domElement.style.display = 'block';
+    gameActive = true;
+    if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+    enterPotatoStage();
   } else {
     inp.style.borderColor = '#ef4444';
     inp.value = '';
@@ -4640,6 +4500,346 @@ function clearStage() {
   glassesTimer = 0;
   clearBackground();
 }
+
+// ─────────────────────────────────────────────
+// 감자 스테이지
+// ─────────────────────────────────────────────
+function enterPotatoStage() {
+  isPotatoStage = true;
+  clearStage();
+  potatoCoinMeshes.forEach(p => scene.remove(p.mesh));
+  potatoCoinMeshes = [];
+  buildPotatoStage();
+  player.position.set(0, 0.85, 0);
+  velocity.set(0, 0, 0);
+  hp = maxHp;
+  updateHpBar();
+  document.getElementById('stage-text').textContent = 'STAGE: 감자';
+  document.getElementById('stage-sub').textContent = '비밀 단계';
+  document.getElementById('potato-ui').style.display = 'block';
+  document.getElementById('potato-shop-hud-btn').style.display = 'block';
+  document.getElementById('potato-val-ui').textContent = loadPotato();
+  scene.fog.color.setHex(0x3b1a00);
+  renderer.setClearColor(0x3b1a00);
+  SFX.stageClear();
+}
+window.enterPotatoStage = enterPotatoStage;
+
+function buildPotatoStage() {
+  const platformCount = 13;
+  const hGap = 3.2;
+  const vStep = 1.4;
+
+  // 시작 플랫폼 (흰색)
+  addPotatoPlatform(0, 0, 0, 6, 0.4, 6);
+  platforms[platforms.length - 1].userData.isStart = true;
+
+  let x = 0, y = 0, z = 0;
+  for (let i = 0; i < platformCount; i++) {
+    x += (Math.random() - 0.5) * hGap * 0.8;
+    z -= hGap * (0.8 + Math.random() * 0.4);
+    y += vStep * (0.5 + Math.random() * 0.5);
+    const w = 3.2 + Math.random() * 1.6;
+    const d = 3.2 + Math.random() * 1.6;
+    addPotatoPlatform(x, y, z, w, 0.4, d);
+  }
+
+  // 골 플랫폼
+  const goalY = y + vStep * 1.3;
+  preFinalPlatformPos.set(x, y + 0.75, z);
+  goalPlatformPos.set(x, goalY, z);
+  addPotatoPlatform(x, goalY, z, 6, 0.5, 6, true);
+
+  buildPotatoCoins();
+  buildBackground(3);
+}
+
+function makePotatoShapeGeo(w, h, d, seed) {
+  // CylinderGeometry를 기반으로 감자 모양의 불규칙한 납작 타원형 생성
+  const geo = new THREE.CylinderGeometry(1, 1, 1, 16, 1);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const px = pos.getX(i);
+    const py = pos.getY(i);
+    const pz = pos.getZ(i);
+    const r = Math.sqrt(px * px + pz * pz);
+    if (r > 0.01) {
+      const ang = Math.atan2(pz, px);
+      // 각도에 따라 반지름 불규칙하게 변형 → 감자 실루엣
+      const irr = 1
+        + 0.18 * Math.sin(ang * 2.5 + seed)
+        + 0.10 * Math.cos(ang * 4.3 + seed * 1.7)
+        + 0.06 * Math.sin(ang * 6.1 + seed * 0.9);
+      pos.setXYZ(i, (px / r) * (w / 2) * irr, py * h, (pz / r) * (d / 2) * irr);
+    } else {
+      pos.setXYZ(i, px * w / 2, py * h, pz * d / 2);
+    }
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function addPotatoPlatform(x, y, z, w, h, d, isGoal = false) {
+  const seed = Math.abs(x * 2.31 + z * 1.73);
+  const geo = isGoal
+    ? new THREE.CylinderGeometry(w / 2, w / 2, h, 20)  // 골은 깔끔한 원형
+    : makePotatoShapeGeo(w, h, d, seed);
+
+  // 감자 텍스처 생성 (캔버스)
+  const S = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = S;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#8c6420';
+  ctx.fillRect(0, 0, S, S);
+  const patches = [
+    [0.14, 0.38, 0.17, 0.10, 0.25], [0.55, 0.22, 0.20, 0.13, -0.10],
+    [0.78, 0.63, 0.14, 0.17,  0.40], [0.32, 0.72, 0.18, 0.09,  0.10],
+    [0.88, 0.30, 0.11, 0.15, -0.30], [0.45, 0.50, 0.22, 0.12,  0.55],
+    [0.68, 0.82, 0.13, 0.08, -0.20], [0.08, 0.78, 0.10, 0.14,  0.15],
+  ];
+  ctx.fillStyle = 'rgba(110,65,8,0.12)';
+  patches.forEach(([u, v, rx, ry, rot]) => {
+    ctx.save(); ctx.translate(u*S, v*S); ctx.rotate(rot);
+    ctx.beginPath(); ctx.ellipse(0, 0, rx*S, ry*S, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+  const eyes2 = [
+    [0.22, 0.28, 0.30], [0.62, 0.38, -0.20], [0.42, 0.68, 0.50],
+    [0.82, 0.62, -0.10], [0.12, 0.58, 0.40], [0.72, 0.18, 0.10],
+  ];
+  eyes2.forEach(([u, v, rot]) => {
+    ctx.save(); ctx.translate(u*S, v*S); ctx.rotate(rot);
+    ctx.fillStyle = 'rgba(92,40,8,0.6)';
+    ctx.beginPath(); ctx.ellipse(0, 0, S*0.040, S*0.024, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 1);  // 원통형 UV에 맞게 조정
+
+  let mat;
+  if (isGoal) {
+    mat = new THREE.MeshStandardMaterial({
+      color: 0xffd700, emissive: 0xffa500, emissiveIntensity: 0.6,
+      roughness: 0.2, metalness: 0.5,
+    });
+  } else {
+    mat = new THREE.MeshStandardMaterial({
+      map: tex,
+      roughness: 0.8, metalness: 0.0,
+    });
+  }
+
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = { w, h, d, isHazard: false, isGoal, isPoisonHazard: false, isFlipHazard: false, isHidden: false, isPotatoPlatform: true };
+  scene.add(mesh);
+  platforms.push(mesh);
+}
+
+function buildPotatoCoins() {
+  const eligiblePlats = platforms.filter(p => p.userData.isPotatoPlatform && !p.userData.isGoal && !p.userData.isStart);
+  const potatoGeo = new THREE.SphereGeometry(0.28, 10, 8);
+  potatoGeo.scale(1, 1.15, 1);
+  eligiblePlats.forEach(plat => {
+    for (let k = 0; k < 2; k++) {
+      const S2 = 64;
+      const c2 = document.createElement('canvas');
+      c2.width = c2.height = S2;
+      const cx2 = c2.getContext('2d');
+      cx2.fillStyle = '#7a5218';
+      cx2.fillRect(0, 0, S2, S2);
+      cx2.fillStyle = 'rgba(80,40,5,0.5)';
+      [[0.3,0.3,0.15,0.09,0],[0.65,0.5,0.18,0.10,0.5],[0.2,0.65,0.12,0.07,1]].forEach(([u,v,rx,ry,rot]) => {
+        cx2.save(); cx2.translate(u*S2, v*S2); cx2.rotate(rot);
+        cx2.beginPath(); cx2.ellipse(0,0,rx*S2,ry*S2,0,0,Math.PI*2); cx2.fill(); cx2.restore();
+      });
+      const tex2 = new THREE.CanvasTexture(c2);
+      const mat2 = new THREE.MeshStandardMaterial({ map: tex2, roughness: 0.9 });
+      const mesh = new THREE.Mesh(potatoGeo, mat2);
+      mesh.position.set(
+        plat.position.x + (k === 0 ? -0.5 : 0.5) * (plat.userData.w * 0.3),
+        plat.position.y + plat.userData.h / 2 + 0.4,
+        plat.position.z + (Math.random() - 0.5) * (plat.userData.d * 0.3)
+      );
+      mesh.castShadow = true;
+      scene.add(mesh);
+      potatoCoinMeshes.push({ mesh, collected: false });
+    }
+  });
+}
+
+function updatePotatoCoins() {
+  for (const c of potatoCoinMeshes) {
+    if (c.collected) continue;
+    c.mesh.rotation.y += 0.04;
+    c.mesh.position.y += Math.sin(Date.now() * 0.002 + c.mesh.position.x) * 0.003;
+    const dx = player.position.x - c.mesh.position.x;
+    const dy = player.position.y - c.mesh.position.y;
+    const dz = player.position.z - c.mesh.position.z;
+    if (dx*dx + dy*dy + dz*dz < 0.9 * 0.9) {
+      c.collected = true;
+      scene.remove(c.mesh);
+      savePotato(loadPotato() + 1);
+      showQuestToast('🥔 감자 +1!');
+      SFX.coin?.();
+    }
+  }
+}
+
+function exitPotatoStage() {
+  isPotatoStage = false;
+  potatoCoinMeshes.forEach(p => scene.remove(p.mesh));
+  potatoCoinMeshes = [];
+  document.getElementById('potato-ui').style.display = 'none';
+  document.getElementById('potato-shop-hud-btn').style.display = 'none';
+  // 감자 스테이지 클리어 보상
+  savePotato(loadPotato() + 1);
+  showQuestToast('🥔 스테이지 클리어! 감자 +1');
+  // 3단계로 복귀
+  currentStage = 3;
+  buildStage(3);
+  player.position.set(0, 0.85, 0);
+  velocity.set(0, 0, 0);
+  hp = maxHp;
+  updateHpBar();
+  SFX.stageClear();
+}
+
+function showPotatoShop() {
+  const potato = loadPotato();
+  const coins  = loadCoins();
+  const owned  = loadOwned();
+  const hasPotSkin = owned.includes('potato');
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="panel">
+      <h2>🥔 감자 상점</h2>
+      <p class="sub">감자 화폐로 아이템을 구매하세요!</p>
+      <div style="background:rgba(140,100,32,0.15);border:1px solid #8c6420;border-radius:10px;padding:10px 14px;color:#d4a853;font-size:14px;font-weight:bold;text-align:center;margin-bottom:14px">
+        🥔 보유 감자: <span id="potato-shop-count">${potato}</span> &nbsp;·&nbsp; 🪙 보유 코인: ${coins}
+      </div>
+      <div style="color:#aaa;font-size:11px;margin-bottom:10px">
+        💡 감자 획득 방법: 감자 스테이지 플랫폼 위 감자 2개 · 스테이지 클리어 보상 1개
+      </div>
+
+      <div class="coupon-card" onclick="buyAlgamja()" style="cursor:pointer">
+        <span class="coupon-icon">🥚</span>
+        <div class="coupon-info">
+          <div class="coupon-name">알감자</div>
+          <div class="color-price">🥔 20감자 · 감자 펫 80% / 감자신 펫 20%</div>
+          ${potato < 20 ? '<div style="color:#ef4444;font-size:11px">감자 부족</div>' : ''}
+        </div>
+      </div>
+
+      <div class="coupon-card" onclick="buy50CoinsWithPotato()" style="cursor:pointer">
+        <span class="coupon-icon">🪙</span>
+        <div class="coupon-info">
+          <div class="coupon-name">50 코인</div>
+          <div class="color-price">🥔 5감자</div>
+          ${potato < 5 ? '<div style="color:#ef4444;font-size:11px">감자 부족</div>' : ''}
+        </div>
+      </div>
+
+      <div class="coupon-card ${hasPotSkin ? 'owned' : ''}" onclick="${hasPotSkin ? '' : 'buyPotatoSkin()'}" style="cursor:${hasPotSkin ? 'default' : 'pointer'}">
+        <span class="coupon-icon">🥔</span>
+        <div class="coupon-info">
+          <div class="coupon-name">감자 스킨</div>
+          <div class="${hasPotSkin ? 'color-owned' : 'color-price'}">${hasPotSkin ? '✓ 보유 중' : '🥔 10감자'}</div>
+          ${!hasPotSkin && potato < 10 ? '<div style="color:#ef4444;font-size:11px">감자 부족</div>' : ''}
+        </div>
+      </div>
+
+      ${_shopOpenedDuringGame
+        ? `<button class="btn btn-purple" onclick="resumeFromPotatoShop()">▶ 게임으로 돌아가기</button>`
+        : gameActive
+          ? `<button class="btn btn-gray" onclick="showShop()">← 일반 상점</button>`
+          : `<button class="btn btn-gray" onclick="showTitleScreen()">← 뒤로</button>`}
+    </div>`;
+}
+window.showPotatoShop = showPotatoShop;
+
+window.buyAlgamja = function() {
+  const potato = loadPotato();
+  if (potato < 20) {
+    showConfirm('감자 부족', `알감자를 구매하려면 🥔 20감자가 필요해요. (현재 ${potato}감자)`, null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    return;
+  }
+  showConfirm('알감자 구매', `🥔 20감자 → 잔액 ${potato - 20}감자<br><br>감자 펫 80% / 감자신 펫 20%`, () => {
+    savePotato(loadPotato() - 20);
+    const r = Math.random();
+    const petId = r < 0.80 ? '감자' : '감자신';
+    const cfg = PETS_CONFIG[petId];
+    addPet(petId);
+    SFX.coin?.();
+    showConfirm('🥚 알감자에서 나왔어요!',
+      `<span style="color:${cfg.gradeColor};font-size:18px">${petId === '감자신' ? '감자신' : cfg.displayName}</span><br><span style="color:#888;font-size:11px">[${cfg.gradeLabel}]</span><br><br>• ${_petStatDesc(petId).replace(/ · /g,'<br>• ')}`,
+      null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    showPotatoShop();
+  });
+};
+
+window.buy50CoinsWithPotato = function() {
+  const potato = loadPotato();
+  if (potato < 5) {
+    showConfirm('감자 부족', `🥔 5감자가 필요해요. (현재 ${potato}감자)`, null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    return;
+  }
+  showConfirm('50 코인 구매', `🥔 5감자 → 🪙 50코인 획득<br>잔액 ${potato - 5}감자`, () => {
+    savePotato(loadPotato() - 5);
+    saveCoins(loadCoins() + 50);
+    updateCoinUI();
+    showQuestToast('🪙 +50 코인!');
+    showPotatoShop();
+  });
+};
+
+window.buyPotatoSkin = function() {
+  const potato = loadPotato();
+  if (potato < 10) {
+    showConfirm('감자 부족', `🥔 10감자가 필요해요. (현재 ${potato}감자)`, null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    return;
+  }
+  const owned = loadOwned();
+  if (owned.includes('potato')) { showPotatoShop(); return; }
+  showConfirm('감자 스킨 구매', `🥔 10감자 → 감자 스킨 획득<br>잔액 ${potato - 10}감자`, () => {
+    savePotato(loadPotato() - 10);
+    const newOwned = [...loadOwned(), 'potato'];
+    saveOwned(newOwned);
+    saveActiveColor('potato');
+    if (gameActive) applyCharacterColor('potato');
+    showQuestToast('🥔 감자 스킨 획득!');
+    showPotatoShop();
+  });
+};
+
+function openPotatoShopDuringGame() {
+  if (!gameActive) return;
+  gameActive = false;
+  document.exitPointerLock();
+  renderer.domElement.style.display = 'none';
+  _shopOpenedDuringGame = true;
+  showPotatoShop();
+}
+window.openPotatoShopDuringGame = openPotatoShopDuringGame;
+
+function resumeFromPotatoShop() {
+  _shopOpenedDuringGame = false;
+  document.getElementById('overlay').style.display = 'none';
+  gameActive = true;
+  if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+  renderer.domElement.style.display = 'block';
+}
+window.resumeFromPotatoShop = resumeFromPotatoShop;
 
 function buildStage(stage) {
   // 낚시 블록·이동 플랫폼은 매판 다르게 — 시드 적용 전에 진짜 랜덤값 저장
@@ -5728,6 +5928,9 @@ function startGame() {
   useCoupon();
   sessionScore = 0;
   sessionCoins = 0;
+  isPotatoStage = false;
+  potatoCoinMeshes.forEach(p => scene.remove(p.mesh));
+  potatoCoinMeshes = [];
   spikeDamageTimer = 30;
   poisonActive = false;
   poisonTicksRemaining = 0;
@@ -5828,6 +6031,7 @@ function animate() {
   updateSlidingPlatforms();
   updateMeteors();
   updateCoins();
+  if (isPotatoStage) updatePotatoCoins();
   updatePotions();
   updateBgAnimations();
   updateParticles();
@@ -5984,6 +6188,7 @@ function updatePlayer() {
         }
 
         if (plat.userData.isGoal) {
+          if (isPotatoStage) { exitPotatoStage(); return; }
           nextStage();
           return;
         }
@@ -6688,12 +6893,17 @@ function _pvpHostOrJoin(slotN, attempts) {
 async function gameClear() {
   checkQuestClearGame();
   gameActive = false;
+  isPotatoStage = false;
+  potatoCoinMeshes.forEach(p => scene.remove(p.mesh));
+  potatoCoinMeshes = [];
   removePet();
   _shopOpenedDuringGame = false;
   document.exitPointerLock();
   renderer.domElement.style.display = 'none';
   document.getElementById('score-ui').style.display = 'none';
   document.getElementById('coin-ui').style.display = 'none';
+  document.getElementById('potato-ui').style.display = 'none';
+  document.getElementById('potato-shop-hud-btn').style.display = 'none';
   document.getElementById('shop-hud-btn').style.display = 'none';
   document.getElementById('inv-hud-btn').style.display = 'none';
   document.getElementById('quest-hud-btn').style.display = 'none';
@@ -6757,9 +6967,14 @@ function gameOver() {
   if (pvpMode) return; // PVP에서는 HP 없으므로 gameOver 미사용
   _gameOverCalled = true;
   gameActive = false;
+  isPotatoStage = false;
+  potatoCoinMeshes.forEach(p => scene.remove(p.mesh));
+  potatoCoinMeshes = [];
   renderer.domElement.style.display = 'none';
   document.getElementById('score-ui').style.display = 'none';
   document.getElementById('coin-ui').style.display = 'none';
+  document.getElementById('potato-ui').style.display = 'none';
+  document.getElementById('potato-shop-hud-btn').style.display = 'none';
   document.getElementById('shop-hud-btn').style.display = 'none';
   document.getElementById('inv-hud-btn').style.display = 'none';
   document.getElementById('quest-hud-btn').style.display = 'none';
