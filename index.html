@@ -6528,6 +6528,7 @@ function nextStage() {
   }
 
   savePotato(loadPotato() + 1);
+  showQuestToast('🥔 감자 +1 획득!');
   currentStage++;
   if (pvpMode) { pvpMyBestZ = 0; pvpOppBestZ = 0; }
   checkQuestReachStage(currentStage);
