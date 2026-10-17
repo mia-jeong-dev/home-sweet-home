@@ -3,652 +3,783 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>감자 키우기</title>
+<title>🥔 감자 키우기</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:#0e1a04; color:#fff; font-family:'Malgun Gothic',sans-serif; overflow:hidden; }
-#c { display:block; width:100vw; height:100vh; cursor:crosshair; }
+* { margin:0;padding:0;box-sizing:border-box; }
+body { overflow:hidden; font-family:'Malgun Gothic',sans-serif; }
+canvas { display:block; }
 
-#header {
+#hud {
   position:fixed; top:0; left:0; right:0;
-  display:flex; align-items:center; gap:10px; padding:8px 14px;
-  background:rgba(0,0,0,0.72); backdrop-filter:blur(4px); z-index:10;
+  display:flex; align-items:center; padding:9px 16px; gap:10px;
+  background:rgba(0,0,0,.6); backdrop-filter:blur(4px); z-index:10; pointer-events:none;
 }
-#header h1 { font-size:17px; color:#f5d060; letter-spacing:-0.5px; }
-#name-disp { font-size:13px; color:#aaa; }
-#coins-disp { margin-left:auto; font-size:15px; color:#f5d060; font-weight:bold; }
+#hud h1 { font-size:16px; color:#f5d060; }
+#hud-name { font-size:13px; color:#bbb; }
+#hud-coins { margin-left:auto; font-size:15px; color:#f5d060; font-weight:bold; }
+#hud-wc { font-size:13px; color:#4af; }
 
-#farm-tabs {
-  position:fixed; top:44px; left:0; right:0;
-  display:flex; gap:5px; padding:6px 12px;
-  background:rgba(0,0,0,0.6); z-index:10; overflow-x:auto;
+#hint {
+  position:fixed; bottom:70px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,.82); color:#fff; padding:8px 22px;
+  border-radius:22px; font-size:14px; border:1.5px solid rgba(255,255,255,.2);
+  pointer-events:none; display:none; z-index:20; white-space:nowrap;
 }
-.farm-tab {
-  padding:4px 12px; border-radius:5px; border:1.5px solid #444;
-  background:#1a1a1a; cursor:pointer; font-size:12px; white-space:nowrap;
-  transition:all .15s; color:#ccc;
+#hint kbd {
+  display:inline-block; background:#444; border:1px solid #666;
+  border-radius:4px; padding:1px 6px; font-size:12px; margin-right:4px;
 }
-.farm-tab.me { border-color:#c8a050; color:#f5d060; }
-.farm-tab.active { background:#2a1e00; border-color:#f5d060; color:#fff; }
-.farm-tab:hover:not(.active) { border-color:#888; color:#fff; }
 
-#tools-bar {
-  position:fixed; bottom:0; left:0; right:0;
-  display:flex; gap:6px; padding:8px 14px; align-items:center;
-  background:rgba(0,0,0,0.72); backdrop-filter:blur(4px); z-index:10;
+#ctrl-hint {
+  position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
+  color:rgba(255,255,255,.35); font-size:11px; pointer-events:none; z-index:10;
 }
-.tbtn {
-  padding:6px 13px; border-radius:7px; border:1.5px solid #444;
-  background:#1a1a1a; cursor:pointer; font-size:13px; color:#ccc;
-  transition:all .15s;
-}
-.tbtn.active { border-color:#4af; background:#001b2e; color:#4df; }
-.tbtn:hover:not(.active) { border-color:#888; color:#fff; }
-#info-bar { margin-left:auto; font-size:11px; color:#888; }
 
 /* modal */
-#moverlay {
-  position:fixed; inset:0; background:rgba(0,0,0,0.75);
+#mo {
+  position:fixed; inset:0; background:rgba(0,0,0,.75);
   display:none; align-items:center; justify-content:center; z-index:50;
 }
-#moverlay.open { display:flex; }
-#mpanel {
-  background:#181200; border:2px solid #c8a050; border-radius:12px;
-  padding:20px; min-width:290px; max-width:460px; width:90%;
+#mo.open { display:flex; }
+#mp {
+  background:#181200; border:2px solid #c8a050; border-radius:14px;
+  padding:22px; min-width:300px; max-width:460px; width:90%;
   max-height:80vh; overflow-y:auto;
 }
-#mpanel h2 { color:#f5d060; margin-bottom:14px; font-size:16px; }
+#mp h2 { color:#f5d060; margin-bottom:14px; font-size:17px; }
 .pc {
   display:flex; align-items:center; gap:10px;
-  padding:9px 10px; border:1px solid #333; border-radius:8px;
-  cursor:pointer; margin-bottom:7px; transition:background .12s;
+  padding:10px 12px; border:1px solid #333; border-radius:9px;
+  cursor:pointer; margin-bottom:8px; transition:background .12s;
 }
 .pc:hover { background:#251800; border-color:#c8a050; }
-.pc-dot { width:24px; height:24px; border-radius:50%; flex-shrink:0; }
-.pc-name { font-size:13px; font-weight:bold; }
-.pc-info { font-size:11px; color:#888; margin-top:2px; }
-.mcancel {
-  margin-top:10px; padding:7px 20px; border:1px solid #444;
-  border-radius:7px; background:#222; cursor:pointer; color:#aaa; font-size:13px;
+.pcdot { width:26px; height:26px; border-radius:50%; flex-shrink:0; }
+.pcn { font-size:13px; font-weight:bold; }
+.pci { font-size:11px; color:#888; margin-top:2px; }
+.mclose {
+  margin-top:12px; padding:7px 22px; border:1px solid #444;
+  border-radius:8px; background:#222; cursor:pointer; color:#aaa; font-size:13px;
 }
-.mcancel:hover { color:#fff; }
+.mclose:hover { color:#fff; }
 
 #toast {
-  position:fixed; bottom:62px; left:50%; transform:translateX(-50%);
-  background:rgba(0,0,0,0.88); color:#fff; padding:7px 18px;
-  border-radius:20px; font-size:13px; pointer-events:none;
-  opacity:0; transition:opacity .3s; z-index:99; white-space:nowrap;
-}
-
-#reset-btn {
-  position:fixed; top:50px; right:10px; padding:5px 10px;
-  background:#3a0000; border:1px solid #f44; border-radius:5px;
-  cursor:pointer; font-size:11px; color:#f88; z-index:11;
-}
-#reset-btn:hover { background:#5a0000; }
-
-.grow-bar-wrap {
   position:fixed; bottom:52px; left:50%; transform:translateX(-50%);
-  background:rgba(0,0,0,0.7); border-radius:8px; padding:4px 12px;
-  font-size:11px; color:#aaa; z-index:11; pointer-events:none;
-  display:none;
+  background:rgba(0,0,0,.88); color:#fff; padding:7px 18px;
+  border-radius:20px; font-size:13px; pointer-events:none;
+  opacity:0; transition:opacity .3s; z-index:99;
 }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 
-<div id="header">
-  <h1>🥔 감자 키우기</h1>
-  <span id="name-disp"></span>
-  <span id="coins-disp">🪙 0</span>
+<div id="hud">
+  <h1>🥔</h1>
+  <span id="hud-name"></span>
+  <span id="hud-coins">🪙 0</span>
+  <span id="hud-wc"></span>
 </div>
-<div id="farm-tabs"></div>
+<div id="hint"><kbd>E</kbd><span id="hint-text">심기</span></div>
+<div id="ctrl-hint">WASD / 방향키 이동 &nbsp;·&nbsp; E 상호작용 &nbsp;·&nbsp; 상점에 걸어가서 도구 구입</div>
 
-<div id="tools-bar">
-  <button class="tbtn" id="tbtn-plant"   onclick="setTool('plant')">🌱 심기</button>
-  <button class="tbtn" id="tbtn-water"   onclick="setTool('water')">💧 물주기 <span id="wc-cnt"></span></button>
-  <button class="tbtn" id="tbtn-harvest" onclick="setTool('harvest')">🥔 캐기</button>
-  <button class="tbtn" id="tbtn-shop"    onclick="openShop()">🛒 상점</button>
-  <div id="info-bar">캐기 모드</div>
-</div>
-
-<div id="moverlay" onclick="e=>e.target===this&&closeModal()">
-  <div id="mpanel">
-    <h2 id="mtitle"></h2>
-    <div id="mbody"></div>
-    <button class="mcancel" onclick="closeModal()">닫기</button>
+<div id="mo">
+  <div id="mp">
+    <h2 id="mt"></h2>
+    <div id="mb"></div>
+    <button class="mclose" onclick="closeModal()">닫기</button>
   </div>
 </div>
 <div id="toast"></div>
-<button id="reset-btn" onclick="doReset()">🔄 내 농장 초기화</button>
 
 <script type="module">
-import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot,
          collection, query, orderBy, limit, getDocs }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js";
 
 // ── Firebase ──
-const FB_CFG = {
+const db = getFirestore(initializeApp({
   apiKey:"AIzaSyAoiB8frxNH4W2lTzoO9R3rZeyxypY6rgs",
   authDomain:"gams-db.firebaseapp.com", projectId:"gams-db",
   storageBucket:"gams-db.firebasestorage.app",
   messagingSenderId:"868598873850",
   appId:"1:868598873850:web:cd0007b105bdc1518d5343"
-};
-const db = getFirestore(initializeApp(FB_CFG));
+}));
 const COLL = 'potato_farms';
 
-// ── Potato types (base: 5 coins, 10s) ──
+// ── Potato types ──
 const PT = [
-  { id:'common',  name:'일반 감자',    coin:5,    sec:10,    hex:'#c8a050', seed:0   },
-  { id:'unusual', name:'특이한 감자',  coin:20,   sec:40,    hex:'#50c870', seed:8   },
-  { id:'good',    name:'좋은 감자',    coin:50,   sec:100,   hex:'#5088ff', seed:20  },
-  { id:'great',   name:'훌륭한 감자',  coin:100,  sec:200,   hex:'#b060ff', seed:40  },
-  { id:'king',    name:'대왕 감자',    coin:200,  sec:400,   hex:'#ff5555', seed:80  },
-  { id:'rainbow', name:'레인보우 감자',coin:500,  sec:1000,  hex:'#ffffff', seed:150 },
-  { id:'golden',  name:'황금 감자',    coin:1000, sec:2000,  hex:'#ffd700', seed:300 },
+  {id:'common',  name:'일반 감자',    coin:5,    sec:10,    hex:'#c8a050', seed:0  },
+  {id:'unusual', name:'특이한 감자',  coin:20,   sec:40,    hex:'#50c870', seed:8  },
+  {id:'good',    name:'좋은 감자',    coin:50,   sec:100,   hex:'#5088ff', seed:20 },
+  {id:'great',   name:'훌륭한 감자',  coin:100,  sec:200,   hex:'#b060ff', seed:40 },
+  {id:'king',    name:'대왕 감자',    coin:200,  sec:400,   hex:'#ff5555', seed:80 },
+  {id:'rainbow', name:'레인보우 감자',coin:500,  sec:1000,  hex:'#ffffff', seed:150},
+  {id:'golden',  name:'황금 감자',    coin:1000, sec:2000,  hex:'#ffd700', seed:300},
 ];
-const PT_MAP = Object.fromEntries(PT.map(p=>[p.id,p]));
-const WATER_SAVE = 0.25; // each water saves 25% of base grow time
+const PTM = Object.fromEntries(PT.map(p=>[p.id,p]));
+const WATER_SAVE = 0.25;
 
 // ── LocalStorage ──
-const LS = { name:'pf_name', coins:'pf_coins', wc:'pf_wc' };
-let playerName='', coins=0, wc=0;
-function loadLS() {
-  coins = parseInt(localStorage.getItem(LS.coins)||'0');
-  wc    = parseInt(localStorage.getItem(LS.wc)||'0');
-}
-function saveLS() {
-  localStorage.setItem(LS.coins, String(coins));
-  localStorage.setItem(LS.wc, String(wc));
-}
+const LS = {nm:'pf2_name', co:'pf2_coins', wc:'pf2_wc'};
+let pName='', coins=0, wc=0;
+function loadLS(){ coins=+(localStorage.getItem(LS.co)||0); wc=+(localStorage.getItem(LS.wc)||0); }
+function saveLS(){ localStorage.setItem(LS.co,coins); localStorage.setItem(LS.wc,wc); }
 
 // ── State ──
-let myId='', curFarmId='';
-let farmData={}, farmUnsub={};
+let myId='';
+const farmData={}, farmUnsub={};
 let otherIds=[];
-let activeTool='harvest';
-let hoverPlot=null; // {farmId, idx}
+let nearTarget=null;
 
-// ── THREE scene ──
-const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+// ── Renderer ──
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0e1a04);
-scene.fog = new THREE.FogExp2(0x0e1a04, 0.035);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x7ec8e3);
+scene.fog=new THREE.Fog(0x7ec8e3,28,55);
 
-const camera = new THREE.PerspectiveCamera(48, innerWidth/innerHeight, 0.1, 80);
-camera.position.set(0, 11, 11);
-camera.lookAt(0,0,0);
-renderer.setSize(innerWidth, innerHeight);
-window.addEventListener('resize', ()=>{
-  camera.aspect = innerWidth/innerHeight;
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,120);
+camera.position.set(0,10,12);
+renderer.setSize(innerWidth,innerHeight);
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
+  renderer.setSize(innerWidth,innerHeight);
 });
 
-// Lights
-scene.add(new THREE.AmbientLight(0xffeedd, 0.55));
-const sun = new THREE.DirectionalLight(0xfff5cc, 1.3);
-sun.position.set(6,12,8); sun.castShadow=true;
-sun.shadow.camera.near=1; sun.shadow.camera.far=60;
-sun.shadow.camera.left=-20; sun.shadow.camera.right=20;
-sun.shadow.camera.top=20; sun.shadow.camera.bottom=-20;
-sun.shadow.mapSize.set(1024,1024);
+// ── Lights ──
+scene.add(new THREE.AmbientLight(0xfff0dd,.7));
+const sun=new THREE.DirectionalLight(0xfff5cc,1.3);
+sun.position.set(8,18,10); sun.castShadow=true;
+sun.shadow.camera.left=sun.shadow.camera.bottom=-30;
+sun.shadow.camera.right=sun.shadow.camera.top=30;
+sun.shadow.camera.far=80; sun.shadow.mapSize.set(1024,1024);
 scene.add(sun);
+scene.add(new THREE.HemisphereLight(0x87ceeb,0x4a8820,.4));
 
-// Ground
-const gnd = new THREE.Mesh(
-  new THREE.PlaneGeometry(60,60),
-  new THREE.MeshLambertMaterial({color:0x162808})
-);
+// ── Ground ──
+const gnd=new THREE.Mesh(new THREE.PlaneGeometry(120,120),
+  new THREE.MeshLambertMaterial({color:0x4a8820}));
 gnd.rotation.x=-Math.PI/2; gnd.receiveShadow=true; scene.add(gnd);
 
-// ── Farm geometry ──
-const PW=1.8, PG=0.3; // plot width, gap
-const COLS=3, ROWS=2;
-const FW=(COLS*(PW+PG)); const FD=(ROWS*(PW+PG)); // farm width/depth
+// ── Farm layout constants ──
+const PW=2, PG=.32, COLS=3, ROWS=2;
+const FW=COLS*(PW+PG), FD=ROWS*(PW+PG); // ~6.96 × 4.64
 
-// 6 farm world positions: mine=0, others=1..5
-const FPOS = [
-  new THREE.Vector3(0,0,0),
-  new THREE.Vector3(-10,0,-2), new THREE.Vector3(10,0,-2),
-  new THREE.Vector3(-10,0,6),  new THREE.Vector3(10,0,6),
-  new THREE.Vector3(0,0,-10),
+// World positions of 6 farms
+const FARM_POS=[
+  new THREE.Vector3(0,0,0),       // mine
+  new THREE.Vector3(-14,0,1),     // other1
+  new THREE.Vector3(14,0,1),      // other2
+  new THREE.Vector3(0,0,-15),     // other3
+  new THREE.Vector3(-14,0,-14),   // other4
+  new THREE.Vector3(14,0,-14),    // other5
 ];
+const SHOP_POS=new THREE.Vector3(11,0,-2);
+const SHOP_INTERACT_R=2.8;
+const PLOT_INTERACT_R=1.5;
 
-const plotMeshes={}, plantGroups={}, farmGroups={};
+const plotMeshes={}, plantGrps={}, farmGrps={};
+let playerMesh=null;
+let shopGroup=null;
 
-function plotLocalPos(i) {
-  const col=i%COLS, row=Math.floor(i/COLS);
+// ── Helpers ──
+function plotLP(i){
   return new THREE.Vector3(
-    (col-(COLS-1)/2)*(PW+PG), 0,
-    (row-(ROWS-1)/2)*(PW+PG)
+    (i%COLS-(COLS-1)/2)*(PW+PG), 0,
+    (Math.floor(i/COLS)-(ROWS-1)/2)*(PW+PG)
   );
 }
+function plotWP(fid,i){
+  const fc=farmGrps[fid]?.position||new THREE.Vector3();
+  const lp=plotLP(i);
+  return new THREE.Vector3(fc.x+lp.x, 0, fc.z+lp.z);
+}
 
-function buildFarm(fid, worldPos, isMe) {
-  const g=new THREE.Group(); g.position.copy(worldPos); scene.add(g);
-  farmGroups[fid]=g;
+// ── Build farm ──
+function buildFarm(fid, center, isMe){
+  if(farmGrps[fid]) return;
+  const g=new THREE.Group(); g.position.copy(center); scene.add(g);
+  farmGrps[fid]=g;
 
-  // Fence/base
-  const base=new THREE.Mesh(
-    new THREE.BoxGeometry(FW+0.6, 0.18, FD+0.6),
-    new THREE.MeshLambertMaterial({color: isMe?0x2a5c10:0x1e4008})
-  );
-  base.position.y=-0.09; base.receiveShadow=true; g.add(base);
+  // Grass pad
+  const pad=new THREE.Mesh(new THREE.BoxGeometry(FW+1.2,0.15,FD+1.2),
+    new THREE.MeshLambertMaterial({color:isMe?0x3d7018:0x2d5a10}));
+  pad.position.y=-.08; pad.receiveShadow=true; g.add(pad);
 
-  // Corner posts
-  const postMat=new THREE.MeshLambertMaterial({color:0x7a4a1a});
-  const postGeo=new THREE.BoxGeometry(0.12,0.55,0.12);
-  [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([sx,sz])=>{
-    const p=new THREE.Mesh(postGeo,postMat);
-    p.position.set(sx*(FW/2+0.22), 0.18, sz*(FD/2+0.22)); p.castShadow=true; g.add(p);
-  });
+  // Fence
+  const pM=new THREE.MeshLambertMaterial({color:0x8a6030});
+  const rM=new THREE.MeshLambertMaterial({color:0xb07840});
+  const hw=FW/2+.5, hd=FD/2+.5;
+  // corner + mid posts
+  [[-hw,-hd],[0,-hd],[hw,-hd],[-hw,0],[hw,0],[-hw,hd],[0,hd],[hw,hd]]
+    .forEach(([x,z])=>{
+      const p=new THREE.Mesh(new THREE.BoxGeometry(.1,.7,.1),pM);
+      p.position.set(x,.3,z); p.castShadow=true; g.add(p);
+    });
+  // rails
+  [[0,-hd,FW+1,'x'],[0,hd,FW+1,'x'],[-hw,0,FD+1,'z'],[hw,0,FD+1,'z']]
+    .forEach(([x,z,len,ax])=>{
+      const r=new THREE.Mesh(new THREE.BoxGeometry(ax==='x'?len:.08,.07,ax==='z'?len:.08),rM);
+      r.position.set(x,.48,z); g.add(r);
+    });
 
+  // Gate sign (my farm only)
+  if(isMe){
+    const sp=new THREE.Mesh(new THREE.BoxGeometry(.08,1,.08),pM);
+    sp.position.set(-hw-.3,.5,-hd-.3); g.add(sp);
+    const sb=new THREE.Mesh(new THREE.BoxGeometry(1.4,.4,.06),rM);
+    sb.position.set(-hw-.3,.95,-hd-.3); g.add(sb);
+    // Reset button hint post
+    const rp=new THREE.Mesh(new THREE.BoxGeometry(.08,1,.08),pM);
+    rp.position.set(hw+.3,.5,-hd-.3); g.add(rp);
+  }
+
+  // Plots
   const plots=[], plants=[];
   for(let i=0;i<6;i++){
-    const lp=plotLocalPos(i);
-    const pm=new THREE.Mesh(
-      new THREE.BoxGeometry(PW,0.12,PW),
-      new THREE.MeshLambertMaterial({color:0x7a4a1a})
-    );
+    const lp=plotLP(i);
+    const pm=new THREE.Mesh(new THREE.BoxGeometry(PW,.12,PW),
+      new THREE.MeshLambertMaterial({color:0x7a4a18}));
     pm.position.set(lp.x,0,lp.z); pm.receiveShadow=true;
-    pm.userData={fid,idx:i};
-    g.add(pm); plots.push(pm);
+    pm.userData={fid,idx:i}; g.add(pm); plots.push(pm);
 
-    const pg2=new THREE.Group();
-    pg2.position.set(lp.x,0.06,lp.z); g.add(pg2); plants.push(pg2);
+    const pg=new THREE.Group();
+    pg.position.set(lp.x,.07,lp.z); g.add(pg); plants.push(pg);
   }
-  plotMeshes[fid]=plots; plantGroups[fid]=plants;
+  plotMeshes[fid]=plots; plantGrps[fid]=plants;
+}
+
+// ── Build shop ──
+function buildShop(){
+  const g=new THREE.Group(); g.position.copy(SHOP_POS); scene.add(g);
+  shopGroup=g;
+
+  const flM=new THREE.MeshLambertMaterial({color:0x9a7848});
+  const wM=new THREE.MeshLambertMaterial({color:0xb08050});
+  const rM=new THREE.MeshLambertMaterial({color:0x7a3a10});
+
+  // Floor
+  const fl=new THREE.Mesh(new THREE.BoxGeometry(5,0.15,4.5),flM);
+  fl.position.y=.07; fl.receiveShadow=true; g.add(fl);
+  // Walls (3 sides, open front)
+  [[-2.4,0,'z',4.5],[2.4,0,'z',4.5],[0,0,-2.1,'x',4.8]]
+    .forEach(([x,y,z,ax,len])=>{
+      if(len===undefined){len=z;z=undefined;}
+      const w=new THREE.Mesh(
+        new THREE.BoxGeometry(ax==='x'?len:.2,2.4,.2),wM);
+      w.position.set(x,1.3,z??x); w.castShadow=true; g.add(w);
+    });
+  // Back wall
+  const bw=new THREE.Mesh(new THREE.BoxGeometry(5,.2,2.4),wM);
+  bw.rotation.z=Math.PI/2; bw.position.set(0,1.3,-2); g.add(bw);
+  const bw2=new THREE.Mesh(new THREE.BoxGeometry(.2,2.4,4.5),wM);
+  bw2.position.set(-2.4,1.3,0); g.add(bw2);
+  const bw3=new THREE.Mesh(new THREE.BoxGeometry(.2,2.4,4.5),wM);
+  bw3.position.set(2.4,1.3,0); g.add(bw3);
+  const bw4=new THREE.Mesh(new THREE.BoxGeometry(5,.2,4.5),wM);
+  bw4.position.set(0,2.5,-2.15); g.add(bw4);
+  // Roof
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(3.8,1.6,4),rM);
+  roof.position.y=3.4; roof.rotation.y=Math.PI/4; roof.castShadow=true; g.add(roof);
+  // Counter
+  const ct=new THREE.Mesh(new THREE.BoxGeometry(3.5,.7,.5),
+    new THREE.MeshLambertMaterial({color:0xd0a060}));
+  ct.position.set(0,.5,1.8); g.add(ct);
+  // Sign board
+  const sb=new THREE.Mesh(new THREE.BoxGeometry(2.5,.6,.08),
+    new THREE.MeshLambertMaterial({color:0x4a1a00}));
+  sb.position.set(0,2.6,2.1); g.add(sb);
+  // 🛒 text represented by a bright stripe
+  const st=new THREE.Mesh(new THREE.BoxGeometry(2,.1,.09),
+    new THREE.MeshBasicMaterial({color:0xffd700}));
+  st.position.set(0,2.9,2.11); g.add(st);
+}
+
+// ── Decorations ──
+function addDeco(){
+  const treeMat=new THREE.MeshLambertMaterial({color:0x1e6c0a});
+  const trunkMat=new THREE.MeshLambertMaterial({color:0x6a3a10});
+  const flowerMat=new THREE.MeshLambertMaterial({color:0xffaacc});
+  const treePos=[
+    [-9,0,-6],[-9,0,5],[9,0,-6],[9,0,5],[-5,0,8],[5,0,8],
+    [-12,0,3],[12,0,3],[0,0,-8],[-7,0,-2],[7,0,-2],
+    [-6,0,-10],[6,0,-10],[14,0,-8],[-14,0,-8],
+  ];
+  treePos.forEach(([x,,z])=>{
+    const g=new THREE.Group();g.position.set(x,0,z);
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,.9,6),trunkMat);
+    trunk.position.y=.45; g.add(trunk);
+    const crown=new THREE.Mesh(new THREE.SphereGeometry(.7+Math.random()*.5,7,6),treeMat);
+    crown.position.y=1.5; g.add(crown);
+    scene.add(g);
+  });
+  // Flowers
+  for(let i=0;i<18;i++){
+    const g=new THREE.Group();
+    g.position.set((Math.random()-.5)*22,(0),(Math.random()-.5)*22);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.3,4),
+      new THREE.MeshLambertMaterial({color:0x3a8020}));
+    stem.position.y=.15;g.add(stem);
+    const fl=new THREE.Mesh(new THREE.SphereGeometry(.1,5,4),flowerMat);
+    fl.position.y=.35;g.add(fl);
+    scene.add(g);
+  }
+  // Path stones between farm and shop
+  for(let i=0;i<6;i++){
+    const t=i/5;
+    const px=t*10, pz=0;
+    const stone=new THREE.Mesh(new THREE.CylinderGeometry(.25+Math.random()*.1,.3,.05,7),
+      new THREE.MeshLambertMaterial({color:0xaaa090}));
+    stone.position.set(px+4,.01,pz); scene.add(stone);
+  }
+}
+
+// ── Player model ──
+let walkPhase=0;
+function buildPlayerModel(){
+  const g=new THREE.Group();
+  const skinM=new THREE.MeshLambertMaterial({color:0xf5c080});
+  const bodyM=new THREE.MeshLambertMaterial({color:0x3a7030}); // green shirt
+  const pantsM=new THREE.MeshLambertMaterial({color:0x2a4ab0}); // blue pants
+  const hatM=new THREE.MeshLambertMaterial({color:0xd4a040});
+
+  // Legs
+  [-0.1,0.1].forEach(x=>{
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.085,.085,.44,7),pantsM);
+    leg.position.set(x,.22,0); leg.castShadow=true; g.add(leg);
+  });
+  // Body
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.2,.24,.52,8),bodyM);
+  body.position.y=.67; body.castShadow=true; g.add(body);
+  // Arms
+  [-0.27,0.27].forEach(x=>{
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.38,6),skinM);
+    arm.position.set(x,.67,0); arm.rotation.z=x>0?.4:-.4;
+    arm.castShadow=true; g.add(arm);
+  });
+  // Head — 감자 얼굴
+  const potatoM=new THREE.MeshLambertMaterial({color:0xc8a050});
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.22,10,8),potatoM);
+  head.scale.set(1,.95,1.1); // 약간 앞뒤로 납작한 감자형
+  head.position.y=1.09; head.castShadow=true; g.add(head);
+  // Potato bumps (눈 모양)
+  const bumpM=new THREE.MeshLambertMaterial({color:0xa07830});
+  [-.06,.06].forEach(x=>{
+    const bump=new THREE.Mesh(new THREE.SphereGeometry(.05,6,5),bumpM);
+    bump.position.set(x,1.14,.2); g.add(bump);
+  });
+  // Eyes (검은 눈동자)
+  const eyeM=new THREE.MeshLambertMaterial({color:0x111111});
+  [-.06,.06].forEach(x=>{
+    const e=new THREE.Mesh(new THREE.SphereGeometry(.03,6,5),eyeM);
+    e.position.set(x,1.16,.24); g.add(e);
+    // shine
+    const sh=new THREE.Mesh(new THREE.SphereGeometry(.012,5,4),
+      new THREE.MeshBasicMaterial({color:0xffffff}));
+    sh.position.set(x+.01,1.175,.268); g.add(sh);
+  });
+  // Mouth — 미소
+  const mouthM=new THREE.MeshLambertMaterial({color:0x6a3a10});
+  const mouthGeo=new THREE.TorusGeometry(.055,.012,5,10,Math.PI);
+  const mouth=new THREE.Mesh(mouthGeo,mouthM);
+  mouth.rotation.z=Math.PI; mouth.position.set(0,1.04,.24); g.add(mouth);
+  // 감자 작은 돌기 (머리 위)
+  [[-.05,.1,.06],[.07,.08,-.04],[0,.1,-.06]].forEach(([x,y,z])=>{
+    const sp=new THREE.Mesh(new THREE.SphereGeometry(.03,5,4),bumpM);
+    sp.position.set(x,1.3+y,z); g.add(sp);
+  });
+  // Hat brim
+  const brim=new THREE.Mesh(new THREE.CylinderGeometry(.3,.32,.045,12),hatM);
+  brim.position.y=1.28; g.add(brim);
+  const hat=new THREE.Mesh(new THREE.CylinderGeometry(.17,.22,.22,10),hatM);
+  hat.position.y=1.41; g.add(hat);
+
+  g.position.set(0,.01,4);
+  scene.add(g);
+  playerMesh=g;
 }
 
 // ── Plant visuals ──
-function plantColor(typeId) {
-  if(typeId==='rainbow') return new THREE.Color().setHSL((Date.now()*.0004)%1,1,.55).getHex();
-  return parseInt(PT_MAP[typeId]?.hex.replace('#','0x')||'0xc8a050');
+function clearPG(pg){
+  while(pg.children.length){
+    const c=pg.children[0];
+    c.geometry?.dispose(); c.material?.dispose(); pg.remove(c);
+  }
 }
 
-function rebuildPlant(fid, idx) {
-  const pg=plantGroups[fid]?.[idx]; if(!pg) return;
-  while(pg.children.length){ const c=pg.children[0]; c.geometry?.dispose(); c.material?.dispose(); pg.remove(c); }
-
-  const d=(farmData[fid]?.plots||[])[idx]; if(!d||!d.type||d.harvested) return;
-  const pt=PT_MAP[d.type]; if(!pt) return;
+function rebuildPlant(fid,i){
+  const pg=plantGrps[fid]?.[i]; if(!pg) return;
+  clearPG(pg);
+  const d=(farmData[fid]?.plots||[])[i];
+  if(!d?.type||d?.harvested) return;
+  const pt=PTM[d.type]; if(!pt) return;
   const prog=growProgress(d); if(prog<=0) return;
 
-  const sc=0.18+prog*0.62;
-  const col=plantColor(d.type);
+  const sc=.18+prog*.72;
+  const col=pt.id==='rainbow'
+    ? new THREE.Color().setHSL((Date.now()*.0004)%1,1,.55).getHex()
+    : parseInt(pt.hex.replace('#',''),16);
 
-  // Potato body (underground lump)
-  const bMat=new THREE.MeshStandardMaterial({color:col, roughness:.65, metalness: d.type==='golden'?.5:0,
-    emissive: prog>=1 ? col : 0, emissiveIntensity: prog>=1?.25:0});
-  const body=new THREE.Mesh(new THREE.SphereGeometry(.28*sc,10,8),bMat);
+  const bm=new THREE.MeshStandardMaterial({color:col, roughness:.6,
+    metalness:pt.id==='golden'?.55:0,
+    emissive:prog>=1?col:0, emissiveIntensity:prog>=1?.22:0});
+  const body=new THREE.Mesh(new THREE.SphereGeometry(.27*sc,10,8),bm);
   body.position.y=.28*sc; body.castShadow=true; pg.add(body);
 
-  if(prog>.25){
-    // Stem
-    const sMat=new THREE.MeshLambertMaterial({color:0x2a7a10});
-    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.04*sc,.06*sc,.4*sc,6),sMat);
-    stem.position.y=.56*sc+.2*sc; pg.add(stem);
-    // Leaves
-    for(let i=0;i<4;i++){
-      const a=(i/4)*Math.PI*2;
-      const lMat=new THREE.MeshLambertMaterial({color:0x259820, side:THREE.DoubleSide});
-      const leaf=new THREE.Mesh(new THREE.ConeGeometry(.18*sc,.38*sc,5),lMat);
-      leaf.position.set(Math.cos(a)*.22*sc, .56*sc+.32*sc, Math.sin(a)*.22*sc);
-      leaf.rotation.z=.7; leaf.rotation.y=a; pg.add(leaf);
+  if(prog>.28){
+    const sm=new THREE.MeshLambertMaterial({color:0x2a8010});
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.04*sc,.06*sc,.36*sc,6),sm);
+    stem.position.y=.6*sc; pg.add(stem);
+    for(let j=0;j<4;j++){
+      const a=(j/4)*Math.PI*2;
+      const lm=new THREE.MeshLambertMaterial({color:0x1f9010,side:THREE.DoubleSide});
+      const leaf=new THREE.Mesh(new THREE.ConeGeometry(.15*sc,.32*sc,5),lm);
+      leaf.position.set(Math.cos(a)*.19*sc,.74*sc,Math.sin(a)*.19*sc);
+      leaf.rotation.z=.65; leaf.rotation.y=a; pg.add(leaf);
     }
   }
-
-  // Ready glow ring
   if(prog>=1){
-    const ringMat=new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.65});
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(.42,0.045,8,28),ringMat);
+    const rm=new THREE.MeshBasicMaterial({color:0xffee22,transparent:true,opacity:.7});
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.38,.05,8,24),rm);
     ring.rotation.x=Math.PI/2; ring.position.y=.04; pg.add(ring);
-    // point light
-    const pl=new THREE.PointLight(col,.6,1.8);
-    pl.position.y=.5; pg.add(pl);
+    const pl=new THREE.PointLight(col,.9,2.4); pl.position.y=.6; pg.add(pl);
   }
 }
+function rebuildFarmPlants(fid){ for(let i=0;i<6;i++) rebuildPlant(fid,i); }
 
-function rebuildAllPlants(fid){
-  for(let i=0;i<6;i++) rebuildPlant(fid,i);
-}
-
-// ── Growth ──
+// ── Growth math ──
 function growProgress(d){
-  if(!d||!d.type||d.harvested||!d.plantedAt) return 0;
-  const pt=PT_MAP[d.type]; if(!pt) return 0;
-  const baseSec=pt.sec;
-  const saved=(d.waterBoost||0)*baseSec;
-  const effectSec=Math.max(baseSec-saved, baseSec*.05);
-  return Math.min(1,(Date.now()-d.plantedAt)/(effectSec*1000));
+  if(!d?.type||d?.harvested||!d?.plantedAt) return 0;
+  const pt=PTM[d.type]; if(!pt) return 0;
+  const base=pt.sec*1000;
+  const saved=(d.waterBoost||0)*pt.sec*1000;
+  return Math.min(1,(Date.now()-d.plantedAt)/Math.max(base-saved,base*.05));
 }
 function remainSec(d){
-  const pt=PT_MAP[d?.type]; if(!pt||!d?.plantedAt||d?.harvested) return 0;
-  const saved=(d.waterBoost||0)*pt.sec;
-  const effectSec=Math.max(pt.sec-saved,pt.sec*.05);
-  return Math.max(0,(effectSec-(Date.now()-d.plantedAt)/1000));
+  const pt=PTM[d?.type]; if(!pt||!d?.plantedAt||d?.harvested) return 0;
+  const base=pt.sec; const saved=(d.waterBoost||0)*pt.sec;
+  return Math.max(0,Math.max(base-saved,base*.05)-(Date.now()-d.plantedAt)/1000);
 }
-function fmtSec(s){
-  s=Math.ceil(s);
-  if(s<60) return s+'초';
-  if(s<3600) return Math.floor(s/60)+'분'+(s%60?` ${s%60}초`:'');
-  return Math.floor(s/3600)+'시간';
-}
+function fmtS(s){ s=Math.ceil(s); return s<60?s+'초':s<3600?Math.floor(s/60)+'분'+(s%60?' '+s%60+'초':''):Math.floor(s/3600)+'시간'; }
 
 // ── Firebase ──
-function emptyFarm(name){ return {
-  ownerName:name, lastActive:Date.now(),
-  plots:Array.from({length:6},()=>({type:null,plantedAt:null,waterBoost:0,harvested:false}))
-};}
-
+function emptyFarm(n){ return {ownerName:n,lastActive:Date.now(),
+  plots:Array.from({length:6},()=>({type:null,plantedAt:null,waterBoost:0,harvested:false}))}; }
 async function ensureMyFarm(){
   const ref=doc(db,COLL,myId);
   const snap=await getDoc(ref);
-  if(!snap.exists()) await setDoc(ref,emptyFarm(playerName));
+  if(!snap.exists()) await setDoc(ref,emptyFarm(pName));
 }
-
-function subscribeFarm(fid){
+function subscribe(fid){
   if(farmUnsub[fid]) return;
   farmUnsub[fid]=onSnapshot(doc(db,COLL,fid),snap=>{
     farmData[fid]=snap.exists()?snap.data():null;
-    rebuildAllPlants(fid);
-    refreshTab(fid);
+    rebuildFarmPlants(fid);
   });
 }
-
-async function save(fid,data){
-  data.lastActive=Date.now();
-  await setDoc(doc(db,COLL,fid),data);
-}
-
+async function saveF(fid,data){ data.lastActive=Date.now(); await setDoc(doc(db,COLL,fid),data); }
 async function loadOthers(){
   const snap=await getDocs(query(collection(db,COLL),orderBy('lastActive','desc'),limit(8)));
   otherIds=[];
   snap.forEach(d=>{ if(d.id!==myId&&otherIds.length<5) otherIds.push(d.id); });
-  layoutFarms();
-}
-
-function layoutFarms(){
-  const all=[myId,...otherIds];
-  // Remove stale groups
-  Object.keys(farmGroups).forEach(fid=>{
-    if(!all.includes(fid)){ scene.remove(farmGroups[fid]); delete farmGroups[fid]; delete plotMeshes[fid]; delete plantGroups[fid]; }
-  });
-  all.forEach((fid,i)=>{
-    if(!farmGroups[fid]) buildFarm(fid, FPOS[i]||new THREE.Vector3((i-2)*12,0,10), fid===myId);
-    subscribeFarm(fid);
-  });
-  buildTabs();
-}
-
-// ── Tabs ──
-function buildTabs(){
-  const el=document.getElementById('farm-tabs'); el.innerHTML='';
-  const all=[myId,...otherIds];
-  all.forEach(fid=>{
-    const b=document.createElement('button');
-    b.className='farm-tab'+(fid===myId?' me':'')+(fid===curFarmId?' active':'');
-    b.textContent=(fid===myId?'🏠 내 농장':`👤 ${fid}`);
-    b.onclick=()=>switchFarm(fid);
-    el.appendChild(b);
+  otherIds.forEach((fid,i)=>{
+    buildFarm(fid, FARM_POS[i+1], false);
+    subscribe(fid);
+    // Simple name plate above farm
+    addNamePlate(fid, FARM_POS[i+1]);
   });
 }
-function refreshTab(fid){ /* update if needed */ buildTabs(); }
-
-function switchFarm(fid){
-  curFarmId=fid;
-  const gp=farmGroups[fid]?.position;
-  if(gp) camTarget.set(gp.x,0,gp.z);
-  buildTabs();
+function addNamePlate(fid, pos){
+  const g=new THREE.Group();
+  g.position.set(pos.x, 0, pos.z+FD/2+1.5);
+  const post=new THREE.Mesh(new THREE.BoxGeometry(.08,1.1,.08),
+    new THREE.MeshLambertMaterial({color:0x8a6030}));
+  post.position.y=.55; g.add(post);
+  const board=new THREE.Mesh(new THREE.BoxGeometry(2,.5,.07),
+    new THREE.MeshLambertMaterial({color:0xc09050}));
+  board.position.y=1.05; g.add(board);
+  scene.add(g);
 }
 
-// ── UI updates ──
-function updateUI(){
-  document.getElementById('coins-disp').textContent=`🪙 ${coins}`;
-  document.getElementById('wc-cnt').textContent=wc>0?`(${wc})`:'';
+// ── UI ──
+function updateHUD(){
+  document.getElementById('hud-coins').textContent=`🪙 ${coins}`;
+  document.getElementById('hud-wc').textContent=wc>0?`💧×${wc}`:'';
 }
 
-// ── Tool system ──
-window.setTool = t=>{
-  activeTool=t;
-  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tbtn-'+t)?.classList.add('active');
-  const msg={plant:'심을 빈 칸 클릭',water:`물뿌리개 ${wc}회 남음 · 클릭으로 물주기`,harvest:'수확할 칸 클릭'};
-  document.getElementById('info-bar').textContent=msg[t]||'';
-};
-
-window.openShop = ()=>{
-  showModal('🛒 도구 상점',`
-    <div class="pc" onclick="buyWC()">
-      <div class="pc-dot" style="background:#4af"></div>
-      <div><div class="pc-name">💧 물뿌리개</div>
-      <div class="pc-info">50코인 · 10회 사용 · 원하는 칸에 물 뿌리기 (성장 25% 단축)</div></div>
-    </div>
-    <div class="pc" onclick="buySpkr()">
-      <div class="pc-dot" style="background:#22d"></div>
-      <div><div class="pc-name">🌀 스프링클러</div>
-      <div class="pc-info">30코인 · 내 농장 모든 칸에 즉시 물 뿌리기</div></div>
-    </div>
-  `);
-};
-
-window.buyWC=()=>{
-  if(coins<50){toast('코인이 부족합니다!');return;}
-  coins-=50; wc+=10; saveLS(); updateUI();
-  toast('💧 물뿌리개 구입! 10회 사용 가능'); closeModal();
-};
-window.buySpkr=()=>{
-  if(curFarmId!==myId){toast('내 농장에서만 사용 가능');return;}
-  if(coins<30){toast('코인이 부족합니다!');return;}
-  const fd=farmData[myId]; if(!fd){toast('농장 데이터 없음');return;}
-  coins-=30; saveLS(); updateUI();
-  fd.plots.forEach(p=>{
-    const pt=PT_MAP[p.type]; if(!pt||p.harvested||!p.plantedAt) return;
-    const maxSave=pt.sec*.9;
-    p.waterBoost=Math.min(maxSave/pt.sec,((p.waterBoost||0))+WATER_SAVE);
-  });
-  save(myId,fd);
-  toast('🌀 스프링클러! 모든 칸에 물을 뿌렸습니다'); closeModal();
-};
-
-// ── Plot click ──
-function onPlot(fid,idx){
-  const fd=farmData[fid]; if(!fd) return;
-  const p=fd.plots[idx];
-  const mine=fid===myId;
-
-  if(activeTool==='plant'){
-    if(!mine){toast('내 농장에서만 심을 수 있습니다');return;}
-    if(p.type&&!p.harvested){toast('이미 심어진 칸입니다');return;}
-    openPlantModal(fid,idx); return;
-  }
-  if(activeTool==='water'){
-    if(!p.type||p.harvested){toast('심어진 감자가 없습니다');return;}
-    if(wc<=0){toast('물뿌리개가 없습니다. 상점에서 구매하세요!');return;}
-    const pt=PT_MAP[p.type];
-    const maxBoost=0.9; // max 90% save
-    if((p.waterBoost||0)>=maxBoost){toast('이미 충분히 물을 주었습니다');return;}
-    p.waterBoost=Math.min(maxBoost,(p.waterBoost||0)+WATER_SAVE);
-    wc--; saveLS(); updateUI();
-    setTool('water'); // refresh count display
-    save(fid,fd);
-    toast('💧 물을 주었습니다!'); return;
-  }
-  if(activeTool==='harvest'){
-    if(!p.type||p.harvested){toast('수확할 감자가 없습니다');return;}
-    if(!mine){toast('자신의 농장에서만 수확 가능합니다');return;}
-    const prog=growProgress(p);
-    if(prog<1){toast(`🌱 아직 자라는 중... ${fmtSec(remainSec(p))} 남음`);return;}
-    const pt=PT_MAP[p.type];
-    p.harvested=true; coins+=pt.coin; saveLS(); updateUI();
-    save(fid,fd);
-    toast(`🥔 ${pt.name} 수확! +${pt.coin} 코인`); return;
-  }
+// ── Modal helpers ──
+function showModal(title,html){
+  document.getElementById('mt').textContent=title;
+  document.getElementById('mb').innerHTML=html;
+  document.getElementById('mo').classList.add('open');
 }
+window.closeModal=()=>document.getElementById('mo').classList.remove('open');
+document.getElementById('mo').addEventListener('click',e=>{ if(e.target===document.getElementById('mo')) closeModal(); });
 
-function openPlantModal(fid,idx){
-  const rows=PT.map(pt=>`
-    <div class="pc" onclick="doPlant('${fid}',${idx},'${pt.id}')">
-      <div class="pc-dot" style="background:${pt.hex}"></div>
-      <div><div class="pc-name">${pt.name}</div>
-      <div class="pc-info">수확 +${pt.coin}코인 · ${fmtSec(pt.sec)} 성장${pt.seed?` · 씨앗비용 ${pt.seed}코인`:' · 무료'}</div></div>
-    </div>`).join('');
-  showModal('🌱 감자 선택', rows);
-  window._pp={fid,idx};
-}
-
-window.doPlant=(fid,idx,tid)=>{
-  const pt=PT_MAP[tid];
-  if(pt.seed>0&&coins<pt.seed){toast(`씨앗 비용 ${pt.seed}코인 부족`);return;}
-  const fd=farmData[fid]; if(!fd) return;
-  if(pt.seed>0){coins-=pt.seed; saveLS(); updateUI();}
-  fd.plots[idx]={type:tid,plantedAt:Date.now(),waterBoost:0,harvested:false};
-  save(fid,fd);
-  closeModal(); toast(`🌱 ${pt.name} 심기 완료!`);
-};
-
-window.doReset=()=>{
-  if(!confirm('내 농장을 초기화할까요? 심은 감자가 모두 사라집니다.')) return;
-  const fd=emptyFarm(playerName);
-  farmData[myId]=fd; save(myId,fd);
-  toast('농장이 초기화되었습니다');
-};
-
-// ── Modal ──
-function showModal(title, html){
-  document.getElementById('mtitle').textContent=title;
-  document.getElementById('mbody').innerHTML=html;
-  document.getElementById('moverlay').classList.add('open');
-}
-window.closeModal=()=>document.getElementById('moverlay').classList.remove('open');
-document.getElementById('moverlay').addEventListener('click',e=>{
-  if(e.target===document.getElementById('moverlay')) closeModal();
-});
-
-// ── Toast ──
 let toastT;
 function toast(msg){
   const el=document.getElementById('toast');
   el.textContent=msg; el.style.opacity='1';
-  clearTimeout(toastT); toastT=setTimeout(()=>el.style.opacity='0',2400);
+  clearTimeout(toastT); toastT=setTimeout(()=>el.style.opacity='0',2500);
 }
 
-// ── Raycasting ──
-const rc=new THREE.Raycaster(); const ms=new THREE.Vector2();
-canvas.addEventListener('click',e=>{
-  if(document.getElementById('moverlay').classList.contains('open')) return;
-  ms.x=(e.clientX/innerWidth)*2-1; ms.y=-(e.clientY/innerHeight)*2+1;
-  rc.setFromCamera(ms,camera);
-  const allPlots=Object.values(plotMeshes).flat();
-  const hits=rc.intersectObjects(allPlots);
-  if(hits.length) onPlot(hits[0].object.userData.fid, hits[0].object.userData.idx);
-});
+// ── Interaction ──
+function checkNearby(){
+  if(!playerMesh) return;
+  const pp=playerMesh.position;
+  nearTarget=null;
 
-// Hover highlight
-canvas.addEventListener('mousemove',e=>{
-  ms.x=(e.clientX/innerWidth)*2-1; ms.y=-(e.clientY/innerHeight)*2+1;
-  rc.setFromCamera(ms,camera);
-  const allPlots=Object.values(plotMeshes).flat();
-  const hits=rc.intersectObjects(allPlots);
-  // reset all
-  allPlots.forEach(pm=>pm.material.emissive?.setHex(0x000000));
-  if(hits.length){
-    const pm=hits[0].object;
-    pm.material.emissive?.setHex(0x442200);
-    hoverPlot={fid:pm.userData.fid,idx:pm.userData.idx};
-  } else hoverPlot=null;
-});
+  // Plots (my farm first, then others)
+  const allFarms=[myId,...otherIds];
+  outer:for(const fid of allFarms){
+    for(let i=0;i<6;i++){
+      if(pp.distanceTo(plotWP(fid,i))<PLOT_INTERACT_R){
+        nearTarget={type:'plot',fid,idx:i}; break outer;
+      }
+    }
+  }
+  // Shop
+  if(!nearTarget && pp.distanceTo(SHOP_POS)<SHOP_INTERACT_R){
+    nearTarget={type:'shop'};
+  }
 
-// ── Camera orbit ──
-const camTarget=new THREE.Vector3(0,0,0);
-let camTheta=0, camPhi=.55, camR=14;
-let drag=false, lmx=0, lmy=0;
-canvas.addEventListener('mousedown',e=>{drag=true;lmx=e.clientX;lmy=e.clientY;});
-window.addEventListener('mouseup',()=>drag=false);
-canvas.addEventListener('mousemove',e=>{
-  if(!drag) return;
-  camTheta-=(e.clientX-lmx)*.012; lmx=e.clientX;
-  camPhi=Math.max(.18,Math.min(1.35,camPhi+(e.clientY-lmy)*.012)); lmy=e.clientY;
-});
-canvas.addEventListener('wheel',e=>{ camR=Math.max(5,Math.min(26,camR+e.deltaY*.022)); },{passive:true});
-// Touch
-let tl=null;
-canvas.addEventListener('touchstart',e=>{if(e.touches.length===1){drag=true;lmx=e.touches[0].clientX;lmy=e.touches[0].clientY;}},{passive:true});
-canvas.addEventListener('touchend',()=>drag=false);
-canvas.addEventListener('touchmove',e=>{
-  if(!drag||e.touches.length!==1) return;
-  camTheta-=(e.touches[0].clientX-lmx)*.012; lmx=e.touches[0].clientX;
-  camPhi=Math.max(.18,Math.min(1.35,camPhi+(e.touches[0].clientY-lmy)*.012)); lmy=e.touches[0].clientY;
-},{passive:true});
+  // Update hint UI
+  const hintEl=document.getElementById('hint');
+  const hintTxt=document.getElementById('hint-text');
+  if(nearTarget){
+    hintEl.style.display='block';
+    if(nearTarget.type==='shop'){
+      hintTxt.textContent='상점 열기';
+    } else {
+      const {fid,idx}=nearTarget;
+      const mine=fid===myId;
+      const d=(farmData[fid]?.plots||[])[idx];
+      if(!d?.type||d?.harvested){
+        hintTxt.textContent=mine?'심기':'심기 (타인 농장)';
+      } else if(growProgress(d)>=1){
+        hintTxt.textContent=mine?'🥔 수확!':'수확 준비 완료 (내 농장에서만)';
+      } else if(wc>0){
+        hintTxt.textContent=`💧 물주기 (${wc}회)`;
+      } else {
+        hintEl.style.display='none'; nearTarget=null;
+        // Show toast instead of hint for grow timer
+        // (don't hide, just show timer)
+        hintEl.style.display='block';
+        hintTxt.textContent=`⏳ ${fmtS(remainSec(d))} 남음`;
+      }
+    }
+  } else {
+    hintEl.style.display='none';
+  }
+}
 
+function doInteract(){
+  if(document.getElementById('mo').classList.contains('open')){ closeModal(); return; }
+  if(!nearTarget) return;
+
+  if(nearTarget.type==='shop'){ openShop(); return; }
+
+  const {fid,idx}=nearTarget;
+  const fd=farmData[fid]; if(!fd) return;
+  const p=fd.plots[idx];
+  const mine=fid===myId;
+
+  if(!p.type||p.harvested){
+    if(!mine){ toast('관람만 가능합니다'); return; }
+    openSeedModal(fid,idx); return;
+  }
+  if(growProgress(p)>=1){
+    if(!mine){ toast('수확은 내 농장에서만 가능합니다'); return; }
+    const pt=PTM[p.type];
+    p.harvested=true; coins+=pt.coin; saveLS(); updateHUD();
+    saveF(fid,fd);
+    toast(`🥔 ${pt.name} 수확! +${pt.coin} 코인`); return;
+  }
+  // Still growing
+  if(wc>0){
+    const pt=PTM[p.type];
+    if((p.waterBoost||0)>=.9){ toast('이미 물을 충분히 주었습니다'); return; }
+    p.waterBoost=Math.min(.9,(p.waterBoost||0)+WATER_SAVE);
+    wc--; saveLS(); updateHUD();
+    saveF(fid,fd);
+    toast(`💧 물을 주었습니다! (${wc}회 남음)`);
+  } else {
+    toast(`⏳ ${fmtS(remainSec(p))} 남음 · 상점에서 물뿌리개를 구매하세요`);
+  }
+}
+
+function openSeedModal(fid,idx){
+  showModal('🌱 감자 선택',
+    PT.map(pt=>`
+      <div class="pc" onclick="doPlant('${fid}',${idx},'${pt.id}')">
+        <div class="pcdot" style="background:${pt.hex}"></div>
+        <div><div class="pcn">${pt.name}</div>
+        <div class="pci">수확 +${pt.coin}코인 · ${fmtS(pt.sec)} 성장${pt.seed?` · 씨앗 ${pt.seed}코인`:' · 무료'}</div></div>
+      </div>`).join('')
+  );
+}
+window.doPlant=(fid,idx,tid)=>{
+  const pt=PTM[tid];
+  if(pt.seed>0&&coins<pt.seed){ toast(`씨앗 비용 ${pt.seed}코인 부족`); return; }
+  const fd=farmData[fid]; if(!fd) return;
+  if(pt.seed>0){ coins-=pt.seed; saveLS(); updateHUD(); }
+  fd.plots[idx]={type:tid,plantedAt:Date.now(),waterBoost:0,harvested:false};
+  saveF(fid,fd); closeModal();
+  toast(`🌱 ${pt.name} 심기 완료!`);
+};
+
+function openShop(){
+  showModal('🛒 도구 상점',`
+    <div class="pc" onclick="buyWC()">
+      <div class="pcdot" style="background:#4af"></div>
+      <div><div class="pcn">💧 물뿌리개</div>
+      <div class="pci">50코인 · 10회 사용 · 감자 가까이서 E키로 물주기 · 성장 25% 단축</div></div>
+    </div>
+    <div class="pc" onclick="buySpkr()">
+      <div class="pcdot" style="background:#447"></div>
+      <div><div class="pcn">🌀 스프링클러</div>
+      <div class="pci">30코인 · 내 농장 모든 칸에 즉시 물 뿌리기</div></div>
+    </div>
+    <div class="pc" onclick="doReset()">
+      <div class="pcdot" style="background:#600"></div>
+      <div><div class="pcn">🔄 내 농장 초기화</div>
+      <div class="pci">심어진 감자 모두 제거</div></div>
+    </div>
+  `);
+}
+window.buyWC=()=>{
+  if(coins<50){ toast('코인 부족'); return; }
+  coins-=50; wc+=10; saveLS(); updateHUD();
+  toast('💧 물뿌리개 구입! 10회 사용 가능'); closeModal();
+};
+window.buySpkr=()=>{
+  if(coins<30){ toast('코인 부족'); return; }
+  const fd=farmData[myId]; if(!fd){ toast('농장 로딩 중...'); return; }
+  coins-=30; saveLS(); updateHUD();
+  fd.plots.forEach(p=>{
+    if(!PTM[p.type]||p.harvested||!p.plantedAt) return;
+    p.waterBoost=Math.min(.9,(p.waterBoost||0)+WATER_SAVE);
+  });
+  saveF(myId,fd); closeModal();
+  toast('🌀 스프링클러! 모든 칸에 물 뿌렸습니다');
+};
+window.doReset=()=>{
+  if(!confirm('내 농장을 초기화할까요?')) return;
+  const fd=emptyFarm(pName); farmData[myId]=fd; saveF(myId,fd);
+  toast('농장 초기화 완료'); closeModal();
+};
+
+// ── Input ──
+const keys={};
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase(); keys[k]=true;
+  if(k==='e') doInteract();
+  if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)) e.preventDefault();
+});
+window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+
+// ── Camera follow ──
+const camTgt=new THREE.Vector3(0,0,0);
 function updateCamera(){
-  const x=camTarget.x+camR*Math.sin(camPhi)*Math.sin(camTheta);
-  const y=camTarget.y+camR*Math.cos(camPhi);
-  const z=camTarget.z+camR*Math.sin(camPhi)*Math.cos(camTheta);
-  camera.position.set(x,y,z); camera.lookAt(camTarget);
+  if(!playerMesh) return;
+  const px=playerMesh.position.x, pz=playerMesh.position.z;
+  camTgt.x+=( px-camTgt.x)*.1;
+  camTgt.z+=( pz-camTgt.z)*.1;
+  camera.position.x+=(camTgt.x       -camera.position.x)*.1;
+  camera.position.y+=(10              -camera.position.y)*.1;
+  camera.position.z+=(camTgt.z+11    -camera.position.z)*.1;
+  camera.lookAt(camTgt.x,1,camTgt.z);
 }
 
-// ── Animate ──
+// ── Player movement ──
+function movePlayer(){
+  if(!playerMesh) return;
+  if(document.getElementById('mo').classList.contains('open')) return;
+
+  const spd=.1;
+  let mx=0, mz=0;
+  if(keys['w']||keys['arrowup'])    mz-=1;
+  if(keys['s']||keys['arrowdown'])  mz+=1;
+  if(keys['a']||keys['arrowleft'])  mx-=1;
+  if(keys['d']||keys['arrowright']) mx+=1;
+
+  if(mx||mz){
+    const len=Math.hypot(mx,mz);
+    mx=mx/len*spd; mz=mz/len*spd;
+    playerMesh.position.x+=mx;
+    playerMesh.position.z+=mz;
+    playerMesh.position.x=Math.max(-28,Math.min(28,playerMesh.position.x));
+    playerMesh.position.z=Math.max(-28,Math.min(28,playerMesh.position.z));
+
+    // Smooth rotation toward movement direction
+    const ta=Math.atan2(mx,mz);
+    let da=ta-playerMesh.rotation.y;
+    while(da>Math.PI) da-=Math.PI*2; while(da<-Math.PI) da+=Math.PI*2;
+    playerMesh.rotation.y+=da*.22;
+
+    // Walk bob
+    walkPhase+=.2;
+    playerMesh.position.y=Math.abs(Math.sin(walkPhase))*.07;
+  } else {
+    playerMesh.position.y*=.85; // settle down
+  }
+}
+
+// ── Animate loop ──
 let frame=0;
 function animate(){
   requestAnimationFrame(animate); frame++;
+  movePlayer();
+  if(frame%2===0) checkNearby();
   updateCamera();
-  // Rebuild plant visuals periodically (growth animation)
-  if(frame%90===0){
-    Object.keys(farmData).forEach(fid=>rebuildAllPlants(fid));
-  }
-  // Rainbow pulse
-  if(frame%6===0){
-    Object.keys(plantGroups).forEach(fid=>{
-      const fd=farmData[fid]; if(!fd) return;
-      (fd.plots||[]).forEach((p,i)=>{
-        if(p.type==='rainbow'&&!p.harvested){
-          const pg=plantGroups[fid]?.[i];
-          pg?.children.forEach(c=>{
-            if(c.material?.color) c.material.color.setHSL((Date.now()*.0004+i*.15)%1,1,.55);
-          });
-        }
+  // Rebuild plant visuals every 1.5s
+  if(frame%90===0) Object.keys(farmData).forEach(rebuildFarmPlants);
+  // Rainbow cycle
+  if(frame%8===0){
+    for(const fid of Object.keys(plantGrps)){
+      (farmData[fid]?.plots||[]).forEach((p,i)=>{
+        if(p.type!=='rainbow'||p.harvested) return;
+        plantGrps[fid]?.[i]?.children.forEach(c=>{
+          if(c.material?.color) c.material.color.setHSL((Date.now()*.0004+i*.2)%1,1,.55);
+        });
       });
-    });
+    }
   }
   renderer.render(scene,camera);
 }
 
 // ── Init ──
 async function init(){
-  let name=localStorage.getItem(LS.name);
-  if(!name||name.length<1){
-    name=(prompt('닉네임을 입력하세요 (2~10자)')||'감자농부').trim().slice(0,10)||'감자농부';
-    localStorage.setItem(LS.name,name);
+  let name=localStorage.getItem(LS.nm);
+  if(!name){
+    name=(prompt('닉네임을 입력하세요 (2~12자)')||'감자농부').trim().slice(0,12)||'감자농부';
+    localStorage.setItem(LS.nm,name);
   }
-  playerName=name; myId=name; curFarmId=name;
-  document.getElementById('name-disp').textContent=name;
-  loadLS(); updateUI();
+  pName=name; myId=name;
+  document.getElementById('hud-name').textContent=name;
+  loadLS(); updateHUD();
 
-  // 씬 즉시 구성 + 렌더 루프 시작 (Firebase 대기 안 함)
-  buildFarm(myId,FPOS[0],true);
-  buildTabs();
-  setTool('harvest');
+  // Build world immediately
+  buildPlayerModel();
+  buildFarm(myId, FARM_POS[0], true);
+  buildShop();
+  addDeco();
   animate();
 
-  // Firebase는 백그라운드에서 로드
-  try {
+  // Firebase in background
+  try{
     await ensureMyFarm();
-    subscribeFarm(myId);
+    subscribe(myId);
     await loadOthers();
-  } catch(e) {
-    console.error('Firebase error:', e);
-    toast('⚠️ 네트워크 오류 (농장 저장 불가)');
+  } catch(e){
+    console.error(e); toast('⚠️ 네트워크 오류 - 오프라인');
   }
 }
 init().catch(console.error);
