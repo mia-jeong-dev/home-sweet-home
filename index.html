@@ -851,6 +851,8 @@
     <div id="coin-ui">🪙 <span id="coin-val-ui">0</span></div>
     <div id="potato-ui" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #8c6420;border-radius:10px;padding:7px 12px;color:#d4a853;font-size:13px;font-weight:bold;pointer-events:none;white-space:nowrap;">🥔 <span id="potato-val-ui">0</span></div>
     <div id="potato-shop-hud-btn" onclick="openPotatoShopDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #8c6420;border-radius:10px;padding:7px 12px;color:#d4a853;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🥔 감자상점</div>
+    <div id="candy-ui" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #e040fb;border-radius:10px;padding:7px 12px;color:#f48dff;font-size:13px;font-weight:bold;pointer-events:none;white-space:nowrap;">🍬 <span id="candy-val-ui">0</span></div>
+    <div id="halloween-shop-hud-btn" onclick="openHalloweenShopDuringGame()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #ff6600;border-radius:10px;padding:7px 12px;color:#ff9933;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🎃 할로윈</div>
     <div id="teleport-ui" onclick="useTeleportCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #f59e0b;border-radius:10px;padding:7px 12px;color:#fcd34d;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">⚡ 순간이동 [T]</div>
     <div id="skip-ui" onclick="useSkipCoupon()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #a78bfa;border-radius:10px;padding:7px 12px;color:#c4b5fd;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🚀 스킵</div>
     <div id="glasses-ui" onclick="useGlasses()" style="display:none;background:rgba(0,0,0,0.6);border:2px solid #00e5ff;border-radius:10px;padding:7px 12px;color:#67e8f9;font-size:12px;font-weight:bold;cursor:pointer;pointer-events:all;white-space:nowrap;text-align:center;">🥽 안경 [G]</div>
@@ -1042,6 +1044,10 @@ let petGroups = [], petBobTs = [0,0,0], _activeSlotIds = [], _petHealFrames = 0,
 const _PET_OFFSETS = [[0.75, 0.28], [-0.75, 0.28], [0, 1.15]];
 let currentStage = 1;
 let isPotatoStage = false;   // 감자 스테이지 여부
+let purpleSpikePositions = [];
+let _ghostPetTimer = 0;
+let _ghostPetInvisible = false;
+let candyPickups = [];
 let potatoCoinMeshes = [];   // 감자 스테이지의 감자 오브젝트
 let gameActive = false;
 let _gameOverCalled = false;
@@ -1342,6 +1348,7 @@ function _renderTitleScreen(forceNameInput) {
             <button class="btn btn-gray" onclick="showQuests()" style="margin:0;border-color:#f59e0b;color:#fcd34d">📋 퀘스트</button>
             <button class="btn btn-gray" onclick="showMyScores()" style="margin:0;border-color:#a78bfa;color:#c4b5fd">📊 내 점수</button>
             <button class="btn btn-gray" onclick="showPotatoShop()" style="margin:0;border-color:#8c6420;color:#d4a853">🥔 감자 상점</button>
+            ${isHalloweenActive() ? `<button class="btn btn-gray" onclick="showHalloweenShop()" style="margin:0;border-color:#ff6600;color:#ff9933">🎃 할로윈 상점</button>` : ''}
             <button class="btn" onclick="showGamble()" style="margin:0;background:linear-gradient(135deg,#92400e,#d97706);color:#fff;box-shadow:0 3px 14px rgba(217,119,6,0.5)">🎲 도박</button>
           </div>
           <button class="btn" onclick="showPvpLobby()" style="margin-top:0;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-size:15px;box-shadow:0 3px 14px rgba(219,39,119,0.45)">⚔️ PVP 대결</button>
@@ -1635,6 +1642,7 @@ function _petStatDesc(id) {
   if (cfg.hpMult > 1) parts.push(`체력 ${cfg.hpMult}배`);
   if (cfg.hpBonus > 0) parts.push(`최대 체력 +${cfg.hpBonus}`);
   if (cfg.healFrames > 0) parts.push(`${(cfg.healFrames / 60).toFixed(1)}초마다 HP 전부 회복`);
+  if (cfg.specialDesc) parts.push(cfg.specialDesc);
   return parts.join(' · ') || '특수 효과 없음';
 }
 
@@ -1896,24 +1904,30 @@ function applyCharacterColor(id) {
   if (!playerBody) return;
   _cachedActiveColorId = id;
 
-  // 큐브 / 정사면체 / 구체 형태 전환
-  const needsCube = id === 'cube';
-  const needsTet  = id === 'tetrahedron';
-  const targetType = needsCube ? 'BoxGeometry' : needsTet ? 'TetrahedronGeometry' : 'SphereGeometry';
-  if (playerBody.geometry.type !== targetType) {
+  // 큐브 / 정사면체 / 호박 / 구체 형태 전환
+  const needsCube    = id === 'cube';
+  const needsTet     = id === 'tetrahedron';
+  const needsPumpkin = id === 'jackolantern';
+  const geoCustom    = playerBody.geometry.userData ? playerBody.geometry.userData.custom : null;
+  const targetType   = needsCube ? 'BoxGeometry' : needsTet ? 'TetrahedronGeometry' : 'SphereGeometry';
+  const geoWrong = playerBody.geometry.type !== targetType
+    || (needsPumpkin && geoCustom !== 'pumpkin')
+    || (!needsPumpkin && geoCustom === 'pumpkin');
+  if (geoWrong) {
     playerBody.geometry.dispose();
-    playerBody.geometry = needsCube ? new THREE.BoxGeometry(0.887, 0.887, 0.887)
-      : needsTet ? makeTetrahedronGeo()
+    playerBody.geometry = needsCube    ? new THREE.BoxGeometry(0.887, 0.887, 0.887)
+      : needsTet    ? makeTetrahedronGeo()
+      : needsPumpkin ? makePumpkinGeo()
       : new THREE.SphereGeometry(0.55, 20, 20);
     _setFaceZ(needsCube);
-    _setFaceVisible(!needsTet);
+    _setFaceVisible(!needsTet && !needsPumpkin);
     const _R = 1.808 * Math.sqrt(6) / 4;
     playerBody.position.y = needsTet ? (-0.5 + _R / 3) : 0;
   }
 
   if (playerBodyTexture) { playerBodyTexture.dispose(); playerBodyTexture = null; }
 
-  if (BALL_SKIN_IDS.has(id)) {
+  if (BALL_SKIN_IDS.has(id) || HALLOWEEN_SKIN_IDS.has(id)) {
     playerBodyTexture = createBallTexture(id);
     playerBody.material.map = playerBodyTexture;
     playerBody.material.color.setHex(0xffffff);
@@ -2003,7 +2017,8 @@ function exitGameEarly() {
   isPotatoStage = false;
   potatoCoinMeshes.forEach(p => scene.remove(p.mesh));
   potatoCoinMeshes = [];
-  ['score-ui','coin-ui','potato-ui','potato-shop-hud-btn','shop-hud-btn','inv-hud-btn','quest-hud-btn',
+  ['score-ui','coin-ui','potato-ui','potato-shop-hud-btn','candy-ui','halloween-shop-hud-btn',
+   'shop-hud-btn','inv-hud-btn','quest-hud-btn',
    'exit-hud-btn','teleport-ui','skip-ui','glasses-ui','jump-ui','invinc-ui','touch-controls',
    'pvp-timer-ui','pvp-opp-ui']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
@@ -2906,10 +2921,26 @@ function updatePotatoUI() {
   const el = document.getElementById('potato-val-ui');
   if (el) el.textContent = loadPotato();
 }
+const LS_CANDY = 'ditto_candy';
+function loadCandy()  { return parseInt(localStorage.getItem(LS_CANDY) || '0'); }
+function saveCandy(n) { localStorage.setItem(LS_CANDY, String(Math.max(0, n))); updateCandyUI(); }
+function updateCandyUI() {
+  const el = document.getElementById('candy-val-ui');
+  if (el) el.textContent = loadCandy();
+}
+function isHalloweenActive() {
+  const kst = new Date(Date.now() + 9 * 3600000);
+  return kst.getUTCFullYear() === 2026 && kst.getUTCMonth() === 9 && kst.getUTCDate() <= 31;
+}
+function isHalloweenTodaySpecial() {
+  const kst = new Date(Date.now() + 9 * 3600000);
+  return kst.getUTCFullYear() === 2026 && kst.getUTCMonth() === 9 && kst.getUTCDate() === 16;
+}
 
 const BALL_SKIN_IDS    = new Set(['potato', 'soccer', 'baseball', 'basketball', 'volleyball', 'tennis']);
 const SPECIAL_SKIN_IDS = new Set(['potato', ...BALL_SKIN_IDS]);
 const SHAPE_SKIN_IDS   = new Set(['cube', 'tetrahedron']);
+const HALLOWEEN_SKIN_IDS = new Set(['jackolantern']);
 
 const PETS_CONFIG = {
   '바나나':     { displayName: '바나나',     icon: '🍌', grade: 'rare',      gradeLabel: '레어', gradeColor: '#4ade80', eggRate: 40,  jumpBoost: 0.08, dmgReduction: 0,   hpMult: 1, hpBonus: 0,  healFrames: 0   },
@@ -2919,6 +2950,9 @@ const PETS_CONFIG = {
   '감자':       { displayName: '감자',       icon: '🥔', grade: 'legendary', gradeLabel: '전설', gradeColor: '#fbbf24', eggRate: 3,   jumpBoost: 0,    dmgReduction: 0,   hpMult: 1, hpBonus: 50, healFrames: 0   },
   '삼겹살':     { displayName: '삼겹살',     icon: '🥩', grade: 'god',       gradeLabel: '신',   gradeColor: '#f97316', eggRate: 1.5, jumpBoost: 0,    dmgReduction: 0,   hpMult: 1, hpBonus: 0,  healFrames: 450 },
   '감자신':     { displayName: '???',        icon: '🥔', grade: 'hidden',    gradeLabel: '히든', gradeColor: '#ec4899', eggRate: 0.5, jumpBoost: 0.15, dmgReduction: 0.5, hpMult: 2, hpBonus: 0,  healFrames: 0   },
+  '호박':       { displayName: '호박',       icon: '🎃', grade: 'halloween', gradeLabel: '할로윈', gradeColor: '#ff7700', eggRate: 0, jumpBoost: 0, dmgReduction: 0,   hpMult: 1, hpBonus: 0, healFrames: 0, specialDesc: '일부 가시를 보라색(4 대미지)으로 변환' },
+  '유령':       { displayName: '유령',       icon: '👻', grade: 'halloween', gradeLabel: '할로윈', gradeColor: '#aa99ff', eggRate: 0, jumpBoost: 0, dmgReduction: 0,   hpMult: 1, hpBonus: 0, healFrames: 0, specialDesc: '7초마다 2초간 투명+무적' },
+  '캔디':       { displayName: '캔디',       icon: '🍬', grade: 'halloween', gradeLabel: '할로윈', gradeColor: '#ff69b4', eggRate: 0, jumpBoost: 0, dmgReduction: 0.5, hpMult: 1, hpBonus: 0, healFrames: 0, specialDesc: '맵에 캔디 5개 생성' },
 };
 
 const EGG_POOL = ['바나나','돼지','고철덩어리','스프링','감자','삼겹살','감자신'];
@@ -3278,6 +3312,67 @@ function createBallTexture(type) {
     ctx.bezierCurveTo(S*0.20, H*1.04, S*0.50, H*1.10, S*0.50, H*1.50);
     ctx.bezierCurveTo(S*0.50, H*1.90, S*0.80, H*1.96, S, H*1.58);
     ctx.stroke();
+  } else if (type === 'jackolantern') {
+    // ── 잭오랜턴 (할로윈 호박) ──
+    // 주황 바탕
+    ctx.fillStyle = '#e85500';
+    ctx.fillRect(0, 0, S, S);
+    // 호박 홈(groove) — 세로 어두운 선
+    for (let i = 0; i < 6; i++) {
+      const gx = (i + 0.5) * S / 6;
+      const gr = ctx.createLinearGradient(gx - S*0.05, 0, gx + S*0.05, 0);
+      gr.addColorStop(0, 'rgba(0,0,0,0)');
+      gr.addColorStop(0.5, 'rgba(0,0,0,0.22)');
+      gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, S, S);
+    }
+    // 하이라이트
+    const hl = ctx.createRadialGradient(S*0.38, S*0.38, S*0.02, S*0.38, S*0.38, S*0.22);
+    hl.addColorStop(0, 'rgba(255,180,0,0.35)'); hl.addColorStop(1, 'rgba(255,180,0,0)');
+    ctx.fillStyle = hl; ctx.fillRect(0, 0, S, S);
+    // 꼭지 (stem)
+    ctx.fillStyle = '#4a2800';
+    ctx.fillRect(S*0.44, 0, S*0.12, S*0.13);
+    // 잎 (leaf knob)
+    ctx.fillStyle = '#2d6a00';
+    ctx.beginPath();
+    ctx.ellipse(S*0.58, S*0.06, S*0.07, S*0.04, 0.5, 0, Math.PI*2);
+    ctx.fill();
+    // 얼굴 (검정)
+    ctx.fillStyle = '#0a0000';
+    // 왼쪽 눈 (삼각형)
+    ctx.beginPath();
+    ctx.moveTo(S*0.27, S*0.28); ctx.lineTo(S*0.18, S*0.46); ctx.lineTo(S*0.36, S*0.46);
+    ctx.closePath(); ctx.fill();
+    // 오른쪽 눈
+    ctx.beginPath();
+    ctx.moveTo(S*0.73, S*0.28); ctx.lineTo(S*0.64, S*0.46); ctx.lineTo(S*0.82, S*0.46);
+    ctx.closePath(); ctx.fill();
+    // 코 (작은 역삼각형)
+    ctx.beginPath();
+    ctx.moveTo(S*0.50, S*0.46); ctx.lineTo(S*0.43, S*0.57); ctx.lineTo(S*0.57, S*0.57);
+    ctx.closePath(); ctx.fill();
+    // 입 (들쭉날쭉 톱니)
+    const mL = S*0.17, mR = S*0.83, mT = S*0.62, mB = S*0.78;
+    const tw = (mR - mL) / 8;
+    ctx.beginPath();
+    ctx.moveTo(mL, mT);
+    for (let ti = 0; ti < 8; ti++) {
+      const x1 = mL + ti * tw, x2 = x1 + tw, mx = (x1+x2)/2;
+      ctx.lineTo(mx, ti%2===0 ? mB : mT);
+      ctx.lineTo(x2, mT);
+    }
+    ctx.lineTo(mR, mB); ctx.lineTo(mL, mB);
+    ctx.closePath(); ctx.fill();
+    // 눈/코/입 내부 주황 빛 (할로윈 느낌)
+    ctx.fillStyle = 'rgba(255,130,0,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(S*0.27, S*0.28); ctx.lineTo(S*0.18, S*0.46); ctx.lineTo(S*0.36, S*0.46);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(S*0.73, S*0.28); ctx.lineTo(S*0.64, S*0.46); ctx.lineTo(S*0.82, S*0.46);
+    ctx.closePath(); ctx.fill();
   }
 
   return new THREE.CanvasTexture(canvas);
@@ -3880,6 +3975,28 @@ function makeTetrahedronGeo() {
   return geo;
 }
 
+function makePumpkinGeo() {
+  const geo = new THREE.SphereGeometry(0.55, 48, 32);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const sqY = y * 0.70;
+    const azimuth = Math.atan2(z, x);
+    const rOrig = Math.sqrt(x * x + z * z);
+    const polar = Math.atan2(rOrig, y);
+    const poleBlend = Math.sin(polar);
+    const ridgeAmp = 0.11 * Math.sin(6 * azimuth) * poleBlend;
+    const newR = rOrig * (1 + ridgeAmp);
+    const nx = rOrig > 0.001 ? x / rOrig * newR : x;
+    const nz = rOrig > 0.001 ? z / rOrig * newR : z;
+    pos.setXYZ(i, nx, sqY, nz);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  geo.userData.custom = 'pumpkin';
+  return geo;
+}
+
 function _setFaceVisible(visible) {
   [playerLeftEye, playerRightEye, playerLeftShine, playerRightShine, playerMouthLine]
     .forEach(m => { if (m) m.visible = visible; });
@@ -4143,6 +4260,86 @@ const _PET_BUILDERS = {
     const emat = new THREE.MeshStandardMaterial({color:0x111111});
     const lE=new THREE.Mesh(new THREE.SphereGeometry(0.045,5,4),emat); lE.position.set(-0.10,0.20,0.16); g.add(lE);
     const rE=new THREE.Mesh(new THREE.SphereGeometry(0.045,5,4),emat); rE.position.set(0.10,0.20,0.16); g.add(rE);
+  },
+  // ── 할로윈 펫 ──
+  '호박': g => {
+    const orangeMat = new THREE.MeshStandardMaterial({color:0xff6600,roughness:0.65,emissive:0x993300,emissiveIntensity:0.18});
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.30,10,8), orangeMat);
+    body.scale.y = 0.84; g.add(body);
+    // 호박 홈 (어두운 세로 토러스)
+    const grooveMat = new THREE.MeshStandardMaterial({color:0xbb3300,roughness:0.85});
+    [-0.13, 0, 0.13].forEach(x => {
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.14,0.014,4,10),grooveMat);
+      r.rotation.y = Math.PI/2; r.position.x = x; g.add(r);
+    });
+    // 꼭지
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.034,0.10,5),
+      new THREE.MeshStandardMaterial({color:0x3a2000,roughness:0.9}));
+    stem.position.y = 0.28; g.add(stem);
+    // 잎
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.058,5,4),
+      new THREE.MeshStandardMaterial({color:0x2a7000,roughness:0.8}));
+    leaf.scale.set(1.2,0.28,0.55); leaf.position.set(0.07,0.27,0.02); g.add(leaf);
+    // 눈 (삼각형 ▼ — 코어 Z 방향으로 누운 콘)
+    const fMat = new THREE.MeshStandardMaterial({color:0x050000});
+    [[-0.10,0.05],[0.10,0.05]].forEach(([x,y]) => {
+      const eye = new THREE.Mesh(new THREE.ConeGeometry(0.062,0.08,3),fMat);
+      eye.rotation.z = Math.PI; eye.position.set(x,y,0.27); g.add(eye);
+    });
+    // 입 (작은 박스 3개 = 톱니)
+    [[-0.10,-0.06],[0,-0.08],[0.10,-0.06]].forEach(([x,y]) => {
+      const t = new THREE.Mesh(new THREE.BoxGeometry(0.052,0.055,0.03),fMat);
+      t.position.set(x,y,0.28); g.add(t);
+    });
+  },
+  '유령': g => {
+    const gMat = new THREE.MeshStandardMaterial({color:0xe8e8ff,roughness:0.15,emissive:0x9999cc,emissiveIntensity:0.35,transparent:true,opacity:0.92});
+    // 머리
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.27,10,8),gMat));
+    // 몸통 (원뿔로 밑으로 좁아짐)
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.18,0.24,8),gMat);
+    body.position.y = -0.24; g.add(body);
+    // 밑단 물결 범프
+    [-0.17,-0.01,0.15].forEach(x => {
+      const bump = new THREE.Mesh(new THREE.SphereGeometry(0.08,6,5),gMat);
+      bump.position.set(x,-0.37,0); g.add(bump);
+    });
+    // 눈
+    const eyeMat = new THREE.MeshStandardMaterial({color:0x1a1a44});
+    [[-0.10,0.04],[0.10,0.04]].forEach(([x,y]) => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.062,6,5),eyeMat);
+      eye.position.set(x,y,0.24); g.add(eye);
+    });
+  },
+  '캔디': g => {
+    // 분홍 캔디볼 (크게)
+    const pinkMat = new THREE.MeshStandardMaterial({color:0xff4488,roughness:0.5,emissive:0x882244,emissiveIntensity:0.18});
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.40,12,10),pinkMat));
+    // 흰 줄무늬
+    const whiteMat = new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.4});
+    [0.13,-0.13].forEach(y => {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32,0.038,4,16),whiteMat);
+      ring.position.y = y; g.add(ring);
+    });
+    // 대각 무늬 (나선 느낌)
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.30,0.030,4,16),whiteMat);
+    ring2.rotation.x = Math.PI/2; ring2.rotation.z = Math.PI/4; g.add(ring2);
+    // 막대 (스틱)
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.030,0.030,0.38,6),
+      new THREE.MeshStandardMaterial({color:0xffe0ee,roughness:0.7}));
+    stick.position.y = -0.59; g.add(stick);
+    // 눈
+    const eyeMat = new THREE.MeshStandardMaterial({color:0x111111});
+    [[-0.13,0.07],[0.13,0.07]].forEach(([x,y]) => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.068,6,5),eyeMat);
+      eye.position.set(x,y,0.37); g.add(eye);
+    });
+    // 뺨 (핑크 반짝)
+    const blushMat = new THREE.MeshStandardMaterial({color:0xff88aa,emissive:0xff4466,emissiveIntensity:0.4,transparent:true,opacity:0.6});
+    [[-0.22,-0.04],[0.22,-0.04]].forEach(([x,y]) => {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.055,6,4),blushMat);
+      b.scale.set(1,0.4,0.6); b.position.set(x,y,0.36); g.add(b);
+    });
   },
 };
 
@@ -4461,6 +4658,9 @@ function clearStage() {
   spikePositions = [];
   poisonSpikePositions = [];
   flipSpikePositions = [];
+  purpleSpikePositions = [];
+  candyPickups.forEach(c => scene.remove(c));
+  candyPickups = [];
   movingPlatforms = [];
   slidingPlatforms = [];
   playerOnMovingPlatform = null;
@@ -4842,6 +5042,188 @@ function resumeFromPotatoShop() {
 }
 window.resumeFromPotatoShop = resumeFromPotatoShop;
 
+// ─────────────────────────────────────────────
+// 🎃 할로윈 상점
+// ─────────────────────────────────────────────
+function showHalloweenShop() {
+  const candy = loadCandy();
+  const coins  = loadCoins();
+  const owned  = loadOwned();
+  const hasJack = owned.includes('jackolantern');
+  const todaySpecial = isHalloweenTodaySpecial();
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="panel" style="position:relative;overflow:hidden;border-color:#ff6600">
+      <!-- 할로윈 장식: 거미줄 -->
+      <div style="position:absolute;top:0;left:0;width:100%;pointer-events:none;font-size:11px;color:rgba(200,200,200,0.35);line-height:1.3;white-space:pre;font-family:monospace;user-select:none">
+  ╲     ╱ ╲     ╱ ╲     ╱ ╲     ╱ ╲     ╱
+   ╲   ╱   ╲   ╱   ╲   ╱   ╲   ╱   ╲   ╱
+    ╲ ╱     ╲ ╱     ╲ ╱     ╲ ╱     ╲ ╱
+     ✕       ✕       ✕       ✕       ✕
+    ╱ ╲     ╱ ╲     ╱ ╲     ╱ ╲     ╱ ╲
+      </div>
+      <!-- 왼쪽 거미줄 -->
+      <div style="position:absolute;top:6px;left:6px;font-size:40px;opacity:0.18;pointer-events:none;line-height:1">🕸</div>
+      <div style="position:absolute;top:4px;right:6px;font-size:40px;opacity:0.18;pointer-events:none;line-height:1">🕸</div>
+      <div style="position:absolute;bottom:10px;left:10px;font-size:24px;opacity:0.15;pointer-events:none">🦇</div>
+      <div style="position:absolute;bottom:10px;right:10px;font-size:22px;opacity:0.15;pointer-events:none">🕷</div>
+      <h2 style="color:#ff9933;position:relative">🎃 할로윈 상점</h2>
+      <p class="sub" style="color:#ff6600;position:relative">👻 10월 31일까지 한정 운영! 🕸</p>
+      <div style="background:rgba(200,80,0,0.15);border:1px solid #ff6600;border-radius:10px;padding:10px 14px;color:#ff9933;font-size:14px;font-weight:bold;text-align:center;margin-bottom:14px;position:relative">
+        🍬 보유 캔디: <span id="hw-candy-count">${candy}</span> &nbsp;·&nbsp; 🪙 보유 코인: ${coins}
+      </div>
+      <div style="color:#aaa;font-size:11px;margin-bottom:10px;position:relative">
+        💡 캔디 획득 방법: 각 스테이지마다 캔디 5개 자동 생성 (캔디 펫 장착 시 +5 추가) → 줍기
+      </div>
+
+      ${todaySpecial ? `
+      <div style="background:rgba(255,80,0,0.18);border:2px solid #ff4400;border-radius:12px;padding:10px 14px;margin-bottom:14px;position:relative">
+        <div style="color:#ff6622;font-size:13px;font-weight:bold;margin-bottom:8px">🔥 오늘 하루만! 펫 직접 구매 (각 1코인)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="buyHalloweenPetDirect('호박')" style="flex:1;min-width:80px;padding:8px;background:rgba(255,119,0,0.2);border:1px solid #ff7700;border-radius:8px;color:#ff9933;font-size:12px;cursor:pointer">🎃 호박<br><span style="font-size:10px;color:#aaa">1코인</span></button>
+          <button onclick="buyHalloweenPetDirect('유령')" style="flex:1;min-width:80px;padding:8px;background:rgba(170,153,255,0.2);border:1px solid #aa99ff;border-radius:8px;color:#ccbbff;font-size:12px;cursor:pointer">👻 유령<br><span style="font-size:10px;color:#aaa">1코인</span></button>
+          <button onclick="buyHalloweenPetDirect('캔디')" style="flex:1;min-width:80px;padding:8px;background:rgba(255,105,180,0.2);border:1px solid #ff69b4;border-radius:8px;color:#ffaadd;font-size:12px;cursor:pointer">🍬 캔디<br><span style="font-size:10px;color:#aaa">1코인</span></button>
+        </div>
+      </div>` : ''}
+
+      <div class="coupon-card" onclick="buyHoobakAlgamja()" style="cursor:pointer;position:relative">
+        <span class="coupon-icon">🥚</span>
+        <div class="coupon-info">
+          <div class="coupon-name">호박 알</div>
+          <div class="color-price">🍬 7캔디 · 호박 70% / 유령 20% / 캔디 10%</div>
+          ${candy < 7 ? '<div style="color:#ef4444;font-size:11px">캔디 부족</div>' : ''}
+        </div>
+      </div>
+
+      <div class="coupon-card ${hasJack ? 'owned' : ''}" onclick="${hasJack ? '' : 'buyJackolanternSkin()'}" style="cursor:${hasJack ? 'default' : 'pointer'};position:relative">
+        <span class="coupon-icon">🎃</span>
+        <div class="coupon-info">
+          <div class="coupon-name">잭오랜턴 스킨</div>
+          <div class="${hasJack ? 'color-owned' : 'color-price'}">${hasJack ? '✓ 보유 중' : '🍬 7캔디'}</div>
+          ${!hasJack && candy < 7 ? '<div style="color:#ef4444;font-size:11px">캔디 부족</div>' : ''}
+        </div>
+      </div>
+
+      <div style="margin-top:10px;padding:10px;background:rgba(30,0,30,0.55);border:1px solid rgba(255,102,0,0.3);border-radius:10px;font-size:12px;color:#ccc;position:relative">
+        <div style="margin-bottom:6px;color:#ff9933;font-weight:bold;font-size:13px">🎃 할로윈 펫 능력</div>
+        <div style="margin-bottom:3px">🎃 <b>호박</b>: 일부 가시를 보라색(4 대미지)으로 변환</div>
+        <div style="margin-bottom:3px">👻 <b>유령</b>: 7초마다 2초간 투명+무적</div>
+        <div>🍬 <b>캔디</b>: 피해량 -50% + 맵에 캔디 +5개 추가 생성</div>
+      </div>
+
+      <div style="position:relative">
+        ${_shopOpenedDuringGame
+          ? `<button class="btn btn-purple" onclick="resumeFromHalloweenShop()">▶ 게임으로 돌아가기</button>`
+          : gameActive
+            ? `<button class="btn btn-gray" onclick="showShop()">← 일반 상점</button>`
+            : `<button class="btn btn-gray" onclick="showTitleScreen()">← 뒤로</button>`}
+      </div>
+    </div>`;
+}
+window.showHalloweenShop = showHalloweenShop;
+
+window.buyHoobakAlgamja = function() {
+  const candy = loadCandy();
+  if (candy < 7) {
+    showConfirm('캔디 부족', `호박 알을 구매하려면 🍬 7캔디가 필요해요. (현재 ${candy}캔디)`, null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    return;
+  }
+  showConfirm('호박 알 구매', `🍬 7캔디 → 잔액 ${candy - 7}캔디<br><br>호박 70% / 유령 20% / 캔디 10%`, () => {
+    saveCandy(loadCandy() - 7);
+    const r = Math.random();
+    const petId = r < 0.70 ? '호박' : r < 0.90 ? '유령' : '캔디';
+    const cfg = PETS_CONFIG[petId];
+    addPet(petId);
+    SFX.coin?.();
+    showConfirm('🥚 호박 알에서 나왔어요!',
+      `<span style="color:${cfg.gradeColor};font-size:18px">${cfg.icon} ${cfg.displayName}</span><br><span style="color:#888;font-size:11px">[${cfg.gradeLabel}]</span><br><br>• ${_petStatDesc(petId).replace(/ · /g,'<br>• ')}`,
+      null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    showHalloweenShop();
+  });
+};
+window.buyHoobakAlgamja = window.buyHoobakAlgamja;
+
+window.buyJackolanternSkin = function() {
+  const candy = loadCandy();
+  const owned = loadOwned();
+  if (owned.includes('jackolantern')) { showHalloweenShop(); return; }
+  if (candy < 7) {
+    showConfirm('캔디 부족', `🍬 7캔디가 필요해요. (현재 ${candy}캔디)`, null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    return;
+  }
+  showConfirm('잭오랜턴 스킨 구매', `🍬 7캔디 → 잭오랜턴 스킨 획득<br>잔액 ${candy - 7}캔디`, () => {
+    saveCandy(loadCandy() - 7);
+    const newOwned = [...loadOwned(), 'jackolantern'];
+    saveOwned(newOwned);
+    saveActiveColor('jackolantern');
+    if (gameActive) applyCharacterColor('jackolantern');
+    showQuestToast('🎃 잭오랜턴 스킨 획득!');
+    showHalloweenShop();
+  });
+};
+
+window.buyHalloweenPetDirect = function(petId) {
+  if (!isHalloweenTodaySpecial()) return;
+  const cfg = PETS_CONFIG[petId];
+  if (!cfg) return;
+  const coins = loadCoins();
+  if (coins < 1) {
+    showConfirm('코인 부족', '코인이 1개 이상 필요해요.', null);
+    document.getElementById('confirm-yes').style.display = 'none';
+    return;
+  }
+  showConfirm('오늘 하루 특가!',
+    `${cfg.icon} <span style="color:${cfg.gradeColor}">${cfg.displayName} [${cfg.gradeLabel}]</span><br><br>• ${_petStatDesc(petId).replace(/ · /g,'<br>• ')}<br><br>🪙 1코인 → 잔액 ${coins - 1}코인`, () => {
+    saveCoins(coins - 1);
+    addPet(petId);
+    SFX.coin?.();
+    showHalloweenShop();
+  });
+};
+
+function openHalloweenShopDuringGame() {
+  if (!gameActive) return;
+  gameActive = false;
+  document.exitPointerLock();
+  renderer.domElement.style.display = 'none';
+  _shopOpenedDuringGame = true;
+  showHalloweenShop();
+}
+window.openHalloweenShopDuringGame = openHalloweenShopDuringGame;
+
+function resumeFromHalloweenShop() {
+  _shopOpenedDuringGame = false;
+  document.getElementById('overlay').style.display = 'none';
+  gameActive = true;
+  if (!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+}
+window.resumeFromHalloweenShop = resumeFromHalloweenShop;
+
+function spawnCandyItems() {
+  candyPickups.forEach(c => scene.remove(c));
+  candyPickups = [];
+  const baseCount = 5;
+  const bonusCount = _activeSlotIds.includes('캔디') ? 5 : 0;
+  const totalCount = baseCount + bonusCount;
+  const eligible = platforms.filter(p =>
+    p.userData.w && !p.userData.isGoal && !p.userData.isStart &&
+    !p.userData.isHidden && !p.userData.isFake
+  );
+  const shuffled = eligible.slice().sort(() => Math.random() - 0.5).slice(0, totalCount);
+  const geo = new THREE.CylinderGeometry(0.13, 0.13, 0.28, 8);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xff69b4, emissive: 0xff1493, emissiveIntensity: 0.8 });
+  shuffled.forEach(plat => {
+    const candy = new THREE.Mesh(geo, mat);
+    candy.position.set(plat.position.x, plat.position.y + plat.userData.h / 2 + 0.30, plat.position.z);
+    scene.add(candy);
+    candyPickups.push(candy);
+  });
+}
+
 function buildStage(stage) {
   // 낚시 블록·이동 플랫폼은 매판 다르게 — 시드 적용 전에 진짜 랜덤값 저장
   const trueRand = Math.random();
@@ -4851,6 +5233,7 @@ function buildStage(stage) {
   _buildStage(stage, trueRand);
   Math.random = _origRandom;
   setUnderwaterEffect(stage === 8);
+  spawnCandyItems();
 }
 function _buildStage(stage, trueRand = 0.5) {
   clearStage();
@@ -5166,8 +5549,8 @@ function updateMeteors() {
       meteors.splice(i, 1);
       const dx = player.position.x - m.tx;
       const dz = player.position.z - m.tz;
-      if (dx * dx + dz * dz < 2.5 * 2.5) {
-        hp = Math.max(0, hp - 35);
+      if (dx * dx + dz * dz < 2.5 * 2.5 && !_ghostPetInvisible) {
+        hp = Math.max(0, hp - computeDamage(35));
         updateHpBar();
         showDamageFlash();
         SFX.damage();
@@ -5410,10 +5793,12 @@ function updateLavaDrops() {
       const dz = player.position.z - l.mesh.position.z;
       if (dx * dx + dy * dy + dz * dz < (0.55 + 0.32) * (0.55 + 0.32)) {
         lavaContactCooldown = 300;
-        hp = Math.max(0, hp - 15);
-        updateHpBar();
-        showDamageFlash();
-        SFX.damage();
+        if (!_ghostPetInvisible) {
+          hp = Math.max(0, hp - computeDamage(15));
+          updateHpBar();
+          showDamageFlash();
+          SFX.damage();
+        }
         scene.remove(l.mesh);
         lavaDropMeshes.splice(i, 1);
         lavaPlatforms.delete(l.plat);
@@ -5499,6 +5884,7 @@ function buildHiddenHiddenArea() {
   spikePositions = [];
   poisonSpikePositions = [];
   flipSpikePositions = [];
+  purpleSpikePositions = [];
   movingPlatforms = [];
   slidingPlatforms = [];
   playerOnMovingPlatform = null;
@@ -5574,6 +5960,7 @@ function buildSecretArea() {
   spikePositions = [];
   poisonSpikePositions = [];
   flipSpikePositions = [];
+  purpleSpikePositions = [];
   movingPlatforms = [];
   slidingPlatforms = [];
   playerOnMovingPlatform = null;
@@ -5785,9 +6172,11 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoison
   // hazard 블록도 밟을 수 있는 일반 플랫폼처럼 등록 (대미지는 가시로만)
   platforms.push(mesh);
 
-  // 일반 가시 (빨간)
+  // 일반 가시 (빨간, 호박 펫 장착 시 일부 보라색으로)
   if (isHazard) {
-    const spikeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff2200, emissiveIntensity: 0.8 });
+    const pumpkinActive = _activeSlotIds.includes('호박');
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff2200, emissiveIntensity: 0.8 });
+    const purpleMat = pumpkinActive ? new THREE.MeshStandardMaterial({ color: 0x9b59b6, emissive: 0x6c3483, emissiveIntensity: 0.9 }) : null;
     const spacing = 1.5;
     const cols = Math.max(1, Math.floor(w / spacing));
     const rows = Math.max(1, Math.floor(d / spacing));
@@ -5797,11 +6186,13 @@ function addPlatform(x, y, z, w, h, d, color, isHazard, isGoal = false, isPoison
         const sy = y + h / 2 + 0.225;
         const sz = z - d / 2 + (ri + 0.5) * (d / rows);
         const spikeGeo = new THREE.ConeGeometry(0.15, 0.45, 6);
-        const spike = new THREE.Mesh(spikeGeo, spikeMat);
+        const isPurple = pumpkinActive && Math.random() < 0.5;
+        const spike = new THREE.Mesh(spikeGeo, isPurple ? purpleMat : redMat);
         spike.position.set(sx, sy, sz);
         scene.add(spike);
         platforms.push(spike);
-        spikePositions.push(new THREE.Vector3(sx, sy, sz));
+        if (isPurple) purpleSpikePositions.push(new THREE.Vector3(sx, sy, sz));
+        else spikePositions.push(new THREE.Vector3(sx, sy, sz));
       }
     }
   }
@@ -5909,6 +6300,11 @@ function startGame() {
   document.getElementById('quest-hud-btn').style.display = 'block';
   document.getElementById('exit-hud-btn').style.display = 'block';
   updateCoinUI();
+  updateCandyUI();
+  if (isHalloweenActive()) {
+    document.getElementById('candy-ui').style.display = 'block';
+    document.getElementById('halloween-shop-hud-btn').style.display = 'block';
+  }
   updateGlassesUI();
   const _jpCount = loadJumpPotion();
   if (_jpCount > 0) { _jumpBoostActive = true; saveJumpPotion(_jpCount - 1); }
@@ -5932,6 +6328,8 @@ function startGame() {
   isPotatoStage = false;
   potatoCoinMeshes.forEach(p => scene.remove(p.mesh));
   potatoCoinMeshes = [];
+  _ghostPetTimer = 0;
+  _ghostPetInvisible = false;
   spikeDamageTimer = 30;
   poisonActive = false;
   poisonTicksRemaining = 0;
@@ -5971,14 +6369,26 @@ function animate() {
 
   dittoWobble += 0.08;
   if (petGroups.length) {
+    // 이동 방향 반대(뒤쪽)로 펫 배치
+    const mvLen = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+    let behindX, behindZ;
+    if (mvLen > 0.003) {
+      behindX = -velocity.x / mvLen;
+      behindZ = -velocity.z / mvLen;
+    } else {
+      behindX = -Math.sin(player.rotation.y);
+      behindZ = -Math.cos(player.rotation.y);
+    }
+    const rightX = behindZ, rightZ = -behindX;
+    const PET_SLOTS = [[0.65, 0.50], [0.65, -0.50], [1.10, 0.0]];
     for (let i = 0; i < petGroups.length; i++) {
       const pg = petGroups[i];
       if (!pg) continue;
       petBobTs[i] += 0.040;
-      const off = _PET_OFFSETS[i];
-      const tx = player.position.x + off[0];
+      const [bd, rd] = PET_SLOTS[i] || [0.65, 0];
+      const tx = player.position.x + behindX * bd + rightX * rd;
       const ty = player.position.y + 0.10 + Math.sin(petBobTs[i]) * 0.09;
-      const tz = player.position.z + off[1];
+      const tz = player.position.z + behindZ * bd + rightZ * rd;
       pg.position.x += (tx - pg.position.x) * 0.09;
       pg.position.y += (ty - pg.position.y) * 0.09;
       pg.position.z += (tz - pg.position.z) * 0.09;
@@ -5999,9 +6409,13 @@ function animate() {
   }
   if (pvpMode && player.position.z < pvpMyBestZ) pvpMyBestZ = player.position.z;
   if (_cachedActiveColorId !== 'cube' && _cachedActiveColorId !== 'tetrahedron') {
+    const isJack = _cachedActiveColorId === 'jackolantern';
     const _baseScaleY = _cachedActiveColorId === 'potato' ? 1.15 : 1;
-    playerBody.scale.y = _baseScaleY * (1 + Math.sin(dittoWobble) * 0.04);
-    playerBody.scale.x = 1 - Math.sin(dittoWobble) * 0.02;
+    playerBody.scale.y = _baseScaleY * (1 + Math.sin(dittoWobble) * (isJack ? 0.02 : 0.04));
+    playerBody.scale.x = (isJack ? 1.08 : 1) * (1 - Math.sin(dittoWobble) * (isJack ? 0.01 : 0.02));
+    playerBody.scale.z = isJack ? 1.08 : 1;
+  } else {
+    playerBody.scale.z = 1;
   }
 
   // 레인보우 색상 순환
@@ -6019,11 +6433,59 @@ function animate() {
     underwaterDamageTimer++;
     if (underwaterDamageTimer >= 300) {
       underwaterDamageTimer = 0;
-      hp = Math.max(0, hp - 5);
-      updateHpBar();
-      showDamageFlash();
-      SFX.damage();
-      if (hp <= 0) { gameOver(); return; }
+      if (!_ghostPetInvisible) {
+        hp = Math.max(0, hp - computeDamage(5));
+        updateHpBar();
+        showDamageFlash();
+        SFX.damage();
+        if (hp <= 0) { gameOver(); return; }
+      }
+    }
+  }
+
+  // 유령 펫: 7초마다 2초 투명+무적
+  if (_activeSlotIds.includes('유령')) {
+    _ghostPetTimer++;
+    if (!_ghostPetInvisible && _ghostPetTimer >= 420) {
+      _ghostPetTimer = 0;
+      _ghostPetInvisible = true;
+      if (playerBody) {
+        playerBody.material.transparent = true;
+        playerBody.material.opacity = 0.18;
+        playerBody.material.needsUpdate = true;
+      }
+    } else if (_ghostPetInvisible && _ghostPetTimer >= 120) {
+      _ghostPetTimer = 0;
+      _ghostPetInvisible = false;
+      if (playerBody && _cachedActiveColorId !== 'ghost') {
+        playerBody.material.transparent = false;
+        playerBody.material.opacity = 1;
+        playerBody.material.needsUpdate = true;
+      }
+    }
+  } else {
+    if (_ghostPetInvisible) {
+      _ghostPetInvisible = false;
+      if (playerBody && _cachedActiveColorId !== 'ghost') {
+        playerBody.material.transparent = false;
+        playerBody.material.opacity = 1;
+        playerBody.material.needsUpdate = true;
+      }
+    }
+    _ghostPetTimer = 0;
+  }
+
+  // 캔디 픽업
+  for (let _ci = candyPickups.length - 1; _ci >= 0; _ci--) {
+    const _cm = candyPickups[_ci];
+    const _cdx = player.position.x - _cm.position.x;
+    const _cdy = player.position.y - _cm.position.y;
+    const _cdz = player.position.z - _cm.position.z;
+    if (_cdx*_cdx + _cdy*_cdy + _cdz*_cdz < 0.65 * 0.65) {
+      scene.remove(_cm);
+      candyPickups.splice(_ci, 1);
+      saveCandy(loadCandy() + 1);
+      showQuestToast('🍬 캔디 +1!');
     }
   }
 
@@ -6283,13 +6745,33 @@ function updatePlayer() {
     const dz = player.position.z - sp.z;
     if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) { onSpike = true; break; }
   }
-  if (onSpike) {
+  // 보라 가시 충돌 (호박 펫) — 4 대미지
+  let onPurpleSpike = false;
+  for (const sp of purpleSpikePositions) {
+    const dx = player.position.x - sp.x;
+    const dy = player.position.y - sp.y;
+    const dz = player.position.z - sp.z;
+    if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) { onPurpleSpike = true; break; }
+  }
+  if (onPurpleSpike) {
     spikeDamageTimer++;
     if (spikeDamageTimer >= 30) {
       spikeDamageTimer = 0;
-      if (!pvpMode) {
-        const amount = 15;
-        hp = Math.max(0, hp - amount);
+      if (!pvpMode && !_ghostPetInvisible) {
+        hp = Math.max(0, hp - computeDamage(4));
+        updateHpBar();
+        showDamageFlash();
+        spawnDamageParticles();
+        SFX.damage();
+        if (hp <= 0) { gameOver(); return; }
+      }
+    }
+  } else if (onSpike) {
+    spikeDamageTimer++;
+    if (spikeDamageTimer >= 30) {
+      spikeDamageTimer = 0;
+      if (!pvpMode && !_ghostPetInvisible) {
+        hp = Math.max(0, hp - computeDamage(15));
         updateHpBar();
         showDamageFlash();
         spawnDamageParticles();
@@ -6310,8 +6792,8 @@ function updatePlayer() {
     if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) { onPoisonSpike = true; break; }
   }
   if (onPoisonSpike && poisonContactCooldown <= 0) {
-    if (!pvpMode) {
-      hp = Math.max(0, hp - 10);
+    if (!pvpMode && !_ghostPetInvisible) {
+      hp = Math.max(0, hp - computeDamage(10));
       updateHpBar();
       showDamageFlash();
       spawnPoisonParticles();
@@ -6335,8 +6817,8 @@ function updatePlayer() {
     if (dx*dx + dy*dy + dz*dz < 0.55 * 0.55) { onFlipSpike = true; break; }
   }
   if (onFlipSpike && flipContactCooldown <= 0) {
-    if (!pvpMode) {
-      hp = Math.max(0, hp - 5);
+    if (!pvpMode && !_ghostPetInvisible) {
+      hp = Math.max(0, hp - computeDamage(5));
       updateHpBar();
       if (hp <= 0) { gameOver(); return; }
     }
@@ -6361,11 +6843,13 @@ function updatePlayer() {
     poisonTickTimer--;
     if (poisonTickTimer <= 0) {
       poisonTickTimer = 60;
-      hp = Math.max(0, hp - 3);
-      updateHpBar();
-      showPoisonFlash();
-      spawnPoisonParticles();
-      SFX.poison();
+      if (!_ghostPetInvisible) {
+        hp = Math.max(0, hp - computeDamage(3));
+        updateHpBar();
+        showPoisonFlash();
+        spawnPoisonParticles();
+        SFX.poison();
+      }
       poisonTicksRemaining--;
       if (poisonTicksRemaining <= 0) {
         poisonActive = false;
@@ -6405,7 +6889,7 @@ function respawn() {
 }
 
 function takeDamage(amount) {
-  if (invincibleTimer > 0 || invincPotionActive || pvpMode) return;
+  if (invincibleTimer > 0 || invincPotionActive || pvpMode || _ghostPetInvisible) return;
   hp = Math.max(0, hp - computeDamage(amount));
   invincibleTimer = 60;
   SFX.damage();
@@ -6907,6 +7391,8 @@ async function gameClear() {
   document.getElementById('coin-ui').style.display = 'none';
   document.getElementById('potato-ui').style.display = 'none';
   document.getElementById('potato-shop-hud-btn').style.display = 'none';
+  document.getElementById('candy-ui').style.display = 'none';
+  document.getElementById('halloween-shop-hud-btn').style.display = 'none';
   document.getElementById('shop-hud-btn').style.display = 'none';
   document.getElementById('inv-hud-btn').style.display = 'none';
   document.getElementById('quest-hud-btn').style.display = 'none';
@@ -6979,6 +7465,8 @@ function gameOver() {
   document.getElementById('coin-ui').style.display = 'none';
   document.getElementById('potato-ui').style.display = 'none';
   document.getElementById('potato-shop-hud-btn').style.display = 'none';
+  document.getElementById('candy-ui').style.display = 'none';
+  document.getElementById('halloween-shop-hud-btn').style.display = 'none';
   document.getElementById('shop-hud-btn').style.display = 'none';
   document.getElementById('inv-hud-btn').style.display = 'none';
   document.getElementById('quest-hud-btn').style.display = 'none';
