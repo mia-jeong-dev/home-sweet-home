@@ -995,6 +995,7 @@ const SFX = (() => {
 let scene, camera, renderer;
 let player, playerBody, playerBodyTexture = null;
 let playerLeftEye, playerRightEye, playerLeftShine, playerRightShine, playerMouthLine;
+let playerJackLeftEye, playerJackRightEye, playerJackMouth;
 let platforms = [];
 let hazards = [];
 let spikePositions = [];
@@ -1919,11 +1920,14 @@ function applyCharacterColor(id) {
       : needsTet    ? makeTetrahedronGeo()
       : needsPumpkin ? makePumpkinGeo()
       : new THREE.SphereGeometry(0.55, 20, 20);
-    _setFaceZ(needsCube);
-    _setFaceVisible(!needsTet && !needsPumpkin);
     const _R = 1.808 * Math.sqrt(6) / 4;
     playerBody.position.y = needsTet ? (-0.5 + _R / 3) : 0;
   }
+  _setFaceZ(needsCube);
+  _setFaceVisible(!needsTet && !needsPumpkin);
+  if (playerJackLeftEye)  playerJackLeftEye.visible  = needsPumpkin;
+  if (playerJackRightEye) playerJackRightEye.visible = needsPumpkin;
+  if (playerJackMouth)    playerJackMouth.visible    = needsPumpkin;
 
   if (playerBodyTexture) { playerBodyTexture.dispose(); playerBodyTexture = null; }
 
@@ -3313,66 +3317,32 @@ function createBallTexture(type) {
     ctx.bezierCurveTo(S*0.50, H*1.90, S*0.80, H*1.96, S, H*1.58);
     ctx.stroke();
   } else if (type === 'jackolantern') {
-    // ── 잭오랜턴 (할로윈 호박) ──
+    // ── 잭오랜턴 (할로윈 호박) ── 표정은 3D 메시로 별도 표시
     // 주황 바탕
     ctx.fillStyle = '#e85500';
     ctx.fillRect(0, 0, S, S);
-    // 호박 홈(groove) — 세로 어두운 선
+    // 호박 홈(groove) — 6줄 세로 어두운 그라디언트
     for (let i = 0; i < 6; i++) {
       const gx = (i + 0.5) * S / 6;
-      const gr = ctx.createLinearGradient(gx - S*0.05, 0, gx + S*0.05, 0);
+      const gr = ctx.createLinearGradient(gx - S*0.06, 0, gx + S*0.06, 0);
       gr.addColorStop(0, 'rgba(0,0,0,0)');
-      gr.addColorStop(0.5, 'rgba(0,0,0,0.22)');
+      gr.addColorStop(0.5, 'rgba(0,0,0,0.28)');
       gr.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = gr;
       ctx.fillRect(0, 0, S, S);
     }
     // 하이라이트
-    const hl = ctx.createRadialGradient(S*0.38, S*0.38, S*0.02, S*0.38, S*0.38, S*0.22);
-    hl.addColorStop(0, 'rgba(255,180,0,0.35)'); hl.addColorStop(1, 'rgba(255,180,0,0)');
+    const hl = ctx.createRadialGradient(S*0.38, S*0.35, S*0.01, S*0.38, S*0.35, S*0.25);
+    hl.addColorStop(0, 'rgba(255,200,80,0.40)'); hl.addColorStop(1, 'rgba(255,180,0,0)');
     ctx.fillStyle = hl; ctx.fillRect(0, 0, S, S);
     // 꼭지 (stem)
     ctx.fillStyle = '#4a2800';
-    ctx.fillRect(S*0.44, 0, S*0.12, S*0.13);
-    // 잎 (leaf knob)
+    ctx.fillRect(S*0.44, 0, S*0.12, S*0.14);
+    // 잎
     ctx.fillStyle = '#2d6a00';
     ctx.beginPath();
-    ctx.ellipse(S*0.58, S*0.06, S*0.07, S*0.04, 0.5, 0, Math.PI*2);
+    ctx.ellipse(S*0.60, S*0.07, S*0.08, S*0.04, 0.5, 0, Math.PI*2);
     ctx.fill();
-    // 얼굴 (검정)
-    ctx.fillStyle = '#0a0000';
-    // 왼쪽 눈 (삼각형)
-    ctx.beginPath();
-    ctx.moveTo(S*0.27, S*0.28); ctx.lineTo(S*0.18, S*0.46); ctx.lineTo(S*0.36, S*0.46);
-    ctx.closePath(); ctx.fill();
-    // 오른쪽 눈
-    ctx.beginPath();
-    ctx.moveTo(S*0.73, S*0.28); ctx.lineTo(S*0.64, S*0.46); ctx.lineTo(S*0.82, S*0.46);
-    ctx.closePath(); ctx.fill();
-    // 코 (작은 역삼각형)
-    ctx.beginPath();
-    ctx.moveTo(S*0.50, S*0.46); ctx.lineTo(S*0.43, S*0.57); ctx.lineTo(S*0.57, S*0.57);
-    ctx.closePath(); ctx.fill();
-    // 입 (들쭉날쭉 톱니)
-    const mL = S*0.17, mR = S*0.83, mT = S*0.62, mB = S*0.78;
-    const tw = (mR - mL) / 8;
-    ctx.beginPath();
-    ctx.moveTo(mL, mT);
-    for (let ti = 0; ti < 8; ti++) {
-      const x1 = mL + ti * tw, x2 = x1 + tw, mx = (x1+x2)/2;
-      ctx.lineTo(mx, ti%2===0 ? mB : mT);
-      ctx.lineTo(x2, mT);
-    }
-    ctx.lineTo(mR, mB); ctx.lineTo(mL, mB);
-    ctx.closePath(); ctx.fill();
-    // 눈/코/입 내부 주황 빛 (할로윈 느낌)
-    ctx.fillStyle = 'rgba(255,130,0,0.35)';
-    ctx.beginPath();
-    ctx.moveTo(S*0.27, S*0.28); ctx.lineTo(S*0.18, S*0.46); ctx.lineTo(S*0.36, S*0.46);
-    ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(S*0.73, S*0.28); ctx.lineTo(S*0.64, S*0.46); ctx.lineTo(S*0.82, S*0.46);
-    ctx.closePath(); ctx.fill();
   }
 
   return new THREE.CanvasTexture(canvas);
@@ -4091,6 +4061,33 @@ function buildPlayer() {
   const mouthMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
   playerMouthLine = new THREE.Line(mouthGeo, mouthMat);
   player.add(playerMouthLine);
+
+  // 잭오랜턴 전용 표정 (기본 숨김, 호박 스킨 시 표시)
+  const jackFaceMat = new THREE.MeshStandardMaterial({
+    color: 0xff5500, emissive: 0xff3300, emissiveIntensity: 0.9, side: THREE.DoubleSide
+  });
+  const _jEyeS = new THREE.Shape();
+  _jEyeS.moveTo(-0.10, 0.10); _jEyeS.lineTo(0.10, 0.10); _jEyeS.lineTo(0, -0.10); _jEyeS.closePath();
+  playerJackLeftEye  = new THREE.Mesh(new THREE.ShapeGeometry(_jEyeS), jackFaceMat);
+  playerJackLeftEye.position.set(-0.185, 0.13, 0.48);
+  playerJackLeftEye.visible = false;
+  player.add(playerJackLeftEye);
+  playerJackRightEye = new THREE.Mesh(new THREE.ShapeGeometry(_jEyeS), jackFaceMat.clone());
+  playerJackRightEye.position.set(0.185, 0.13, 0.48);
+  playerJackRightEye.visible = false;
+  player.add(playerJackRightEye);
+  const _jMS = new THREE.Shape();
+  const _jHW = 0.20, _jT = 0.045, _jB = -0.055, _jN = 8, _jSW = _jHW * 2 / _jN;
+  _jMS.moveTo(-_jHW, _jT);
+  for (let _ji = 0; _ji < _jN; _ji++) {
+    const _jx1 = -_jHW + _ji * _jSW, _jx2 = _jx1 + _jSW, _jmx = (_jx1 + _jx2) / 2;
+    _jMS.lineTo(_jmx, _ji % 2 === 0 ? _jB : _jT); _jMS.lineTo(_jx2, _jT);
+  }
+  _jMS.lineTo(_jHW, _jB); _jMS.lineTo(-_jHW, _jB); _jMS.closePath();
+  playerJackMouth = new THREE.Mesh(new THREE.ShapeGeometry(_jMS), jackFaceMat.clone());
+  playerJackMouth.position.set(0, -0.095, 0.48);
+  playerJackMouth.visible = false;
+  player.add(playerJackMouth);
 
   if (isTet) _setFaceVisible(false);
 
