@@ -29,13 +29,11 @@ canvas { display:block; }
   display:inline-block; background:#444; border:1px solid #666;
   border-radius:4px; padding:1px 6px; font-size:12px; margin-right:4px;
 }
-
 #ctrl-hint {
   position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
   color:rgba(255,255,255,.35); font-size:11px; pointer-events:none; z-index:10;
 }
 
-/* modal */
 #mo {
   position:fixed; inset:0; background:rgba(0,0,0,.75);
   display:none; align-items:center; justify-content:center; z-index:50;
@@ -80,7 +78,7 @@ canvas { display:block; }
   <span id="hud-wc"></span>
 </div>
 <div id="hint"><kbd>E</kbd><span id="hint-text">심기</span></div>
-<div id="ctrl-hint">WASD / 방향키 이동 &nbsp;·&nbsp; E 상호작용 &nbsp;·&nbsp; 상점에 걸어가서 도구 구입</div>
+<div id="ctrl-hint">WASD 이동 &nbsp;·&nbsp; 마우스 드래그 각도 조절 &nbsp;·&nbsp; E 상호작용</div>
 
 <div id="mo">
   <div id="mp">
@@ -130,9 +128,8 @@ function saveLS(){ localStorage.setItem(LS.co,coins); localStorage.setItem(LS.wc
 // ── State ──
 let myId='';
 const farmData={}, farmUnsub={};
-// 5개 고정 슬롯 ID (항상 존재)
 const OTHER_SLOTS=['__s1','__s2','__s3','__s4','__s5'];
-const slotRealId={}; // slot ID → 실제 Firebase ID
+const slotRealId={};
 let nearTarget=null;
 
 // ── Renderer ──
@@ -144,10 +141,10 @@ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x7ec8e3);
-scene.fog=new THREE.Fog(0x7ec8e3,28,55);
+scene.fog=new THREE.Fog(0x7ec8e3,65,120);
 
-const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,120);
-camera.position.set(0,10,12);
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,180);
+camera.position.set(0,9,23);
 renderer.setSize(innerWidth,innerHeight);
 window.addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight;
@@ -159,37 +156,37 @@ window.addEventListener('resize',()=>{
 scene.add(new THREE.AmbientLight(0xfff0dd,.7));
 const sun=new THREE.DirectionalLight(0xfff5cc,1.3);
 sun.position.set(8,18,10); sun.castShadow=true;
-sun.shadow.camera.left=sun.shadow.camera.bottom=-30;
-sun.shadow.camera.right=sun.shadow.camera.top=30;
-sun.shadow.camera.far=80; sun.shadow.mapSize.set(1024,1024);
+sun.shadow.camera.left=sun.shadow.camera.bottom=-60;
+sun.shadow.camera.right=sun.shadow.camera.top=60;
+sun.shadow.camera.far=150; sun.shadow.mapSize.set(2048,2048);
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x87ceeb,0x4a8820,.4));
 
 // ── Ground ──
-const gnd=new THREE.Mesh(new THREE.PlaneGeometry(120,120),
+const gnd=new THREE.Mesh(new THREE.PlaneGeometry(240,240),
   new THREE.MeshLambertMaterial({color:0x4a8820}));
 gnd.rotation.x=-Math.PI/2; gnd.receiveShadow=true; scene.add(gnd);
 
 // ── Farm layout constants ──
-const PW=2, PG=.32, COLS=3, ROWS=2;
-const FW=COLS*(PW+PG), FD=ROWS*(PW+PG); // ~6.96 × 4.64
+const PW=3.5, PG=0.5, COLS=3, ROWS=2;
+const FW=COLS*(PW+PG);   // 12
+const FD=ROWS*(PW+PG);   // 8
 
-// World positions of 6 farms
+// 6 farm positions – wide enough to avoid overlap (FW=12, FD=8 → ~14×10 footprint)
 const FARM_POS=[
-  new THREE.Vector3(0,0,0),       // mine
-  new THREE.Vector3(-14,0,1),     // other1
-  new THREE.Vector3(14,0,1),      // other2
-  new THREE.Vector3(0,0,-15),     // other3
-  new THREE.Vector3(-14,0,-14),   // other4
-  new THREE.Vector3(14,0,-14),    // other5
+  new THREE.Vector3(  0, 0,   0),  // mine
+  new THREE.Vector3(-28, 0,   0),  // other1
+  new THREE.Vector3( 28, 0,   0),  // other2
+  new THREE.Vector3(  0, 0, -28),  // other3
+  new THREE.Vector3(-28, 0, -28),  // other4
+  new THREE.Vector3( 28, 0, -28),  // other5
 ];
-const SHOP_POS=new THREE.Vector3(11,0,-2);
-const SHOP_INTERACT_R=3.0;
-const PLOT_INTERACT_R=1.9;
+const SHOP_POS=new THREE.Vector3(0,0,18);  // clearly south of all farms
+const SHOP_INTERACT_R=4.5;
+const PLOT_INTERACT_R=3.0;
 
 const plotMeshes={}, plantGrps={}, farmGrps={};
 let playerMesh=null;
-let shopGroup=null;
 
 // ── Helpers ──
 function plotLP(i){
@@ -199,61 +196,61 @@ function plotLP(i){
   );
 }
 function plotWP(fid,i){
-  const fc=farmGrps[fid]?.position||new THREE.Vector3();
+  const fp=farmGrps[fid]?.position;
   const lp=plotLP(i);
-  return new THREE.Vector3(fc.x+lp.x, 0, fc.z+lp.z);
+  return new THREE.Vector3(
+    (fp?fp.x:0)+lp.x, 0,
+    (fp?fp.z:0)+lp.z
+  );
 }
 
 // ── Build farm ──
-function buildFarm(fid, center, isMe){
+function buildFarm(fid,center,isMe){
   if(farmGrps[fid]) return;
   const g=new THREE.Group(); g.position.copy(center); scene.add(g);
   farmGrps[fid]=g;
 
-  // Grass pad
-  const pad=new THREE.Mesh(new THREE.BoxGeometry(FW+1.2,0.15,FD+1.2),
-    new THREE.MeshLambertMaterial({color:isMe?0x3d7018:0x2d5a10}));
-  pad.position.y=-.08; pad.receiveShadow=true; g.add(pad);
-
-  // Fence
   const pM=new THREE.MeshLambertMaterial({color:0x8a6030});
   const rM=new THREE.MeshLambertMaterial({color:0xb07840});
-  const hw=FW/2+.5, hd=FD/2+.5;
-  // corner + mid posts
-  [[-hw,-hd],[0,-hd],[hw,-hd],[-hw,0],[hw,0],[-hw,hd],[0,hd],[hw,hd]]
-    .forEach(([x,z])=>{
-      const p=new THREE.Mesh(new THREE.BoxGeometry(.1,.7,.1),pM);
-      p.position.set(x,.3,z); p.castShadow=true; g.add(p);
-    });
-  // rails
-  [[0,-hd,FW+1,'x'],[0,hd,FW+1,'x'],[-hw,0,FD+1,'z'],[hw,0,FD+1,'z']]
+  const hw=FW/2+0.7, hd=FD/2+0.7;
+
+  // Grass pad
+  const pad=new THREE.Mesh(new THREE.BoxGeometry(FW+1.4,0.15,FD+1.4),
+    new THREE.MeshLambertMaterial({color:isMe?0x3d7018:0x2d5a10}));
+  pad.position.y=-0.08; pad.receiveShadow=true; g.add(pad);
+
+  // Fence posts
+  [[-hw,-hd],[-hw/2,-hd],[0,-hd],[hw/2,-hd],[hw,-hd],
+   [-hw,0],[hw,0],
+   [-hw,hd],[-hw/2,hd],[0,hd],[hw/2,hd],[hw,hd]].forEach(([x,z])=>{
+    const p=new THREE.Mesh(new THREE.BoxGeometry(.12,.8,.12),pM);
+    p.position.set(x,.35,z); p.castShadow=true; g.add(p);
+  });
+  // Fence rails
+  [[0,-hd,FW+1.4,'x'],[0,hd,FW+1.4,'x'],[-hw,0,FD+1.4,'z'],[hw,0,FD+1.4,'z']]
     .forEach(([x,z,len,ax])=>{
-      const r=new THREE.Mesh(new THREE.BoxGeometry(ax==='x'?len:.08,.07,ax==='z'?len:.08),rM);
-      r.position.set(x,.48,z); g.add(r);
+      [[.5],[.25]].forEach(([h])=>{
+        const r=new THREE.Mesh(new THREE.BoxGeometry(ax==='x'?len:.09,.07,ax==='z'?len:.09),rM);
+        r.position.set(x,h,z); g.add(r);
+      });
     });
 
-  // Gate sign (my farm only)
-  if(isMe){
-    const sp=new THREE.Mesh(new THREE.BoxGeometry(.08,1,.08),pM);
-    sp.position.set(-hw-.3,.5,-hd-.3); g.add(sp);
-    const sb=new THREE.Mesh(new THREE.BoxGeometry(1.4,.4,.06),rM);
-    sb.position.set(-hw-.3,.95,-hd-.3); g.add(sb);
-    // Reset button hint post
-    const rp=new THREE.Mesh(new THREE.BoxGeometry(.08,1,.08),pM);
-    rp.position.set(hw+.3,.5,-hd-.3); g.add(rp);
-  }
+  // Name sign post
+  const sp=new THREE.Mesh(new THREE.BoxGeometry(.1,1.2,.1),pM);
+  sp.position.set(0,.6,-hd-0.3); g.add(sp);
+  const sb=new THREE.Mesh(new THREE.BoxGeometry(isMe?2.2:1.8,.45,.08),rM);
+  sb.position.set(0,1.1,-hd-0.3); g.add(sb);
 
   // Plots
   const plots=[], plants=[];
   for(let i=0;i<6;i++){
     const lp=plotLP(i);
-    const pm=new THREE.Mesh(new THREE.BoxGeometry(PW,.12,PW),
+    const pm=new THREE.Mesh(new THREE.BoxGeometry(PW,.14,PW),
       new THREE.MeshLambertMaterial({color:0x7a4a18}));
     pm.position.set(lp.x,0,lp.z); pm.receiveShadow=true;
     pm.userData={fid,idx:i}; g.add(pm); plots.push(pm);
-
     const pg=new THREE.Group();
-    pg.position.set(lp.x,.07,lp.z); g.add(pg); plants.push(pg);
+    pg.position.set(lp.x,.08,lp.z); g.add(pg); plants.push(pg);
   }
   plotMeshes[fid]=plots; plantGrps[fid]=plants;
 }
@@ -261,47 +258,36 @@ function buildFarm(fid, center, isMe){
 // ── Build shop ──
 function buildShop(){
   const g=new THREE.Group(); g.position.copy(SHOP_POS); scene.add(g);
-  shopGroup=g;
 
-  const flM=new THREE.MeshLambertMaterial({color:0x9a7848});
   const wM=new THREE.MeshLambertMaterial({color:0xb08050});
+  const flM=new THREE.MeshLambertMaterial({color:0x9a7848});
   const rM=new THREE.MeshLambertMaterial({color:0x7a3a10});
 
   // Floor
-  const fl=new THREE.Mesh(new THREE.BoxGeometry(5,0.15,4.5),flM);
+  const fl=new THREE.Mesh(new THREE.BoxGeometry(6,0.15,5.5),flM);
   fl.position.y=.07; fl.receiveShadow=true; g.add(fl);
-  // Walls (3 sides, open front)
-  [[-2.4,0,'z',4.5],[2.4,0,'z',4.5],[0,0,-2.1,'x',4.8]]
-    .forEach(([x,y,z,ax,len])=>{
-      if(len===undefined){len=z;z=undefined;}
-      const w=new THREE.Mesh(
-        new THREE.BoxGeometry(ax==='x'?len:.2,2.4,.2),wM);
-      w.position.set(x,1.3,z??x); w.castShadow=true; g.add(w);
-    });
   // Back wall
-  const bw=new THREE.Mesh(new THREE.BoxGeometry(5,.2,2.4),wM);
-  bw.rotation.z=Math.PI/2; bw.position.set(0,1.3,-2); g.add(bw);
-  const bw2=new THREE.Mesh(new THREE.BoxGeometry(.2,2.4,4.5),wM);
-  bw2.position.set(-2.4,1.3,0); g.add(bw2);
-  const bw3=new THREE.Mesh(new THREE.BoxGeometry(.2,2.4,4.5),wM);
-  bw3.position.set(2.4,1.3,0); g.add(bw3);
-  const bw4=new THREE.Mesh(new THREE.BoxGeometry(5,.2,4.5),wM);
-  bw4.position.set(0,2.5,-2.15); g.add(bw4);
+  const bw=new THREE.Mesh(new THREE.BoxGeometry(6,2.8,.2),wM);
+  bw.position.set(0,1.5,-2.6); bw.castShadow=true; g.add(bw);
+  // Side walls
+  [-3,3].forEach(x=>{
+    const sw=new THREE.Mesh(new THREE.BoxGeometry(.2,2.8,5.5),wM);
+    sw.position.set(x,1.5,0); sw.castShadow=true; g.add(sw);
+  });
   // Roof
-  const roof=new THREE.Mesh(new THREE.ConeGeometry(3.8,1.6,4),rM);
-  roof.position.y=3.4; roof.rotation.y=Math.PI/4; roof.castShadow=true; g.add(roof);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(4.8,2.0,4),rM);
+  roof.position.y=3.8; roof.rotation.y=Math.PI/4; roof.castShadow=true; g.add(roof);
   // Counter
-  const ct=new THREE.Mesh(new THREE.BoxGeometry(3.5,.7,.5),
+  const ct=new THREE.Mesh(new THREE.BoxGeometry(4.5,.7,.55),
     new THREE.MeshLambertMaterial({color:0xd0a060}));
-  ct.position.set(0,.5,1.8); g.add(ct);
+  ct.position.set(0,.5,2.1); g.add(ct);
   // Sign board
-  const sb=new THREE.Mesh(new THREE.BoxGeometry(2.5,.6,.08),
+  const sb=new THREE.Mesh(new THREE.BoxGeometry(3,.65,.1),
     new THREE.MeshLambertMaterial({color:0x4a1a00}));
-  sb.position.set(0,2.6,2.1); g.add(sb);
-  // 🛒 text represented by a bright stripe
-  const st=new THREE.Mesh(new THREE.BoxGeometry(2,.1,.09),
+  sb.position.set(0,2.9,2.5); g.add(sb);
+  const st=new THREE.Mesh(new THREE.BoxGeometry(2.5,.13,.12),
     new THREE.MeshBasicMaterial({color:0xffd700}));
-  st.position.set(0,2.9,2.11); g.add(st);
+  st.position.set(0,3.25,2.52); g.add(st);
 }
 
 // ── Decorations ──
@@ -309,37 +295,45 @@ function addDeco(){
   const treeMat=new THREE.MeshLambertMaterial({color:0x1e6c0a});
   const trunkMat=new THREE.MeshLambertMaterial({color:0x6a3a10});
   const flowerMat=new THREE.MeshLambertMaterial({color:0xffaacc});
+  // Trees placed to avoid the 6 farm positions (±28, 0 and ±28, -28)
   const treePos=[
-    [-9,0,-6],[-9,0,5],[9,0,-6],[9,0,5],[-5,0,8],[5,0,8],
-    [-12,0,3],[12,0,3],[0,0,-8],[-7,0,-2],[7,0,-2],
-    [-6,0,-10],[6,0,-10],[14,0,-8],[-14,0,-8],
+    [-10,0,10],[-6,0,12],[6,0,12],[10,0,10],
+    [-14,0,-8],[14,0,-8],[-8,0,-8],[8,0,-8],
+    [-14,0,10],[14,0,10],[-20,0,12],[20,0,12],
+    [-14,0,-16],[14,0,-16],
+    [-40,0,5],[40,0,5],[-40,0,-14],[40,0,-14],
+    [-40,0,-30],[40,0,-30],[0,0,-40],
+    [-20,0,-8],[20,0,-8],
   ];
   treePos.forEach(([x,,z])=>{
-    const g=new THREE.Group();g.position.set(x,0,z);
-    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,.9,6),trunkMat);
-    trunk.position.y=.45; g.add(trunk);
-    const crown=new THREE.Mesh(new THREE.SphereGeometry(.7+Math.random()*.5,7,6),treeMat);
-    crown.position.y=1.5; g.add(crown);
+    const g=new THREE.Group(); g.position.set(x,0,z);
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.16,.22,1.1,6),trunkMat);
+    trunk.position.y=.55; g.add(trunk);
+    const crown=new THREE.Mesh(new THREE.SphereGeometry(.85+Math.random()*.55,7,6),treeMat);
+    crown.position.y=1.8; g.add(crown);
     scene.add(g);
   });
   // Flowers
-  for(let i=0;i<18;i++){
-    const g=new THREE.Group();
-    g.position.set((Math.random()-.5)*22,(0),(Math.random()-.5)*22);
-    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.3,4),
+  const flowerZones=[
+    [5,14],[8,14],[12,14],[-5,14],[-8,14],[-12,14],
+    [12,-4],[-12,-4],[12,-12],[-12,-12],
+  ];
+  flowerZones.forEach(([x,z])=>{
+    const g=new THREE.Group(); g.position.set(x,0,z);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.32,4),
       new THREE.MeshLambertMaterial({color:0x3a8020}));
-    stem.position.y=.15;g.add(stem);
+    stem.position.y=.16; g.add(stem);
     const fl=new THREE.Mesh(new THREE.SphereGeometry(.1,5,4),flowerMat);
-    fl.position.y=.35;g.add(fl);
+    fl.position.y=.38; g.add(fl);
     scene.add(g);
-  }
-  // Path stones between farm and shop
-  for(let i=0;i<6;i++){
-    const t=i/5;
-    const px=t*10, pz=0;
-    const stone=new THREE.Mesh(new THREE.CylinderGeometry(.25+Math.random()*.1,.3,.05,7),
+  });
+  // Path stones: farm 0 → shop
+  for(let i=0;i<8;i++){
+    const t=i/7;
+    const stone=new THREE.Mesh(new THREE.CylinderGeometry(.28+Math.random()*.1,.33,.06,7),
       new THREE.MeshLambertMaterial({color:0xaaa090}));
-    stone.position.set(px+4,.01,pz); scene.add(stone);
+    stone.position.set((Math.random()-.5)*.6,.01,t*16+0.5+(Math.random()-.5)*.5);
+    scene.add(stone);
   }
 }
 
@@ -348,62 +342,47 @@ let walkPhase=0;
 function buildPlayerModel(){
   const g=new THREE.Group();
   const skinM=new THREE.MeshLambertMaterial({color:0xf5c080});
-  const bodyM=new THREE.MeshLambertMaterial({color:0x3a7030}); // green shirt
-  const pantsM=new THREE.MeshLambertMaterial({color:0x2a4ab0}); // blue pants
+  const bodyM=new THREE.MeshLambertMaterial({color:0x3a7030});
+  const pantsM=new THREE.MeshLambertMaterial({color:0x2a4ab0});
   const hatM=new THREE.MeshLambertMaterial({color:0xd4a040});
+  const potatoM=new THREE.MeshLambertMaterial({color:0xc8a050});
+  const bumpM=new THREE.MeshLambertMaterial({color:0xa07830});
+  const eyeM=new THREE.MeshLambertMaterial({color:0x111111});
 
-  // Legs
   [-0.1,0.1].forEach(x=>{
     const leg=new THREE.Mesh(new THREE.CylinderGeometry(.085,.085,.44,7),pantsM);
     leg.position.set(x,.22,0); leg.castShadow=true; g.add(leg);
   });
-  // Body
   const body=new THREE.Mesh(new THREE.CylinderGeometry(.2,.24,.52,8),bodyM);
   body.position.y=.67; body.castShadow=true; g.add(body);
-  // Arms
   [-0.27,0.27].forEach(x=>{
     const arm=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.38,6),skinM);
-    arm.position.set(x,.67,0); arm.rotation.z=x>0?.4:-.4;
-    arm.castShadow=true; g.add(arm);
+    arm.position.set(x,.67,0); arm.rotation.z=x>0?.4:-.4; arm.castShadow=true; g.add(arm);
   });
-  // Head — 감자 얼굴
-  const potatoM=new THREE.MeshLambertMaterial({color:0xc8a050});
   const head=new THREE.Mesh(new THREE.SphereGeometry(.22,10,8),potatoM);
-  head.scale.set(1,.95,1.1); // 약간 앞뒤로 납작한 감자형
-  head.position.y=1.09; head.castShadow=true; g.add(head);
-  // Potato bumps (눈 모양)
-  const bumpM=new THREE.MeshLambertMaterial({color:0xa07830});
+  head.scale.set(1,.95,1.1); head.position.y=1.09; head.castShadow=true; g.add(head);
   [-.06,.06].forEach(x=>{
     const bump=new THREE.Mesh(new THREE.SphereGeometry(.05,6,5),bumpM);
     bump.position.set(x,1.14,.2); g.add(bump);
-  });
-  // Eyes (검은 눈동자)
-  const eyeM=new THREE.MeshLambertMaterial({color:0x111111});
-  [-.06,.06].forEach(x=>{
     const e=new THREE.Mesh(new THREE.SphereGeometry(.03,6,5),eyeM);
     e.position.set(x,1.16,.24); g.add(e);
-    // shine
     const sh=new THREE.Mesh(new THREE.SphereGeometry(.012,5,4),
       new THREE.MeshBasicMaterial({color:0xffffff}));
     sh.position.set(x+.01,1.175,.268); g.add(sh);
   });
-  // Mouth — 미소
   const mouthM=new THREE.MeshLambertMaterial({color:0x6a3a10});
-  const mouthGeo=new THREE.TorusGeometry(.055,.012,5,10,Math.PI);
-  const mouth=new THREE.Mesh(mouthGeo,mouthM);
+  const mouth=new THREE.Mesh(new THREE.TorusGeometry(.055,.012,5,10,Math.PI),mouthM);
   mouth.rotation.z=Math.PI; mouth.position.set(0,1.04,.24); g.add(mouth);
-  // 감자 작은 돌기 (머리 위)
   [[-.05,.1,.06],[.07,.08,-.04],[0,.1,-.06]].forEach(([x,y,z])=>{
     const sp=new THREE.Mesh(new THREE.SphereGeometry(.03,5,4),bumpM);
     sp.position.set(x,1.3+y,z); g.add(sp);
   });
-  // Hat brim
   const brim=new THREE.Mesh(new THREE.CylinderGeometry(.3,.32,.045,12),hatM);
   brim.position.y=1.28; g.add(brim);
   const hat=new THREE.Mesh(new THREE.CylinderGeometry(.17,.22,.22,10),hatM);
   hat.position.y=1.41; g.add(hat);
 
-  g.position.set(0,.01,4);
+  g.position.set(0,.01,12);
   scene.add(g);
   playerMesh=g;
 }
@@ -411,11 +390,9 @@ function buildPlayerModel(){
 // ── Plant visuals ──
 function clearPG(pg){
   while(pg.children.length){
-    const c=pg.children[0];
-    c.geometry?.dispose(); c.material?.dispose(); pg.remove(c);
+    const c=pg.children[0]; c.geometry?.dispose(); c.material?.dispose(); pg.remove(c);
   }
 }
-
 function rebuildPlant(fid,i){
   const pg=plantGrps[fid]?.[i]; if(!pg) return;
   clearPG(pg);
@@ -423,35 +400,32 @@ function rebuildPlant(fid,i){
   if(!d?.type||d?.harvested) return;
   const pt=PTM[d.type]; if(!pt) return;
   const prog=growProgress(d); if(prog<=0) return;
-
-  const sc=.18+prog*.72;
+  const sc=.2+prog*.8;
   const col=pt.id==='rainbow'
-    ? new THREE.Color().setHSL((Date.now()*.0004)%1,1,.55).getHex()
-    : parseInt(pt.hex.replace('#',''),16);
-
-  const bm=new THREE.MeshStandardMaterial({color:col, roughness:.6,
+    ?new THREE.Color().setHSL((Date.now()*.0004)%1,1,.55).getHex()
+    :parseInt(pt.hex.replace('#',''),16);
+  const bm=new THREE.MeshStandardMaterial({color:col,roughness:.6,
     metalness:pt.id==='golden'?.55:0,
-    emissive:prog>=1?col:0, emissiveIntensity:prog>=1?.22:0});
-  const body=new THREE.Mesh(new THREE.SphereGeometry(.27*sc,10,8),bm);
-  body.position.y=.28*sc; body.castShadow=true; pg.add(body);
-
+    emissive:prog>=1?col:0,emissiveIntensity:prog>=1?.22:0});
+  const body=new THREE.Mesh(new THREE.SphereGeometry(.3*sc,10,8),bm);
+  body.position.y=.32*sc; body.castShadow=true; pg.add(body);
   if(prog>.28){
     const sm=new THREE.MeshLambertMaterial({color:0x2a8010});
-    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.04*sc,.06*sc,.36*sc,6),sm);
-    stem.position.y=.6*sc; pg.add(stem);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.05*sc,.07*sc,.4*sc,6),sm);
+    stem.position.y=.68*sc; pg.add(stem);
     for(let j=0;j<4;j++){
       const a=(j/4)*Math.PI*2;
       const lm=new THREE.MeshLambertMaterial({color:0x1f9010,side:THREE.DoubleSide});
-      const leaf=new THREE.Mesh(new THREE.ConeGeometry(.15*sc,.32*sc,5),lm);
-      leaf.position.set(Math.cos(a)*.19*sc,.74*sc,Math.sin(a)*.19*sc);
+      const leaf=new THREE.Mesh(new THREE.ConeGeometry(.17*sc,.36*sc,5),lm);
+      leaf.position.set(Math.cos(a)*.22*sc,.84*sc,Math.sin(a)*.22*sc);
       leaf.rotation.z=.65; leaf.rotation.y=a; pg.add(leaf);
     }
   }
   if(prog>=1){
     const rm=new THREE.MeshBasicMaterial({color:0xffee22,transparent:true,opacity:.7});
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(.38,.05,8,24),rm);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.45,.06,8,24),rm);
     ring.rotation.x=Math.PI/2; ring.position.y=.04; pg.add(ring);
-    const pl=new THREE.PointLight(col,.9,2.4); pl.position.y=.6; pg.add(pl);
+    const pl=new THREE.PointLight(col,.9,3.0); pl.position.y=.8; pg.add(pl);
   }
 }
 function rebuildFarmPlants(fid){ for(let i=0;i<6;i++) rebuildPlant(fid,i); }
@@ -482,12 +456,11 @@ async function ensureMyFarm(){
 function subscribe(fid){
   if(farmUnsub[fid]) return;
   farmUnsub[fid]=onSnapshot(doc(db,COLL,fid),snap=>{
-    farmData[fid]=snap.exists()?snap.data():null;
+    if(snap.exists()) farmData[fid]=snap.data(); // never overwrite with null
     rebuildFarmPlants(fid);
   });
 }
 async function saveF(fid,data){
-  // fid 가 슬롯ID면 실제 Firebase ID로 변환
   const realId=slotRealId[fid]||fid;
   data.lastActive=Date.now();
   await setDoc(doc(db,COLL,realId),data);
@@ -496,32 +469,19 @@ async function loadOthers(){
   const snap=await getDocs(query(collection(db,COLL),orderBy('lastActive','desc'),limit(8)));
   const found=[];
   snap.forEach(d=>{ if(d.id!==myId&&found.length<5) found.push({id:d.id,data:d.data()}); });
-  // 슬롯 업데이트 (실제 플레이어가 있으면 그 데이터로, 없으면 빈 농장 유지)
   OTHER_SLOTS.forEach((sid,i)=>{
     const real=found[i];
     if(real){
       slotRealId[sid]=real.id;
       farmData[sid]=real.data;
       rebuildFarmPlants(sid);
-      // 실시간 업데이트: 실제 ID로 구독, 슬롯에 반영
       if(farmUnsub[sid]) farmUnsub[sid]();
       farmUnsub[sid]=onSnapshot(doc(db,COLL,real.id),snap=>{
-        farmData[sid]=snap.exists()?snap.data():emptyFarm('');
+        if(snap.exists()) farmData[sid]=snap.data();
         rebuildFarmPlants(sid);
       });
     }
   });
-}
-function addNamePlate(fid, pos){
-  const g=new THREE.Group();
-  g.position.set(pos.x, 0, pos.z+FD/2+1.5);
-  const post=new THREE.Mesh(new THREE.BoxGeometry(.08,1.1,.08),
-    new THREE.MeshLambertMaterial({color:0x8a6030}));
-  post.position.y=.55; g.add(post);
-  const board=new THREE.Mesh(new THREE.BoxGeometry(2,.5,.07),
-    new THREE.MeshLambertMaterial({color:0xc09050}));
-  board.position.y=1.05; g.add(board);
-  scene.add(g);
 }
 
 // ── UI ──
@@ -529,16 +489,15 @@ function updateHUD(){
   document.getElementById('hud-coins').textContent=`🪙 ${coins}`;
   document.getElementById('hud-wc').textContent=wc>0?`💧×${wc}`:'';
 }
-
-// ── Modal helpers ──
 function showModal(title,html){
   document.getElementById('mt').textContent=title;
   document.getElementById('mb').innerHTML=html;
   document.getElementById('mo').classList.add('open');
 }
 window.closeModal=()=>document.getElementById('mo').classList.remove('open');
-document.getElementById('mo').addEventListener('click',e=>{ if(e.target===document.getElementById('mo')) closeModal(); });
-
+document.getElementById('mo').addEventListener('click',e=>{
+  if(e.target===document.getElementById('mo')) closeModal();
+});
 let toastT;
 function toast(msg){
   const el=document.getElementById('toast');
@@ -549,19 +508,21 @@ function toast(msg){
 // ── Interaction ──
 function checkNearby(){
   if(!playerMesh) return;
-  const pp=playerMesh.position;
+  const px=playerMesh.position.x, pz=playerMesh.position.z;
   nearTarget=null;
 
+  const PR2=PLOT_INTERACT_R*PLOT_INTERACT_R;
   const allFarms=[myId,...OTHER_SLOTS];
   outer:for(const fid of allFarms){
     for(let i=0;i<6;i++){
-      if(pp.distanceTo(plotWP(fid,i))<PLOT_INTERACT_R){
-        nearTarget={type:'plot',fid,idx:i}; break outer;
-      }
+      const wp=plotWP(fid,i);
+      const dx=px-wp.x, dz=pz-wp.z;
+      if(dx*dx+dz*dz<PR2){ nearTarget={type:'plot',fid,idx:i}; break outer; }
     }
   }
-  if(!nearTarget && pp.distanceTo(SHOP_POS)<SHOP_INTERACT_R){
-    nearTarget={type:'shop'};
+  if(!nearTarget){
+    const dx=px-SHOP_POS.x, dz=pz-SHOP_POS.z;
+    if(dx*dx+dz*dz<SHOP_INTERACT_R*SHOP_INTERACT_R) nearTarget={type:'shop'};
   }
 
   const hintEl=document.getElementById('hint');
@@ -569,9 +530,7 @@ function checkNearby(){
   if(!nearTarget){ hintEl.style.display='none'; return; }
 
   hintEl.style.display='block';
-  if(nearTarget.type==='shop'){
-    hintTxt.textContent='상점 열기'; return;
-  }
+  if(nearTarget.type==='shop'){ hintTxt.textContent='상점 열기'; return; }
 
   const {fid,idx}=nearTarget;
   const mine=fid===myId;
@@ -590,12 +549,13 @@ function checkNearby(){
 function doInteract(){
   if(document.getElementById('mo').classList.contains('open')){ closeModal(); return; }
   if(!nearTarget) return;
-
   if(nearTarget.type==='shop'){ openShop(); return; }
 
   const {fid,idx}=nearTarget;
-  const fd=farmData[fid]; if(!fd||!fd.plots){ toast('로딩 중...'); return; }
+  const fd=farmData[fid];
+  if(!fd||!Array.isArray(fd.plots)){ toast('농장 로딩 중...'); return; }
   const p=fd.plots[idx];
+  if(p===undefined||p===null){ toast('칸 정보 오류'); return; }
   const mine=fid===myId;
 
   if(!p.type||p.harvested){
@@ -603,22 +563,20 @@ function doInteract(){
     openSeedModal(fid,idx); return;
   }
   if(growProgress(p)>=1){
-    if(!mine){ toast('수확은 내 농장에서만 가능합니다'); return; }
+    if(!mine){ toast('수확은 내 농장에서만'); return; }
     const pt=PTM[p.type];
     p.harvested=true; coins+=pt.coin; saveLS(); updateHUD();
     saveF(fid,fd);
     toast(`🥔 ${pt.name} 수확! +${pt.coin} 코인`); return;
   }
-  // Still growing
   if(wc>0){
-    const pt=PTM[p.type];
     if((p.waterBoost||0)>=.9){ toast('이미 물을 충분히 주었습니다'); return; }
     p.waterBoost=Math.min(.9,(p.waterBoost||0)+WATER_SAVE);
     wc--; saveLS(); updateHUD();
     saveF(fid,fd);
     toast(`💧 물을 주었습니다! (${wc}회 남음)`);
   } else {
-    toast(`⏳ ${fmtS(remainSec(p))} 남음 · 상점에서 물뿌리개를 구매하세요`);
+    toast(`⏳ ${fmtS(remainSec(p))} 남음 · 상점에서 물뿌리개 구매`);
   }
 }
 
@@ -635,11 +593,13 @@ function openSeedModal(fid,idx){
 window.doPlant=(fid,idx,tid)=>{
   const pt=PTM[tid];
   if(pt.seed>0&&coins<pt.seed){ toast(`씨앗 비용 ${pt.seed}코인 부족`); return; }
-  const fd=farmData[fid]; if(!fd) return;
+  const fd=farmData[fid];
+  if(!fd||!Array.isArray(fd.plots)){ toast('농장 로딩 중...'); return; }
   if(pt.seed>0){ coins-=pt.seed; saveLS(); updateHUD(); }
   fd.plots[idx]={type:tid,plantedAt:Date.now(),waterBoost:0,harvested:false};
   saveF(fid,fd); closeModal();
   toast(`🌱 ${pt.name} 심기 완료!`);
+  rebuildPlant(fid,idx);
 };
 
 function openShop(){
@@ -668,19 +628,20 @@ window.buyWC=()=>{
 };
 window.buySpkr=()=>{
   if(coins<30){ toast('코인 부족'); return; }
-  const fd=farmData[myId]; if(!fd){ toast('농장 로딩 중...'); return; }
+  const fd=farmData[myId];
+  if(!fd||!Array.isArray(fd.plots)){ toast('농장 로딩 중...'); return; }
   coins-=30; saveLS(); updateHUD();
   fd.plots.forEach(p=>{
-    if(!PTM[p.type]||p.harvested||!p.plantedAt) return;
+    if(!PTM[p?.type]||p.harvested||!p.plantedAt) return;
     p.waterBoost=Math.min(.9,(p.waterBoost||0)+WATER_SAVE);
   });
-  saveF(myId,fd); closeModal();
+  saveF(myId,fd); rebuildFarmPlants(myId); closeModal();
   toast('🌀 스프링클러! 모든 칸에 물 뿌렸습니다');
 };
 window.doReset=()=>{
   if(!confirm('내 농장을 초기화할까요?')) return;
   const fd=emptyFarm(pName); farmData[myId]=fd; saveF(myId,fd);
-  toast('농장 초기화 완료'); closeModal();
+  rebuildFarmPlants(myId); toast('농장 초기화 완료'); closeModal();
 };
 
 // ── Input ──
@@ -692,67 +653,77 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 
-// ── Camera follow ──
-const camTgt=new THREE.Vector3(0,0,0);
+// ── Camera orbit (점프맵 방식) ──
+let cameraYaw=0, cameraPitch=0.5;
+const CAM_DIST=16;
+let isDragging=false, lastMX=0, lastMY=0;
+
+canvas.addEventListener('mousedown',e=>{
+  isDragging=true; lastMX=e.clientX; lastMY=e.clientY; e.preventDefault();
+});
+window.addEventListener('mousemove',e=>{
+  if(!isDragging) return;
+  cameraYaw  -=(e.clientX-lastMX)*0.005;
+  cameraPitch-=(e.clientY-lastMY)*0.005;
+  cameraPitch=Math.max(-0.8,Math.min(1.0,cameraPitch));
+  lastMX=e.clientX; lastMY=e.clientY;
+});
+window.addEventListener('mouseup',()=>isDragging=false);
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
 function updateCamera(){
   if(!playerMesh) return;
-  const px=playerMesh.position.x, pz=playerMesh.position.z;
-  camTgt.x+=( px-camTgt.x)*.1;
-  camTgt.z+=( pz-camTgt.z)*.1;
-  camera.position.x+=(camTgt.x       -camera.position.x)*.1;
-  camera.position.y+=(10              -camera.position.y)*.1;
-  camera.position.z+=(camTgt.z+11    -camera.position.z)*.1;
-  camera.lookAt(camTgt.x,1,camTgt.z);
+  const px=playerMesh.position.x, py=playerMesh.position.y, pz=playerMesh.position.z;
+  const cx=px+Math.sin(cameraYaw)*Math.cos(cameraPitch)*CAM_DIST;
+  const cy=py+Math.sin(cameraPitch)*CAM_DIST+1;
+  const cz=pz+Math.cos(cameraYaw)*Math.cos(cameraPitch)*CAM_DIST;
+  camera.position.lerp(new THREE.Vector3(cx,cy,cz),0.12);
+  camera.lookAt(px,py+0.5,pz);
 }
 
-// ── Player movement ──
+// ── Player movement (카메라 방향 기준) ──
+const _fwd=new THREE.Vector3(), _rgt=new THREE.Vector3();
 function movePlayer(){
   if(!playerMesh) return;
   if(document.getElementById('mo').classList.contains('open')) return;
-
   const spd=.1;
-  let mx=0, mz=0;
-  if(keys['w']||keys['arrowup'])    mz-=1;
-  if(keys['s']||keys['arrowdown'])  mz+=1;
-  if(keys['a']||keys['arrowleft'])  mx-=1;
-  if(keys['d']||keys['arrowright']) mx+=1;
-
-  if(mx||mz){
-    const len=Math.hypot(mx,mz);
-    mx=mx/len*spd; mz=mz/len*spd;
-    playerMesh.position.x+=mx;
-    playerMesh.position.z+=mz;
-    playerMesh.position.x=Math.max(-28,Math.min(28,playerMesh.position.x));
-    playerMesh.position.z=Math.max(-28,Math.min(28,playerMesh.position.z));
-
-    // Smooth rotation toward movement direction
-    const ta=Math.atan2(mx,mz);
-    let da=ta-playerMesh.rotation.y;
+  _fwd.set(-Math.sin(cameraYaw),0,-Math.cos(cameraYaw));
+  _rgt.set( Math.cos(cameraYaw),0,-Math.sin(cameraYaw));
+  let vx=0, vz=0;
+  if(keys['w']||keys['arrowup'])    { vx+=_fwd.x; vz+=_fwd.z; }
+  if(keys['s']||keys['arrowdown'])  { vx-=_fwd.x; vz-=_fwd.z; }
+  if(keys['a']||keys['arrowleft'])  { vx-=_rgt.x; vz-=_rgt.z; }
+  if(keys['d']||keys['arrowright']) { vx+=_rgt.x; vz+=_rgt.z; }
+  if(vx||vz){
+    const len=Math.hypot(vx,vz)||1;
+    vx=vx/len*spd; vz=vz/len*spd;
+    playerMesh.position.x+=vx;
+    playerMesh.position.z+=vz;
+    playerMesh.position.x=Math.max(-55,Math.min(55,playerMesh.position.x));
+    playerMesh.position.z=Math.max(-55,Math.min(55,playerMesh.position.z));
+    const tA=Math.atan2(vx,vz);
+    let da=tA-playerMesh.rotation.y;
     while(da>Math.PI) da-=Math.PI*2; while(da<-Math.PI) da+=Math.PI*2;
-    playerMesh.rotation.y+=da*.22;
-
-    // Walk bob
+    playerMesh.rotation.y+=da*.2;
     walkPhase+=.2;
     playerMesh.position.y=Math.abs(Math.sin(walkPhase))*.07;
   } else {
-    playerMesh.position.y*=.85; // settle down
+    playerMesh.position.y*=.85;
   }
 }
 
-// ── Animate loop ──
+// ── Animate ──
 let frame=0;
 function animate(){
   requestAnimationFrame(animate); frame++;
   movePlayer();
   if(frame%2===0) checkNearby();
   updateCamera();
-  // Rebuild plant visuals every 1.5s
   if(frame%90===0) Object.keys(farmData).forEach(rebuildFarmPlants);
-  // Rainbow cycle
   if(frame%8===0){
     for(const fid of Object.keys(plantGrps)){
       (farmData[fid]?.plots||[]).forEach((p,i)=>{
-        if(p.type!=='rainbow'||p.harvested) return;
+        if(p?.type!=='rainbow'||p.harvested) return;
         plantGrps[fid]?.[i]?.children.forEach(c=>{
           if(c.material?.color) c.material.color.setHSL((Date.now()*.0004+i*.2)%1,1,.55);
         });
@@ -773,19 +744,17 @@ async function init(){
   document.getElementById('hud-name').textContent=name;
   loadLS(); updateHUD();
 
-  // Build world immediately
   buildPlayerModel();
-  buildFarm(myId, FARM_POS[0], true);
-  farmData[myId] = emptyFarm(pName); // pre-populate so interaction works before Firebase
-  OTHER_SLOTS.forEach((sid,i) => {
-    buildFarm(sid, FARM_POS[i+1], false);
-    farmData[sid] = emptyFarm('');
+  buildFarm(myId,FARM_POS[0],true);
+  farmData[myId]=emptyFarm(pName);
+  OTHER_SLOTS.forEach((sid,i)=>{
+    buildFarm(sid,FARM_POS[i+1],false);
+    farmData[sid]=emptyFarm('');
   });
   buildShop();
   addDeco();
   animate();
 
-  // Firebase in background
   try{
     await ensureMyFarm();
     subscribe(myId);
