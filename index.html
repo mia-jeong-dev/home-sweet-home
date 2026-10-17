@@ -3980,7 +3980,7 @@ function makePumpkinGeo() {
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-    const sqY = y * 0.70;
+    const sqY = y * 0.84;
     const azimuth = Math.atan2(z, x);
     const rOrig = Math.sqrt(x * x + z * z);
     const polar = Math.atan2(rOrig, y);
