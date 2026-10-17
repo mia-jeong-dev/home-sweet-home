@@ -18,6 +18,7 @@ canvas { display:block; }
 #hud-name { font-size:13px; color:#bbb; }
 #hud-coins { margin-left:auto; font-size:15px; color:#f5d060; font-weight:bold; }
 #hud-wc { font-size:13px; color:#4af; }
+#hud-si { font-size:13px; color:#7ddc44; }
 
 #hint {
   position:fixed; bottom:70px; left:50%; transform:translateX(-50%);
@@ -76,9 +77,10 @@ canvas { display:block; }
   <span id="hud-name"></span>
   <span id="hud-coins">🪙 0</span>
   <span id="hud-wc"></span>
+  <span id="hud-si"></span>
 </div>
-<div id="hint"><kbd>E</kbd><span id="hint-text">심기</span></div>
-<div id="ctrl-hint">WASD 이동 &nbsp;·&nbsp; 마우스 드래그 각도 조절 &nbsp;·&nbsp; E 상호작용</div>
+<div id="hint"><kbd>Space</kbd><span id="hint-text">심기</span></div>
+<div id="ctrl-hint">WASD 이동 &nbsp;·&nbsp; 마우스 드래그 각도 조절 &nbsp;·&nbsp; Space 상호작용</div>
 
 <div id="mo">
   <div id="mp">
@@ -109,21 +111,29 @@ const COLL = 'potato_farms';
 // ── Potato types ──
 const PT = [
   {id:'common',  name:'일반 감자',    coin:5,    sec:10,    hex:'#c8a050', seed:0  },
-  {id:'unusual', name:'특이한 감자',  coin:20,   sec:40,    hex:'#50c870', seed:8  },
-  {id:'good',    name:'좋은 감자',    coin:50,   sec:100,   hex:'#5088ff', seed:20 },
-  {id:'great',   name:'훌륭한 감자',  coin:100,  sec:200,   hex:'#b060ff', seed:40 },
-  {id:'king',    name:'대왕 감자',    coin:200,  sec:400,   hex:'#ff5555', seed:80 },
-  {id:'rainbow', name:'레인보우 감자',coin:500,  sec:1000,  hex:'#ffffff', seed:150},
-  {id:'golden',  name:'황금 감자',    coin:1000, sec:2000,  hex:'#ffd700', seed:300},
+  {id:'unusual', name:'특이한 감자',  coin:20,   sec:40,    hex:'#50c870', seed:3  },
+  {id:'good',    name:'좋은 감자',    coin:50,   sec:100,   hex:'#5088ff', seed:8  },
+  {id:'great',   name:'훌륭한 감자',  coin:100,  sec:200,   hex:'#b060ff', seed:15 },
+  {id:'king',    name:'대왕 감자',    coin:200,  sec:400,   hex:'#ff5555', seed:30 },
+  {id:'rainbow', name:'레인보우 감자',coin:500,  sec:1000,  hex:'#ffffff', seed:60 },
+  {id:'golden',  name:'황금 감자',    coin:1000, sec:2000,  hex:'#ffd700', seed:120},
 ];
 const PTM = Object.fromEntries(PT.map(p=>[p.id,p]));
 const WATER_SAVE = 0.25;
 
 // ── LocalStorage ──
-const LS = {nm:'pf2_name', co:'pf2_coins', wc:'pf2_wc'};
-let pName='', coins=0, wc=0;
-function loadLS(){ coins=+(localStorage.getItem(LS.co)||0); wc=+(localStorage.getItem(LS.wc)||0); }
-function saveLS(){ localStorage.setItem(LS.co,coins); localStorage.setItem(LS.wc,wc); }
+const LS = {nm:'pf2_name', co:'pf2_coins', wc:'pf2_wc', si:'pf2_seeds'};
+let pName='', coins=0, wc=0, seedInv={};
+function loadLS(){
+  coins=+(localStorage.getItem(LS.co)||0);
+  wc=+(localStorage.getItem(LS.wc)||0);
+  try{ seedInv=JSON.parse(localStorage.getItem(LS.si)||'{}'); }catch(e){ seedInv={}; }
+}
+function saveLS(){
+  localStorage.setItem(LS.co,coins);
+  localStorage.setItem(LS.wc,wc);
+  localStorage.setItem(LS.si,JSON.stringify(seedInv));
+}
 
 // ── State ──
 let myId='';
@@ -281,13 +291,16 @@ function buildShop(){
   const ct=new THREE.Mesh(new THREE.BoxGeometry(4.5,.7,.55),
     new THREE.MeshLambertMaterial({color:0xd0a060}));
   ct.position.set(0,.5,2.1); g.add(ct);
-  // Sign board
+  // Sign board (초록 바탕 + 주황 줄무늬)
   const sb=new THREE.Mesh(new THREE.BoxGeometry(3,.65,.1),
-    new THREE.MeshLambertMaterial({color:0x4a1a00}));
+    new THREE.MeshLambertMaterial({color:0x1a7a3a}));
   sb.position.set(0,2.9,2.5); g.add(sb);
   const st=new THREE.Mesh(new THREE.BoxGeometry(2.5,.13,.12),
-    new THREE.MeshBasicMaterial({color:0xffd700}));
-  st.position.set(0,3.25,2.52); g.add(st);
+    new THREE.MeshBasicMaterial({color:0xff8800}));
+  st.position.set(0,3.15,2.52); g.add(st);
+  const st2=new THREE.Mesh(new THREE.BoxGeometry(2.5,.13,.12),
+    new THREE.MeshBasicMaterial({color:0xffdd00}));
+  st2.position.set(0,2.65,2.52); g.add(st2);
 }
 
 // ── Decorations ──
@@ -353,71 +366,71 @@ function buildPlayerModel(){
   const gunMidM  = new THREE.MeshLambertMaterial({color:0x444444});
 
   // ── 감자 몸통 ──
-  const body=new THREE.Mesh(new THREE.SphereGeometry(0.9,16,12),potatoM);
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.65,16,12),potatoM);
   body.scale.set(1.1,1.0,1.05);
-  body.position.y=0.9; body.castShadow=true; g.add(body);
+  body.position.y=0.65; body.castShadow=true; g.add(body);
 
   // 하이라이트
-  const hl=new THREE.Mesh(new THREE.SphereGeometry(0.55,10,8),hlM);
+  const hl=new THREE.Mesh(new THREE.SphereGeometry(0.40,10,8),hlM);
   hl.scale.set(0.9,0.55,0.32);
-  hl.position.set(-0.24,1.14,0.78); g.add(hl);
+  hl.position.set(-0.17,0.82,0.56); g.add(hl);
 
   // 감자 점
-  [[0.50,1.40,0.50],[-0.58,0.82,0.62],[0.18,0.52,0.80]].forEach(([x,y,z])=>{
-    const sp=new THREE.Mesh(new THREE.SphereGeometry(0.11,6,5),bumpM);
+  [[0.36,1.01,0.36],[-0.42,0.59,0.45],[0.13,0.37,0.58]].forEach(([x,y,z])=>{
+    const sp=new THREE.Mesh(new THREE.SphereGeometry(0.08,6,5),bumpM);
     sp.position.set(x,y,z); g.add(sp);
   });
 
   // ── 눈 ──
-  [[-0.30,0],[0.30,0]].forEach(([x])=>{
-    const eye=new THREE.Mesh(new THREE.SphereGeometry(0.13,8,6),eyeM);
-    eye.position.set(x,0.94,0.86); g.add(eye);
-    const shine=new THREE.Mesh(new THREE.SphereGeometry(0.055,5,4),eyeShM);
-    shine.position.set(x+0.04,0.99,0.92); g.add(shine);
+  [[-0.22,0],[0.22,0]].forEach(([x])=>{
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(0.095,8,6),eyeM);
+    eye.position.set(x,0.68,0.62); g.add(eye);
+    const shine=new THREE.Mesh(new THREE.SphereGeometry(0.04,5,4),eyeShM);
+    shine.position.set(x+0.03,0.71,0.66); g.add(shine);
   });
 
   // ── 줄기 ──
-  const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.075,0.52,6),stemM);
-  stem.position.set(0,1.76,0); g.add(stem);
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.033,0.054,0.38,6),stemM);
+  stem.position.set(0,1.27,0); g.add(stem);
 
   // ── 잎 3개 (fan) ──
   [-35,0,35].forEach(deg=>{
     const rad=THREE.MathUtils.degToRad(deg);
-    const leaf=new THREE.Mesh(new THREE.CylinderGeometry(0.30,0.30,0.06,8),leafM);
-    leaf.position.set(Math.sin(rad)*0.26, 2.02+Math.cos(rad)*0.18, 0);
+    const leaf=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.045,8),leafM);
+    leaf.position.set(Math.sin(rad)*0.19, 1.46+Math.cos(rad)*0.13, 0);
     leaf.rotation.z=rad; g.add(leaf);
   });
 
   // ── 팔 ──
-  const armGeo=new THREE.CylinderGeometry(0.08,0.09,0.60,6);
+  const armGeo=new THREE.CylinderGeometry(0.058,0.065,0.44,6);
   // 오른팔 (총 들기)
   const rArm=new THREE.Mesh(armGeo,potatoM);
   rArm.rotation.z=-(Math.PI/2+0.28);
-  rArm.position.set(1.08,0.88,0); rArm.castShadow=true; g.add(rArm);
+  rArm.position.set(0.78,0.63,0); rArm.castShadow=true; g.add(rArm);
   // 왼팔
   const lArm=new THREE.Mesh(armGeo,potatoM);
   lArm.rotation.z= (Math.PI/2+0.28);
-  lArm.position.set(-1.08,0.88,0); lArm.castShadow=true; g.add(lArm);
+  lArm.position.set(-0.78,0.63,0); lArm.castShadow=true; g.add(lArm);
 
   // ── 총 ──
   const gunG=new THREE.Group();
-  gunG.position.set(1.52,0.80,0);
+  gunG.position.set(1.10,0.58,0);
   // 총 본체
-  const gBody=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.19,0.14),gunDarkM);
-  gBody.position.x=0.13; gunG.add(gBody);
+  const gBody=new THREE.Mesh(new THREE.BoxGeometry(0.27,0.14,0.10),gunDarkM);
+  gBody.position.x=0.09; gunG.add(gBody);
   // 손잡이
-  const gGrip=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.34,0.14),gunDarkM);
-  gGrip.position.set(0,-0.21,0); gunG.add(gGrip);
+  const gGrip=new THREE.Mesh(new THREE.BoxGeometry(0.10,0.25,0.10),gunDarkM);
+  gGrip.position.set(0,-0.15,0); gunG.add(gGrip);
   // 총신
-  const gBarrel=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.12,0.11),gunMidM);
-  gBarrel.position.set(0.38,0.03,0); gunG.add(gBarrel);
+  const gBarrel=new THREE.Mesh(new THREE.BoxGeometry(0.20,0.09,0.08),gunMidM);
+  gBarrel.position.set(0.27,0.02,0); gunG.add(gBarrel);
   // 총구
-  const gTip=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.12,0.11),gunDarkM);
-  gTip.position.set(0.57,0.03,0); gunG.add(gTip);
+  const gTip=new THREE.Mesh(new THREE.BoxGeometry(0.065,0.09,0.08),gunDarkM);
+  gTip.position.set(0.41,0.02,0); gunG.add(gTip);
   // 방아쇠
-  const gGuard=new THREE.Mesh(new THREE.TorusGeometry(0.09,0.028,5,8,Math.PI),gunDarkM);
+  const gGuard=new THREE.Mesh(new THREE.TorusGeometry(0.065,0.02,5,8,Math.PI),gunDarkM);
   gGuard.rotation.z=Math.PI/2;
-  gGuard.position.set(0,-0.04,0); gunG.add(gGuard);
+  gGuard.position.set(0,-0.03,0); gunG.add(gGuard);
   g.add(gunG);
 
   g.position.set(0,.01,12);
@@ -526,6 +539,8 @@ async function loadOthers(){
 function updateHUD(){
   document.getElementById('hud-coins').textContent=`🪙 ${coins}`;
   document.getElementById('hud-wc').textContent=wc>0?`💧×${wc}`:'';
+  const tot=Object.values(seedInv).reduce((a,b)=>a+b,0);
+  document.getElementById('hud-si').textContent=tot>0?`🌱×${tot}`:'';
 }
 function showModal(title,html){
   document.getElementById('mt').textContent=title;
@@ -574,7 +589,8 @@ function checkNearby(){
   const mine=fid===myId;
   const d=(farmData[fid]?.plots||[])[idx];
   if(!d?.type||d?.harvested){
-    hintTxt.textContent=mine?'심기':'관람 중';
+    const hasSeed=Object.values(seedInv).some(v=>v>0);
+    hintTxt.textContent=mine?(hasSeed?'심기':'상점에서 씨앗 구매'):'관람 중';
   } else if(growProgress(d)>=1){
     hintTxt.textContent=mine?'🥔 수확!':'수확 준비 완료';
   } else if(wc>0){
@@ -619,33 +635,44 @@ function doInteract(){
 }
 
 function openSeedModal(fid,idx){
-  showModal('🌱 감자 선택',
-    PT.map(pt=>`
+  const mySeeds=PT.filter(pt=>(seedInv[pt.id]||0)>0);
+  if(mySeeds.length===0){ toast('상점에서 씨앗을 먼저 구매하세요 🌱'); return; }
+  showModal('🌱 감자 심기',
+    mySeeds.map(pt=>`
       <div class="pc" onclick="doPlant('${fid}',${idx},'${pt.id}')">
         <div class="pcdot" style="background:${pt.hex}"></div>
-        <div><div class="pcn">${pt.name}</div>
-        <div class="pci">수확 +${pt.coin}코인 · ${fmtS(pt.sec)} 성장${pt.seed?` · 씨앗 ${pt.seed}코인`:' · 무료'}</div></div>
+        <div><div class="pcn">${pt.name} <span style="color:#7ddc44">×${seedInv[pt.id]}</span></div>
+        <div class="pci">수확 +${pt.coin}코인 · ${fmtS(pt.sec)} 성장</div></div>
       </div>`).join('')
   );
 }
 window.doPlant=(fid,idx,tid)=>{
-  const pt=PTM[tid];
-  if(pt.seed>0&&coins<pt.seed){ toast(`씨앗 비용 ${pt.seed}코인 부족`); return; }
+  if(!(seedInv[tid]||0)){ toast('씨앗이 없습니다'); return; }
   const fd=farmData[fid];
   if(!fd||!Array.isArray(fd.plots)){ toast('농장 로딩 중...'); return; }
-  if(pt.seed>0){ coins-=pt.seed; saveLS(); updateHUD(); }
+  seedInv[tid]--; if(seedInv[tid]<=0) delete seedInv[tid];
+  saveLS(); updateHUD();
   fd.plots[idx]={type:tid,plantedAt:Date.now(),waterBoost:0,harvested:false};
   saveF(fid,fd); closeModal();
-  toast(`🌱 ${pt.name} 심기 완료!`);
+  toast(`🌱 ${PTM[tid].name} 심기 완료!`);
   rebuildPlant(fid,idx);
 };
 
 function openShop(){
-  showModal('🛒 도구 상점',`
+  const seedSection=PT.map(pt=>`
+    <div class="pc" onclick="buySeed('${pt.id}')">
+      <div class="pcdot" style="background:${pt.hex}"></div>
+      <div><div class="pcn">${pt.name} <span style="color:#7ddc44">보유 ${seedInv[pt.id]||0}개</span></div>
+      <div class="pci">${pt.seed?`씨앗 ${pt.seed}코인`:'무료'} · 수확 +${pt.coin}코인 · ${fmtS(pt.sec)} 성장</div></div>
+    </div>`).join('');
+  showModal('🛒 상점',`
+    <div style="font-size:12px;color:#f5d060;margin-bottom:8px;font-weight:bold;letter-spacing:1px">🌱 씨앗</div>
+    ${seedSection}
+    <div style="font-size:12px;color:#f5d060;margin:12px 0 8px;font-weight:bold;letter-spacing:1px">🔧 도구</div>
     <div class="pc" onclick="buyWC()">
       <div class="pcdot" style="background:#4af"></div>
       <div><div class="pcn">💧 물뿌리개</div>
-      <div class="pci">50코인 · 10회 사용 · 감자 가까이서 E키로 물주기 · 성장 25% 단축</div></div>
+      <div class="pci">50코인 · 10회 사용 · Space키로 물주기 · 성장 25% 단축</div></div>
     </div>
     <div class="pc" onclick="buySpkr()">
       <div class="pcdot" style="background:#447"></div>
@@ -659,6 +686,13 @@ function openShop(){
     </div>
   `);
 }
+window.buySeed=(tid)=>{
+  const pt=PTM[tid];
+  if(coins<pt.seed){ toast(`씨앗 비용 ${pt.seed}코인 부족`); return; }
+  coins-=pt.seed; seedInv[tid]=(seedInv[tid]||0)+1; saveLS(); updateHUD();
+  toast(`🌱 ${pt.name} 씨앗 구입!`);
+  openShop();
+};
 window.buyWC=()=>{
   if(coins<50){ toast('코인 부족'); return; }
   coins-=50; wc+=10; saveLS(); updateHUD();
@@ -686,7 +720,7 @@ window.doReset=()=>{
 const keys={};
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase(); keys[k]=true;
-  if(k==='e'){ checkNearby(); doInteract(); }
+  if(k===' '){ checkNearby(); doInteract(); e.preventDefault(); }
   if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)) e.preventDefault();
 });
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
@@ -780,7 +814,9 @@ async function init(){
   }
   pName=name; myId=name;
   document.getElementById('hud-name').textContent=name;
-  loadLS(); updateHUD();
+  loadLS();
+  if(Object.keys(seedInv).length===0){ seedInv.common=3; saveLS(); }
+  updateHUD();
 
   buildPlayerModel();
   buildFarm(myId,FARM_POS[0],true);
