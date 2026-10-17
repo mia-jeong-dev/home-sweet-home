@@ -130,7 +130,9 @@ function saveLS(){ localStorage.setItem(LS.co,coins); localStorage.setItem(LS.wc
 // ── State ──
 let myId='';
 const farmData={}, farmUnsub={};
-let otherIds=[];
+// 5개 고정 슬롯 ID (항상 존재)
+const OTHER_SLOTS=['__s1','__s2','__s3','__s4','__s5'];
+const slotRealId={}; // slot ID → 실제 Firebase ID
 let nearTarget=null;
 
 // ── Renderer ──
@@ -182,8 +184,8 @@ const FARM_POS=[
   new THREE.Vector3(14,0,-14),    // other5
 ];
 const SHOP_POS=new THREE.Vector3(11,0,-2);
-const SHOP_INTERACT_R=2.8;
-const PLOT_INTERACT_R=1.5;
+const SHOP_INTERACT_R=3.0;
+const PLOT_INTERACT_R=1.9;
 
 const plotMeshes={}, plantGrps={}, farmGrps={};
 let playerMesh=null;
@@ -484,16 +486,30 @@ function subscribe(fid){
     rebuildFarmPlants(fid);
   });
 }
-async function saveF(fid,data){ data.lastActive=Date.now(); await setDoc(doc(db,COLL,fid),data); }
+async function saveF(fid,data){
+  // fid 가 슬롯ID면 실제 Firebase ID로 변환
+  const realId=slotRealId[fid]||fid;
+  data.lastActive=Date.now();
+  await setDoc(doc(db,COLL,realId),data);
+}
 async function loadOthers(){
   const snap=await getDocs(query(collection(db,COLL),orderBy('lastActive','desc'),limit(8)));
-  otherIds=[];
-  snap.forEach(d=>{ if(d.id!==myId&&otherIds.length<5) otherIds.push(d.id); });
-  otherIds.forEach((fid,i)=>{
-    buildFarm(fid, FARM_POS[i+1], false);
-    subscribe(fid);
-    // Simple name plate above farm
-    addNamePlate(fid, FARM_POS[i+1]);
+  const found=[];
+  snap.forEach(d=>{ if(d.id!==myId&&found.length<5) found.push({id:d.id,data:d.data()}); });
+  // 슬롯 업데이트 (실제 플레이어가 있으면 그 데이터로, 없으면 빈 농장 유지)
+  OTHER_SLOTS.forEach((sid,i)=>{
+    const real=found[i];
+    if(real){
+      slotRealId[sid]=real.id;
+      farmData[sid]=real.data;
+      rebuildFarmPlants(sid);
+      // 실시간 업데이트: 실제 ID로 구독, 슬롯에 반영
+      if(farmUnsub[sid]) farmUnsub[sid]();
+      farmUnsub[sid]=onSnapshot(doc(db,COLL,real.id),snap=>{
+        farmData[sid]=snap.exists()?snap.data():emptyFarm('');
+        rebuildFarmPlants(sid);
+      });
+    }
   });
 }
 function addNamePlate(fid, pos){
@@ -537,7 +553,7 @@ function checkNearby(){
   nearTarget=null;
 
   // Plots (my farm first, then others)
-  const allFarms=[myId,...otherIds];
+  const allFarms=[myId,...OTHER_SLOTS];
   outer:for(const fid of allFarms){
     for(let i=0;i<6;i++){
       if(pp.distanceTo(plotWP(fid,i))<PLOT_INTERACT_R){
@@ -587,7 +603,7 @@ function doInteract(){
   if(nearTarget.type==='shop'){ openShop(); return; }
 
   const {fid,idx}=nearTarget;
-  const fd=farmData[fid]; if(!fd) return;
+  const fd=farmData[fid]; if(!fd||!fd.plots){ toast('로딩 중...'); return; }
   const p=fd.plots[idx];
   const mine=fid===myId;
 
@@ -769,6 +785,11 @@ async function init(){
   // Build world immediately
   buildPlayerModel();
   buildFarm(myId, FARM_POS[0], true);
+  farmData[myId] = emptyFarm(pName); // pre-populate so interaction works before Firebase
+  OTHER_SLOTS.forEach((sid,i) => {
+    buildFarm(sid, FARM_POS[i+1], false);
+    farmData[sid] = emptyFarm('');
+  });
   buildShop();
   addDeco();
   animate();
