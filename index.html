@@ -4069,11 +4069,11 @@ function buildPlayer() {
   const _jEyeS = new THREE.Shape();
   _jEyeS.moveTo(-0.10, 0.10); _jEyeS.lineTo(0.10, 0.10); _jEyeS.lineTo(0, -0.10); _jEyeS.closePath();
   playerJackLeftEye  = new THREE.Mesh(new THREE.ShapeGeometry(_jEyeS), jackFaceMat);
-  playerJackLeftEye.position.set(-0.185, 0.13, 0.48);
+  playerJackLeftEye.position.set(-0.185, 0.13, 0.62);
   playerJackLeftEye.visible = false;
   player.add(playerJackLeftEye);
   playerJackRightEye = new THREE.Mesh(new THREE.ShapeGeometry(_jEyeS), jackFaceMat.clone());
-  playerJackRightEye.position.set(0.185, 0.13, 0.48);
+  playerJackRightEye.position.set(0.185, 0.13, 0.62);
   playerJackRightEye.visible = false;
   player.add(playerJackRightEye);
   const _jMS = new THREE.Shape();
@@ -4085,7 +4085,7 @@ function buildPlayer() {
   }
   _jMS.lineTo(_jHW, _jB); _jMS.lineTo(-_jHW, _jB); _jMS.closePath();
   playerJackMouth = new THREE.Mesh(new THREE.ShapeGeometry(_jMS), jackFaceMat.clone());
-  playerJackMouth.position.set(0, -0.095, 0.48);
+  playerJackMouth.position.set(0, -0.095, 0.62);
   playerJackMouth.visible = false;
   player.add(playerJackMouth);
 
