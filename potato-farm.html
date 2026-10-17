@@ -552,7 +552,6 @@ function checkNearby(){
   const pp=playerMesh.position;
   nearTarget=null;
 
-  // Plots (my farm first, then others)
   const allFarms=[myId,...OTHER_SLOTS];
   outer:for(const fid of allFarms){
     for(let i=0;i<6;i++){
@@ -561,38 +560,30 @@ function checkNearby(){
       }
     }
   }
-  // Shop
   if(!nearTarget && pp.distanceTo(SHOP_POS)<SHOP_INTERACT_R){
     nearTarget={type:'shop'};
   }
 
-  // Update hint UI
   const hintEl=document.getElementById('hint');
   const hintTxt=document.getElementById('hint-text');
-  if(nearTarget){
-    hintEl.style.display='block';
-    if(nearTarget.type==='shop'){
-      hintTxt.textContent='상점 열기';
-    } else {
-      const {fid,idx}=nearTarget;
-      const mine=fid===myId;
-      const d=(farmData[fid]?.plots||[])[idx];
-      if(!d?.type||d?.harvested){
-        hintTxt.textContent=mine?'심기':'심기 (타인 농장)';
-      } else if(growProgress(d)>=1){
-        hintTxt.textContent=mine?'🥔 수확!':'수확 준비 완료 (내 농장에서만)';
-      } else if(wc>0){
-        hintTxt.textContent=`💧 물주기 (${wc}회)`;
-      } else {
-        hintEl.style.display='none'; nearTarget=null;
-        // Show toast instead of hint for grow timer
-        // (don't hide, just show timer)
-        hintEl.style.display='block';
-        hintTxt.textContent=`⏳ ${fmtS(remainSec(d))} 남음`;
-      }
-    }
+  if(!nearTarget){ hintEl.style.display='none'; return; }
+
+  hintEl.style.display='block';
+  if(nearTarget.type==='shop'){
+    hintTxt.textContent='상점 열기'; return;
+  }
+
+  const {fid,idx}=nearTarget;
+  const mine=fid===myId;
+  const d=(farmData[fid]?.plots||[])[idx];
+  if(!d?.type||d?.harvested){
+    hintTxt.textContent=mine?'심기':'관람 중';
+  } else if(growProgress(d)>=1){
+    hintTxt.textContent=mine?'🥔 수확!':'수확 준비 완료';
+  } else if(wc>0){
+    hintTxt.textContent=`💧 물주기 (${wc}회)`;
   } else {
-    hintEl.style.display='none';
+    hintTxt.textContent=`⏳ ${fmtS(remainSec(d))} 남음`;
   }
 }
 
@@ -696,7 +687,7 @@ window.doReset=()=>{
 const keys={};
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase(); keys[k]=true;
-  if(k==='e') doInteract();
+  if(k==='e'){ checkNearby(); doInteract(); }
   if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)) e.preventDefault();
 });
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
