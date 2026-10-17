@@ -634,13 +634,22 @@ async function init(){
   playerName=name; myId=name; curFarmId=name;
   document.getElementById('name-disp').textContent=name;
   loadLS(); updateUI();
-  await ensureMyFarm();
+
+  // 씬 즉시 구성 + 렌더 루프 시작 (Firebase 대기 안 함)
   buildFarm(myId,FPOS[0],true);
-  subscribeFarm(myId);
   buildTabs();
-  await loadOthers();
   setTool('harvest');
   animate();
+
+  // Firebase는 백그라운드에서 로드
+  try {
+    await ensureMyFarm();
+    subscribeFarm(myId);
+    await loadOthers();
+  } catch(e) {
+    console.error('Firebase error:', e);
+    toast('⚠️ 네트워크 오류 (농장 저장 불가)');
+  }
 }
 init().catch(console.error);
 </script>
