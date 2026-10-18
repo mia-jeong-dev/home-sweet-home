@@ -225,7 +225,7 @@ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x7ec8e3);
-scene.fog=new THREE.Fog(0x7ec8e3,80,200);
+scene.fog=new THREE.Fog(0x7ec8e3,100,400);
 
 const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,180);
 camera.position.set(0,9,23);
@@ -267,7 +267,7 @@ const FARM_POS=[
 ];
 const SHOP_POS=new THREE.Vector3(0,0,18);
 const MARKET_POS=new THREE.Vector3(18,0,18);
-const GOLDEN_TREE_POS=new THREE.Vector3(0,0,-76);
+const GOLDEN_TREE_POS=new THREE.Vector3(0,0,-146);
 const GOLDEN_TREE_R=3.5;
 const LS_GTCD='pf2_gt_cd';
 const TREE_PRESS_NEED=8;
@@ -677,7 +677,7 @@ function addDeco(){
   });
   // Secret golden tree (behind center column farms, x=0 z=-36)
   {
-    const g=new THREE.Group(); g.position.set(0,0,-76); g.scale.setScalar(1.3);
+    const g=new THREE.Group(); g.position.set(0,0,-146); g.scale.setScalar(1.3);
     const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.13,.19,1.0,7),
       new THREE.MeshLambertMaterial({color:0x5a3008}));
     trunk.position.y=.5; g.add(trunk);
@@ -1490,8 +1490,8 @@ function movePlayer(){
   }
   if(pvx||pvz){
     const cx=playerMesh.position.x, cz=playerMesh.position.z;
-    const nx=Math.max(-80,Math.min(80,cx+pvx));
-    const nz=Math.max(-80,Math.min(80,cz+pvz));
+    const nx=Math.max(-150,Math.min(150,cx+pvx));
+    const nz=Math.max(-150,Math.min(150,cz+pvz));
     if(!collideBldg(nx,nz)){
       playerMesh.position.x=nx; playerMesh.position.z=nz;
     } else if(!collideBldg(nx,cz)){
