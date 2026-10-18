@@ -1185,12 +1185,39 @@ const TUT=[
 let tutStep=0;
 function loadTut(){ tutStep=+(localStorage.getItem('pf2_tut')||0); }
 function saveTut(){ localStorage.setItem('pf2_tut',tutStep); }
+const TUT_TARGETS=[
+  new THREE.Vector3(0,0,18),   // step 0: shop
+  new THREE.Vector3(0,0,0),    // step 1: farm
+  new THREE.Vector3(18,0,18),  // step 2: market
+  new THREE.Vector3(0,0,18),   // step 3: shop
+];
+let tutArrow=null;
+function buildTutArrow(){
+  const g=new THREE.Group();
+  const mat=new THREE.MeshLambertMaterial({color:0xffee00,emissive:0xffcc00,emissiveIntensity:.6});
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(.4,.9,6),mat);
+  cone.rotation.z=Math.PI; cone.position.y=0; g.add(cone);
+  const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.8,6),mat);
+  shaft.position.y=.85; g.add(shaft);
+  g.visible=false;
+  scene.add(g);
+  tutArrow=g;
+}
+function updateTutArrow(){
+  if(!tutArrow) return;
+  if(tutStep>=TUT.length||tutStep>=TUT_TARGETS.length){ tutArrow.visible=false; return; }
+  const t=TUT_TARGETS[tutStep];
+  tutArrow.position.x=t.x;
+  tutArrow.position.z=t.z;
+  tutArrow.visible=true;
+}
 function updateTutUI(){
   const el=document.getElementById('tut');
-  if(tutStep>=TUT.length){ el.style.display='none'; return; }
+  if(tutStep>=TUT.length){ el.style.display='none'; updateTutArrow(); return; }
   el.style.display='block';
   document.getElementById('tut-step').textContent=`STEP ${tutStep+1} / ${TUT.length}`;
   document.getElementById('tut-msg').textContent=TUT[tutStep];
+  updateTutArrow();
 }
 function advanceTutorial(ev){
   if(tutStep>=TUT.length) return;
@@ -1345,6 +1372,10 @@ function animate(){
       });
     }
   }
+  if(tutArrow&&tutArrow.visible){
+    tutArrow.position.y=4+Math.sin(Date.now()*.003)*.35;
+    tutArrow.rotation.y+=.025;
+  }
   renderer.render(scene,camera);
 }
 
@@ -1377,6 +1408,7 @@ async function init(){
   buildShop();
   buildMarket();
   addDeco();
+  buildTutArrow();
   _allFarms.push(myId,...OTHER_SLOTS);
   buildPlotWC();
   animate();
