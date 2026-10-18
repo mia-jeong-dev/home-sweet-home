@@ -19,6 +19,7 @@ canvas { display:block; }
 #hud-coins { margin-left:auto; font-size:15px; color:#f5d060; font-weight:bold; }
 #hud-wc { font-size:13px; color:#4af; }
 #hud-si { font-size:13px; color:#7ddc44; }
+#hud-pi { font-size:13px; color:#f5a623; }
 
 #hint {
   position:fixed; bottom:70px; left:50%; transform:translateX(-50%);
@@ -78,6 +79,7 @@ canvas { display:block; }
   <span id="hud-coins">🪙 0</span>
   <span id="hud-wc"></span>
   <span id="hud-si"></span>
+  <span id="hud-pi"></span>
 </div>
 <div id="hint"><kbd>Space</kbd><span id="hint-text">심기</span></div>
 <div id="ctrl-hint">WASD 이동 &nbsp;·&nbsp; 마우스 드래그 각도 조절 &nbsp;·&nbsp; Space 상호작용</div>
@@ -111,28 +113,41 @@ const COLL = 'potato_farms';
 // ── Potato types ──
 const PT = [
   {id:'common',  name:'일반 감자',    coin:5,    sec:10,    hex:'#c8a050', seed:0  },
-  {id:'unusual', name:'특이한 감자',  coin:20,   sec:40,    hex:'#50c870', seed:3  },
-  {id:'good',    name:'좋은 감자',    coin:50,   sec:100,   hex:'#5088ff', seed:8  },
-  {id:'great',   name:'훌륭한 감자',  coin:100,  sec:200,   hex:'#b060ff', seed:15 },
-  {id:'king',    name:'대왕 감자',    coin:200,  sec:400,   hex:'#ff5555', seed:30 },
-  {id:'rainbow', name:'레인보우 감자',coin:500,  sec:1000,  hex:'#ffffff', seed:60 },
-  {id:'golden',  name:'황금 감자',    coin:1000, sec:2000,  hex:'#ffd700', seed:120},
+  {id:'unusual', name:'특이한 감자',  coin:20,   sec:40,    hex:'#50c870', seed:8  },
+  {id:'good',    name:'좋은 감자',    coin:50,   sec:100,   hex:'#5088ff', seed:20 },
+  {id:'great',   name:'훌륭한 감자',  coin:100,  sec:200,   hex:'#b060ff', seed:40 },
+  {id:'king',    name:'대왕 감자',    coin:200,  sec:400,   hex:'#ff5555', seed:80 },
+  {id:'rainbow', name:'레인보우 감자',coin:500,  sec:1000,  hex:'#ffffff', seed:150},
+  {id:'golden',  name:'황금 감자',    coin:1000, sec:2000,  hex:'#ffd700', seed:300},
 ];
 const PTM = Object.fromEntries(PT.map(p=>[p.id,p]));
 const WATER_SAVE = 0.25;
 
 // ── LocalStorage ──
-const LS = {nm:'pf2_name', co:'pf2_coins', wc:'pf2_wc', si:'pf2_seeds'};
-let pName='', coins=0, wc=0, seedInv={};
+const LS = {nm:'pf2_name', co:'pf2_coins', wc:'pf2_wc', si:'pf2_seeds', pi:'pf2_potatoes', dl:'pf2_daily'};
+let pName='', coins=0, wc=0, seedInv={}, potatoInv={}, dailyBuy={};
 function loadLS(){
   coins=+(localStorage.getItem(LS.co)||0);
   wc=+(localStorage.getItem(LS.wc)||0);
   try{ seedInv=JSON.parse(localStorage.getItem(LS.si)||'{}'); }catch(e){ seedInv={}; }
+  try{ potatoInv=JSON.parse(localStorage.getItem(LS.pi)||'{}'); }catch(e){ potatoInv={}; }
+  try{ dailyBuy=JSON.parse(localStorage.getItem(LS.dl)||'{}'); }catch(e){ dailyBuy={}; }
 }
 function saveLS(){
   localStorage.setItem(LS.co,coins);
   localStorage.setItem(LS.wc,wc);
   localStorage.setItem(LS.si,JSON.stringify(seedInv));
+  localStorage.setItem(LS.pi,JSON.stringify(potatoInv));
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function getDailyBuy(tid){
+  if(!dailyBuy.date||dailyBuy.date!==todayStr()) dailyBuy={date:todayStr()};
+  return dailyBuy[tid]||0;
+}
+function incDailyBuy(tid){
+  if(!dailyBuy.date||dailyBuy.date!==todayStr()) dailyBuy={date:todayStr()};
+  dailyBuy[tid]=(dailyBuy[tid]||0)+1;
+  localStorage.setItem(LS.dl,JSON.stringify(dailyBuy));
 }
 
 // ── State ──
@@ -191,8 +206,10 @@ const FARM_POS=[
   new THREE.Vector3(-28, 0, -28),  // other4
   new THREE.Vector3( 28, 0, -28),  // other5
 ];
-const SHOP_POS=new THREE.Vector3(0,0,18);  // clearly south of all farms
+const SHOP_POS=new THREE.Vector3(0,0,18);
+const MARKET_POS=new THREE.Vector3(18,0,18);
 const SHOP_INTERACT_R=4.5;
+const MARKET_INTERACT_R=4.5;
 const PLOT_INTERACT_R=3.0;
 
 const plotMeshes={}, plantGrps={}, farmGrps={};
@@ -276,9 +293,9 @@ function buildShop(){
   // Floor
   const fl=new THREE.Mesh(new THREE.BoxGeometry(6,0.15,5.5),flM);
   fl.position.y=.07; fl.receiveShadow=true; g.add(fl);
-  // Back wall
+  // Back wall (south side – open face is north toward farms)
   const bw=new THREE.Mesh(new THREE.BoxGeometry(6,2.8,.2),wM);
-  bw.position.set(0,1.5,-2.6); bw.castShadow=true; g.add(bw);
+  bw.position.set(0,1.5,2.6); bw.castShadow=true; g.add(bw);
   // Side walls
   [-3,3].forEach(x=>{
     const sw=new THREE.Mesh(new THREE.BoxGeometry(.2,2.8,5.5),wM);
@@ -287,20 +304,67 @@ function buildShop(){
   // Roof
   const roof=new THREE.Mesh(new THREE.ConeGeometry(4.8,2.0,4),rM);
   roof.position.y=3.8; roof.rotation.y=Math.PI/4; roof.castShadow=true; g.add(roof);
-  // Counter
+  // Counter (north side – facing player)
   const ct=new THREE.Mesh(new THREE.BoxGeometry(4.5,.7,.55),
     new THREE.MeshLambertMaterial({color:0xd0a060}));
-  ct.position.set(0,.5,2.1); g.add(ct);
-  // Sign board (초록 바탕 + 주황 줄무늬)
+  ct.position.set(0,.5,-2.1); g.add(ct);
+  // Sign board (north face – visible to player)
   const sb=new THREE.Mesh(new THREE.BoxGeometry(3,.65,.1),
     new THREE.MeshLambertMaterial({color:0x1a7a3a}));
-  sb.position.set(0,2.9,2.5); g.add(sb);
+  sb.position.set(0,2.9,-2.5); g.add(sb);
   const st=new THREE.Mesh(new THREE.BoxGeometry(2.5,.13,.12),
     new THREE.MeshBasicMaterial({color:0xff8800}));
-  st.position.set(0,3.15,2.52); g.add(st);
+  st.position.set(0,3.15,-2.52); g.add(st);
   const st2=new THREE.Mesh(new THREE.BoxGeometry(2.5,.13,.12),
     new THREE.MeshBasicMaterial({color:0xffdd00}));
-  st2.position.set(0,2.65,2.52); g.add(st2);
+  st2.position.set(0,2.65,-2.52); g.add(st2);
+}
+
+// ── Build market (판매소) ──
+function buildMarket(){
+  const g=new THREE.Group(); g.position.copy(MARKET_POS); scene.add(g);
+  const wM=new THREE.MeshLambertMaterial({color:0x7a4a20});
+  const postM=new THREE.MeshLambertMaterial({color:0x5a2a08});
+  const awningM=new THREE.MeshLambertMaterial({color:0xcc2222});
+  const awning2M=new THREE.MeshLambertMaterial({color:0xffdd00});
+  // Floor
+  const fl=new THREE.Mesh(new THREE.BoxGeometry(5.5,0.15,4.5),
+    new THREE.MeshLambertMaterial({color:0x9a7848}));
+  fl.position.y=.07; fl.receiveShadow=true; g.add(fl);
+  // Back wall (south)
+  const bw=new THREE.Mesh(new THREE.BoxGeometry(5.5,2.6,.2),wM);
+  bw.position.set(0,1.4,2.1); bw.castShadow=true; g.add(bw);
+  // Side walls
+  [-2.75,2.75].forEach(x=>{
+    const sw=new THREE.Mesh(new THREE.BoxGeometry(.2,2.6,4.5),wM);
+    sw.position.set(x,1.4,0); sw.castShadow=true; g.add(sw);
+  });
+  // Counter (north – faces player)
+  const ct=new THREE.Mesh(new THREE.BoxGeometry(4,.7,.55),
+    new THREE.MeshLambertMaterial({color:0xd0a060}));
+  ct.position.set(0,.5,-1.9); g.add(ct);
+  // Awning poles
+  [-2,2].forEach(x=>{
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,4,6),postM);
+    pole.position.set(x,2,-2.5); g.add(pole);
+  });
+  // Awning
+  const awn=new THREE.Mesh(new THREE.BoxGeometry(6,.18,3.2),awningM);
+  awn.position.set(0,4,-0.9); awn.rotation.x=-0.12; g.add(awn);
+  for(let i=-2;i<=2;i++){
+    const stripe=new THREE.Mesh(new THREE.BoxGeometry(.45,.19,3.2),awning2M);
+    stripe.position.set(i*1.1,4.01,-0.9); stripe.rotation.x=-0.12; g.add(stripe);
+  }
+  // Sign (north face – visible to player)
+  const sb=new THREE.Mesh(new THREE.BoxGeometry(3,.6,.1),
+    new THREE.MeshLambertMaterial({color:0xaa2200}));
+  sb.position.set(0,2.3,-2.42); g.add(sb);
+  const sst=new THREE.Mesh(new THREE.BoxGeometry(2.5,.1,.12),
+    new THREE.MeshBasicMaterial({color:0xffdd00}));
+  sst.position.set(0,2.55,-2.45); g.add(sst);
+  const sst2=new THREE.Mesh(new THREE.BoxGeometry(2.5,.1,.12),
+    new THREE.MeshBasicMaterial({color:0xffdd00}));
+  sst2.position.set(0,2.05,-2.45); g.add(sst2);
 }
 
 // ── Decorations ──
@@ -541,6 +605,8 @@ function updateHUD(){
   document.getElementById('hud-wc').textContent=wc>0?`💧×${wc}`:'';
   const tot=Object.values(seedInv).reduce((a,b)=>a+b,0);
   document.getElementById('hud-si').textContent=tot>0?`🌱×${tot}`:'';
+  const ptot=Object.values(potatoInv).reduce((a,b)=>a+b,0);
+  document.getElementById('hud-pi').textContent=ptot>0?`🥔×${ptot}`:'';
 }
 function showModal(title,html){
   document.getElementById('mt').textContent=title;
@@ -577,13 +643,18 @@ function checkNearby(){
     const dx=px-SHOP_POS.x, dz=pz-SHOP_POS.z;
     if(dx*dx+dz*dz<SHOP_INTERACT_R*SHOP_INTERACT_R) nearTarget={type:'shop'};
   }
+  if(!nearTarget){
+    const dx=px-MARKET_POS.x, dz=pz-MARKET_POS.z;
+    if(dx*dx+dz*dz<MARKET_INTERACT_R*MARKET_INTERACT_R) nearTarget={type:'market'};
+  }
 
   const hintEl=document.getElementById('hint');
   const hintTxt=document.getElementById('hint-text');
   if(!nearTarget){ hintEl.style.display='none'; return; }
 
   hintEl.style.display='block';
-  if(nearTarget.type==='shop'){ hintTxt.textContent='상점 열기'; return; }
+  if(nearTarget.type==='shop'){ hintTxt.textContent='🛒 상점'; return; }
+  if(nearTarget.type==='market'){ hintTxt.textContent='🏪 판매소'; return; }
 
   const {fid,idx}=nearTarget;
   const mine=fid===myId;
@@ -604,6 +675,7 @@ function doInteract(){
   if(document.getElementById('mo').classList.contains('open')){ closeModal(); return; }
   if(!nearTarget) return;
   if(nearTarget.type==='shop'){ openShop(); return; }
+  if(nearTarget.type==='market'){ openMarket(); return; }
 
   const {fid,idx}=nearTarget;
   const fd=farmData[fid];
@@ -619,9 +691,15 @@ function doInteract(){
   if(growProgress(p)>=1){
     if(!mine){ toast('수확은 내 농장에서만'); return; }
     const pt=PTM[p.type];
-    p.harvested=true; coins+=pt.coin; saveLS(); updateHUD();
+    const isGiant=Math.random()<0.1;
+    p.harvested=true;
+    const key=isGiant?p.type+'_g':p.type;
+    potatoInv[key]=(potatoInv[key]||0)+1;
+    saveLS(); updateHUD();
     saveF(fid,fd);
-    toast(`🥔 ${pt.name} 수확! +${pt.coin} 코인`); return;
+    if(isGiant) toast(`🌟 거대한 ${pt.name} 수확! 인벤토리에 저장됨 (가치 2배!)`);
+    else toast(`🥔 ${pt.name} 수확! 인벤토리에 저장됨`);
+    return;
   }
   if(wc>0){
     if((p.waterBoost||0)>=.9){ toast('이미 물을 충분히 주었습니다'); return; }
@@ -659,12 +737,14 @@ window.doPlant=(fid,idx,tid)=>{
 };
 
 function openShop(){
-  const seedSection=PT.map(pt=>`
+  const seedSection=PT.map(pt=>{
+    const dailyInfo=pt.id==='common'?` · 오늘 ${getDailyBuy('common')}/6개`:'';
+    return `
     <div class="pc" onclick="buySeed('${pt.id}')">
       <div class="pcdot" style="background:${pt.hex}"></div>
       <div><div class="pcn">${pt.name} <span style="color:#7ddc44">보유 ${seedInv[pt.id]||0}개</span></div>
-      <div class="pci">${pt.seed?`씨앗 ${pt.seed}코인`:'무료'} · 수확 +${pt.coin}코인 · ${fmtS(pt.sec)} 성장</div></div>
-    </div>`).join('');
+      <div class="pci">${pt.seed?`씨앗 ${pt.seed}코인`:'무료'}${dailyInfo} · 수확 · ${fmtS(pt.sec)} 성장</div></div>
+    </div>`;}).join('');
   showModal('🛒 상점',`
     <div style="font-size:12px;color:#f5d060;margin-bottom:8px;font-weight:bold;letter-spacing:1px">🌱 씨앗</div>
     ${seedSection}
@@ -688,6 +768,11 @@ function openShop(){
 }
 window.buySeed=(tid)=>{
   const pt=PTM[tid];
+  if(tid==='common'){
+    const bought=getDailyBuy('common');
+    if(bought>=6){ toast('일반 감자 씨앗은 하루 최대 6개까지 구매 가능합니다'); return; }
+    incDailyBuy('common');
+  }
   if(coins<pt.seed){ toast(`씨앗 비용 ${pt.seed}코인 부족`); return; }
   coins-=pt.seed; seedInv[tid]=(seedInv[tid]||0)+1; saveLS(); updateHUD();
   toast(`🌱 ${pt.name} 씨앗 구입!`);
@@ -714,6 +799,53 @@ window.doReset=()=>{
   if(!confirm('내 농장을 초기화할까요?')) return;
   const fd=emptyFarm(pName); farmData[myId]=fd; saveF(myId,fd);
   rebuildFarmPlants(myId); toast('농장 초기화 완료'); closeModal();
+};
+
+function openMarket(){
+  const items=[];
+  PT.forEach(pt=>{
+    const n=potatoInv[pt.id]||0;
+    const g=potatoInv[pt.id+'_g']||0;
+    if(n>0) items.push({key:pt.id,name:pt.name,hex:pt.hex,count:n,price:pt.coin,giant:false});
+    if(g>0) items.push({key:pt.id+'_g',name:'🌟 거대한 '+pt.name,hex:pt.hex,count:g,price:pt.coin*2,giant:true});
+  });
+  const total=items.reduce((s,it)=>s+it.count*it.price,0);
+  showModal('🏪 판매소', items.length===0
+    ? '<div style="color:#888;text-align:center;padding:20px">판매할 감자가 없습니다<br><small>농장에서 감자를 수확하세요</small></div>'
+    : `<div style="font-size:12px;color:#f5d060;margin-bottom:8px">수확한 감자를 여기서 팔 수 있습니다</div>
+    ${items.map(it=>`
+      <div class="pc" onclick="sellPotato('${it.key}')">
+        <div class="pcdot" style="background:${it.hex};${it.giant?'box-shadow:0 0 7px gold':''}"></div>
+        <div><div class="pcn">${it.name} ×${it.count}</div>
+        <div class="pci">개당 ${it.price}코인 · 합계 ${it.count*it.price}코인</div></div>
+      </div>`).join('')}
+    <div class="pc" onclick="sellAll()" style="border-color:#f5d060;margin-top:4px">
+      <div class="pcdot" style="background:#f5d060"></div>
+      <div><div class="pcn">🪙 전부 팔기</div>
+      <div class="pci">합계 ${total}코인 획득</div></div>
+    </div>`
+  );
+}
+window.sellPotato=(key)=>{
+  const cnt=potatoInv[key]||0; if(!cnt){ toast('없습니다'); return; }
+  const baseId=key.endsWith('_g')?key.slice(0,-2):key;
+  const pt=PTM[baseId];
+  const price=key.endsWith('_g')?pt.coin*2:pt.coin;
+  potatoInv[key]--; if(potatoInv[key]<=0) delete potatoInv[key];
+  coins+=price; saveLS(); updateHUD();
+  toast(`🪙 ${key.endsWith('_g')?'거대한 ':''}${pt.name} 판매! +${price}코인`);
+  openMarket();
+};
+window.sellAll=()=>{
+  let total=0;
+  PT.forEach(pt=>{
+    const n=potatoInv[pt.id]||0; const g=potatoInv[pt.id+'_g']||0;
+    total+=n*pt.coin+g*pt.coin*2;
+    delete potatoInv[pt.id]; delete potatoInv[pt.id+'_g'];
+  });
+  if(!total){ toast('팔 감자가 없습니다'); closeModal(); return; }
+  coins+=total; saveLS(); updateHUD();
+  toast(`🪙 전부 판매! +${total}코인`); closeModal();
 };
 
 // ── Input ──
@@ -826,6 +958,7 @@ async function init(){
     farmData[sid]=emptyFarm('');
   });
   buildShop();
+  buildMarket();
   addDeco();
   animate();
 
