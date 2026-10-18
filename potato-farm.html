@@ -159,13 +159,16 @@ let shopStock={};
 
 // ── Weather ──
 const WEATHER_DEFS=[
-  {id:'clear',   prob:0.62, emoji:'☀️',  label:'맑음',   sky:0x7ec8e3, fog:0x7ec8e3},
-  {id:'rain',    prob:0.10, emoji:'🌧️', label:'비',     sky:0x445566, fog:0x445566},
-  {id:'storm',   prob:0.08, emoji:'⛈️',  label:'폭풍우', sky:0x223344, fog:0x223344},
-  {id:'snow',    prob:0.10, emoji:'🌨️', label:'눈',     sky:0x99aabb, fog:0x99aabb},
-  {id:'aurora',  prob:0.05, emoji:'🌌',  label:'오로라', sky:0x000033, fog:0x001122},
-  {id:'meteor',  prob:0.05, emoji:'🌠',  label:'별똥별', sky:0x000011, fog:0x000011},
+  {id:'clear',  prob:0,     emoji:'☀️',  label:'맑음',   sky:0x7ec8e3, fog:0x7ec8e3},
+  {id:'rain',   prob:0.40,  emoji:'🌧️', label:'비',     sky:0x445566, fog:0x445566},
+  {id:'storm',  prob:0.30,  emoji:'⛈️',  label:'폭풍우', sky:0x223344, fog:0x223344},
+  {id:'snow',   prob:0.20,  emoji:'🌨️', label:'눈',     sky:0x99aabb, fog:0x99aabb},
+  {id:'aurora', prob:0.075, emoji:'🌌',  label:'오로라', sky:0x000033, fog:0x001122},
+  {id:'meteor', prob:0.025, emoji:'🌠',  label:'별똥별', sky:0x000011, fog:0x000011},
 ];
+const CLEAR_DUR=15*60*1000;
+const WEATHER_DUR=5*60*1000;
+const CYCLE_DUR=CLEAR_DUR+WEATHER_DUR;
 const WEATHER_EFFECTS={
   rain:   [{name:'비',     prob:.10,  mult:1.25}],
   storm:  [{name:'비',     prob:.10,  mult:1.25},{name:'천둥',   prob:.05,  mult:2.25}],
@@ -175,7 +178,6 @@ const WEATHER_EFFECTS={
 };
 const EFFECT_MULT={'비':1.25,'천둥':2.25,'눈꽃':1.15,'동결':2.0,'오로라':6.0,'별똥별':10.0};
 const EFFECT_COLOR={'비':0x4488ff,'천둥':0xffff00,'눈꽃':0xaaddff,'동결':0x88eeff,'오로라':0xff44ff,'별똥별':0xffffaa};
-const WEATHER_DURATION=5*60*1000;
 const LS_WEA='pf2_wea';
 let currentWeather='clear';
 let weatherVfx=null;
@@ -598,20 +600,11 @@ function parsePotatoKey(key){
   return {type:k, giant, effect, mult, pt:PTM[k]||null};
 }
 function harvestKey(type,giant,effect){ return type+(giant?'_g':'')+(effect?'_'+effect:''); }
-function rollWeather(){
+function rollWeatherEvent(){
   const r=Math.random(); let cum=0;
-  for(const w of WEATHER_DEFS){ cum+=w.prob; if(r<cum){ setWeather(w.id); return; } }
-  setWeather('clear');
-}
-function setWeather(id){
-  currentWeather=id;
-  localStorage.setItem(LS_WEA,JSON.stringify({id,t:Date.now()}));
-  buildWeatherVfx(id);
-  const wd=WEATHER_DEFS.find(d=>d.id===id);
-  if(wd){ scene.background=new THREE.Color(wd.sky); scene.fog.color.set(wd.fog); }
-  applyWeatherToFarm();
-  document.getElementById('hud-weather').textContent=wd&&wd.id!=='clear'?wd.emoji+' '+wd.label:'';
-  if(wd&&wd.id!=='clear') toast(wd.emoji+' '+wd.label+' 날씨가 시작됐습니다!');
+  const pool=WEATHER_DEFS.filter(d=>d.id!=='clear');
+  for(const w of pool){ cum+=w.prob; if(r<cum) return w.id; }
+  return 'rain';
 }
 function applyWeatherToFarm(){
   const effects=WEATHER_EFFECTS[currentWeather]; if(!effects) return;
@@ -624,19 +617,45 @@ function applyWeatherToFarm(){
   });
   if(changed){ saveF(myId,fd); rebuildFarmPlants(myId); }
 }
+function setWeather(id, silent=false){
+  currentWeather=id;
+  buildWeatherVfx(id);
+  const wd=WEATHER_DEFS.find(d=>d.id===id);
+  if(wd){ scene.background=new THREE.Color(wd.sky); scene.fog.color.set(wd.fog); }
+  document.getElementById('hud-weather').textContent=wd&&wd.id!=='clear'?wd.emoji+' '+wd.label:'';
+  if(!silent){
+    applyWeatherToFarm();
+    if(wd&&wd.id!=='clear') toast(wd.emoji+' '+wd.label+' 날씨가 시작됐습니다!');
+    else toast('☀️ 날씨가 맑아졌습니다!');
+  }
+}
+function startWeatherPhase(epoch, wid){
+  localStorage.setItem(LS_WEA,JSON.stringify({epoch,wid,phase:'weather'}));
+  setWeather(wid);
+  setTimeout(()=>startClearPhase(), WEATHER_DUR);
+}
+function startClearPhase(){
+  const epoch=Date.now();
+  const wid=rollWeatherEvent();
+  localStorage.setItem(LS_WEA,JSON.stringify({epoch,wid,phase:'clear'}));
+  setWeather('clear');
+  setTimeout(()=>startWeatherPhase(epoch,wid), CLEAR_DUR);
+}
 function loadWeather(){
   try{
     const d=JSON.parse(localStorage.getItem(LS_WEA)||'null');
-    if(d&&Date.now()-d.t<WEATHER_DURATION){
-      currentWeather=d.id;
-      const wd=WEATHER_DEFS.find(w=>w.id===d.id);
-      if(wd){ scene.background=new THREE.Color(wd.sky); scene.fog.color.set(wd.fog); }
-      document.getElementById('hud-weather').textContent=wd&&wd.id!=='clear'?wd.emoji+' '+wd.label:'';
-      buildWeatherVfx(d.id);
-      const rem=WEATHER_DURATION-(Date.now()-d.t);
-      setTimeout(()=>{ rollWeather(); setInterval(rollWeather,WEATHER_DURATION); },rem);
-    } else { rollWeather(); setInterval(rollWeather,WEATHER_DURATION); }
-  }catch(e){ rollWeather(); setInterval(rollWeather,WEATHER_DURATION); }
+    const now=Date.now();
+    if(d&&d.epoch&&now-d.epoch<CYCLE_DUR){
+      const pos=now-d.epoch;
+      if(pos<CLEAR_DUR){
+        setWeather('clear', true);
+        setTimeout(()=>startWeatherPhase(d.epoch, d.wid||rollWeatherEvent()), CLEAR_DUR-pos);
+      } else {
+        setWeather(d.wid||'rain', true);
+        setTimeout(()=>startClearPhase(), CYCLE_DUR-pos);
+      }
+    } else { startClearPhase(); }
+  }catch(e){ startClearPhase(); }
 }
 
 // ── Decorations ──
@@ -1078,7 +1097,10 @@ function openHarvestModal(fid,idx){
   const raw=fd.plots?.[idx];
   const arr=Array.isArray(raw)?raw:[];
   const readyItems=arr.map((p,pi)=>({p,pi})).filter(({p})=>p?.type&&!p?.harvested&&growProgress(p)>=1);
-  showModal('🥔 수확할 감자 선택',
+  const wd=WEATHER_DEFS.find(d=>d.id===currentWeather);
+  const weatherInfo=wd&&wd.id!=='clear'
+    ? `<div style="font-size:12px;background:#ffffff12;border-radius:7px;padding:5px 10px;margin-bottom:8px;color:#ddd">${wd.emoji} <b>${wd.label}</b> 진행 중 · 수확 시 날씨 효과 적용될 수 있습니다</div>` : '';
+  showModal('🥔 수확할 감자 선택', weatherInfo+
     readyItems.map(({p,pi})=>{
       const pt=PTM[p.type];
       const giantTag=p.giant?`<span style="color:#ffd700;margin-left:6px">🌟 거대</span>`:'';
