@@ -646,12 +646,12 @@ function addDeco(){
   const flowerMat=new THREE.MeshLambertMaterial({color:0xffaacc});
   // Trees placed to avoid the 6 farm positions (±28, 0 and ±28, -28)
   const treePos=[
-    [-8,0,12],[8,0,12],
-    [-14,0,-8],[14,0,-8],
-    [-14,0,10],[20,0,12],
-    [-14,0,-16],
-    [-40,0,5],[40,0,-14],
-    [-40,0,-30],[40,0,-30],
+    [-20,0,15],[35,0,12],
+    [-45,0,0],[45,0,0],
+    [-12,0,-20],[14,0,-20],
+    [-45,0,-20],[45,0,-20],
+    [-35,0,-42],[35,0,-42],
+    [-20,0,-44],
   ];
   treePos.forEach(([x,,z])=>{
     const g=new THREE.Group(); g.position.set(x,0,z);
