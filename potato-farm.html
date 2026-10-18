@@ -35,6 +35,14 @@ canvas { display:block; }
   position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
   color:rgba(255,255,255,.35); font-size:11px; pointer-events:none; z-index:10;
 }
+#inv-btn {
+  position:fixed; bottom:52px; right:16px;
+  background:rgba(0,0,0,.72); border:1.5px solid #c8a050;
+  border-radius:12px; padding:7px 14px; font-size:20px;
+  cursor:pointer; z-index:20; transition:background .15s;
+  backdrop-filter:blur(4px);
+}
+#inv-btn:hover { background:rgba(40,24,0,.9); }
 
 #mo {
   position:fixed; inset:0; background:rgba(0,0,0,.75);
@@ -91,6 +99,7 @@ canvas { display:block; }
     <button class="mclose" onclick="closeModal()">닫기</button>
   </div>
 </div>
+<button id="inv-btn" onclick="openInventory()">🎒</button>
 <div id="toast"></div>
 
 <script type="module">
@@ -894,6 +903,40 @@ window.sellAll=()=>{
   coins+=total; saveLS(); updateHUD();
   toast(`🪙 전부 판매! +${total}코인`); closeModal();
 };
+
+function openInventory(){
+  const seedRows=PT.filter(pt=>(seedInv[pt.id]||0)>0).map(pt=>`
+    <div class="pc" style="cursor:default">
+      <div class="pcdot" style="background:${pt.hex}"></div>
+      <div><div class="pcn">🌱 ${pt.name} 씨앗</div>
+      <div class="pci">×${seedInv[pt.id]} · ${fmtS(pt.sec)} 성장</div></div>
+    </div>`).join('');
+  const potatoRows=PT.flatMap(pt=>{
+    const rows=[];
+    if(potatoInv[pt.id]>0) rows.push(`
+      <div class="pc" onclick="openMarket()" title="판매소에서 판매">
+        <div class="pcdot" style="background:${pt.hex}"></div>
+        <div><div class="pcn">${pt.name}</div>
+        <div class="pci">×${potatoInv[pt.id]} · 개당 ${pt.coin}코인 · 판매소에서 팔기</div></div>
+      </div>`);
+    if(potatoInv[pt.id+'_g']>0) rows.push(`
+      <div class="pc" onclick="openMarket()" title="판매소에서 판매">
+        <div class="pcdot" style="background:${pt.hex};box-shadow:0 0 7px gold"></div>
+        <div><div class="pcn">🌟 거대한 ${pt.name}</div>
+        <div class="pci">×${potatoInv[pt.id+'_g']} · 개당 ${pt.coin*2}코인 · 판매소에서 팔기</div></div>
+      </div>`);
+    return rows;
+  }).join('');
+  const totSeeds=Object.values(seedInv).reduce((a,b)=>a+b,0);
+  const totPotato=Object.values(potatoInv).reduce((a,b)=>a+b,0);
+  showModal('🎒 인벤토리',`
+    <div style="font-size:12px;color:#f5d060;margin-bottom:8px;font-weight:bold">🌱 씨앗 (${totSeeds}개)</div>
+    ${seedRows||'<div style="color:#555;font-size:12px;padding:4px 0 8px">없음</div>'}
+    <div style="font-size:12px;color:#f5a623;margin:10px 0 8px;font-weight:bold">🥔 수확한 감자 (${totPotato}개)</div>
+    ${potatoRows||'<div style="color:#555;font-size:12px;padding:4px 0 8px">없음</div>'}
+  `);
+}
+window.openInventory=openInventory;
 
 // ── Input ──
 const keys={};
