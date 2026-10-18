@@ -104,19 +104,19 @@ canvas { display:block; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot,
+import { initializeFirestore, persistentLocalCache, doc, getDoc, setDoc, onSnapshot,
          collection, query, orderBy, limit, getDocs }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js";
 
-// ── Firebase ──
-const db = getFirestore(initializeApp({
+// ── Firebase (offline persistence enabled) ──
+const db = initializeFirestore(initializeApp({
   apiKey:"AIzaSyAoiB8frxNH4W2lTzoO9R3rZeyxypY6rgs",
   authDomain:"gams-db.firebaseapp.com", projectId:"gams-db",
   storageBucket:"gams-db.firebasestorage.app",
   messagingSenderId:"868598873850",
   appId:"1:868598873850:web:cd0007b105bdc1518d5343"
-}));
+}), { localCache: persistentLocalCache() });
 const COLL = 'potato_farms';
 
 // ── Potato types ──
@@ -783,7 +783,10 @@ window.doPlant=(fid,idx,tid)=>{
   if(active>=MAX_PER_PLOT){ toast(`한 칸에 최대 ${MAX_PER_PLOT}개까지 심을 수 있습니다`); return; }
   seedInv[tid]--; if(seedInv[tid]<=0) delete seedInv[tid];
   saveLS(); updateHUD();
-  fd.plots[idx].push({type:tid,plantedAt:Date.now(),waterBoost:0,harvested:false});
+  const newPlant={type:tid,plantedAt:Date.now(),waterBoost:0,harvested:false};
+  const si=fd.plots[idx].findIndex(p=>!p?.type||p?.harvested);
+  if(si>=0) fd.plots[idx][si]=newPlant;
+  else fd.plots[idx].push(newPlant);
   saveF(fid,fd); closeModal();
   toast(`🌱 ${PTM[tid].name} 심기 완료! (${active+1}/${MAX_PER_PLOT})`);
   rebuildPlant(fid,idx);
