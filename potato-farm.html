@@ -247,7 +247,7 @@ scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x87ceeb,0x4a8820,.4));
 
 // ── Ground ──
-const gnd=new THREE.Mesh(new THREE.PlaneGeometry(240,240),
+const gnd=new THREE.Mesh(new THREE.PlaneGeometry(360,360),
   new THREE.MeshLambertMaterial({color:0x4a8820}));
 gnd.rotation.x=-Math.PI/2; gnd.receiveShadow=true; scene.add(gnd);
 
