@@ -104,6 +104,7 @@ canvas { display:block; }
   <span id="hud-wc"></span>
   <span id="hud-si"></span>
   <span id="hud-pi"></span>
+  <span id="hud-weather" style="font-size:14px;margin-left:4px"></span>
 </div>
 <div id="hint"><kbd>Space</kbd><span id="hint-text">심기</span></div>
 <div id="ctrl-hint">WASD 이동 &nbsp;·&nbsp; 마우스 드래그 각도 조절 &nbsp;·&nbsp; Space 상호작용</div>
@@ -144,17 +145,41 @@ const COLL = 'potato_farms';
 const PT = [
   {id:'common',  name:'일반 감자',    coin:4,    sec:10,    hex:'#c8a050', seed:0  },
   {id:'unusual', name:'특이한 감자',  coin:15,   sec:40,    hex:'#50c870', seed:8  },
-  {id:'good',    name:'좋은 감자',    coin:38,   sec:100,   hex:'#5088ff', seed:20 },
-  {id:'great',   name:'훌륭한 감자',  coin:75,   sec:200,   hex:'#b060ff', seed:40 },
-  {id:'king',    name:'대왕 감자',    coin:120,  sec:400,   hex:'#ff5555', seed:80 },
-  {id:'rainbow', name:'레인보우 감자',coin:300,  sec:1000,  hex:'#ffffff', seed:150},
-  {id:'golden',  name:'황금 감자',    coin:600,  sec:2000,  hex:'#ffd700', seed:300},
+  {id:'good',    name:'좋은 감자',    coin:38,   sec:180,   hex:'#5088ff', seed:20 },
+  {id:'great',   name:'훌륭한 감자',  coin:75,   sec:360,   hex:'#b060ff', seed:40 },
+  {id:'king',    name:'대왕 감자',    coin:120,  sec:700,   hex:'#ff5555', seed:80 },
+  {id:'rainbow', name:'레인보우 감자',coin:300,  sec:1800,  hex:'#ffffff', seed:150},
+  {id:'golden',  name:'황금 감자',    coin:600,  sec:3600,  hex:'#ffd700', seed:300},
 ];
 const PTM = Object.fromEntries(PT.map(p=>[p.id,p]));
 const WATER_SAVE = 0.25;
 // Stock prob for premium seeds (re-rolled each shop open)
 const STOCK_PROB={king:1/3, rainbow:0.25, golden:0.15};
 let shopStock={};
+
+// ── Weather ──
+const WEATHER_DEFS=[
+  {id:'clear',   prob:0.62, emoji:'☀️',  label:'맑음',   sky:0x7ec8e3, fog:0x7ec8e3},
+  {id:'rain',    prob:0.10, emoji:'🌧️', label:'비',     sky:0x445566, fog:0x445566},
+  {id:'storm',   prob:0.08, emoji:'⛈️',  label:'폭풍우', sky:0x223344, fog:0x223344},
+  {id:'snow',    prob:0.10, emoji:'🌨️', label:'눈',     sky:0x99aabb, fog:0x99aabb},
+  {id:'aurora',  prob:0.05, emoji:'🌌',  label:'오로라', sky:0x000033, fog:0x001122},
+  {id:'meteor',  prob:0.05, emoji:'🌠',  label:'별똥별', sky:0x000011, fog:0x000011},
+];
+const WEATHER_EFFECTS={
+  rain:   [{name:'비',     prob:.10,  mult:1.25}],
+  storm:  [{name:'비',     prob:.10,  mult:1.25},{name:'천둥',   prob:.05,  mult:2.25}],
+  snow:   [{name:'눈꽃',   prob:.125, mult:1.15},{name:'동결',   prob:.075, mult:2.0}],
+  aurora: [{name:'오로라', prob:.025, mult:6.0}],
+  meteor: [{name:'별똥별', prob:.01,  mult:10.0}],
+};
+const EFFECT_MULT={'비':1.25,'천둥':2.25,'눈꽃':1.15,'동결':2.0,'오로라':6.0,'별똥별':10.0};
+const EFFECT_COLOR={'비':0x4488ff,'천둥':0xffff00,'눈꽃':0xaaddff,'동결':0x88eeff,'오로라':0xff44ff,'별똥별':0xffffaa};
+const WEATHER_DURATION=5*60*1000;
+const LS_WEA='pf2_wea';
+let currentWeather='clear';
+let weatherVfx=null;
+let pvx=0, pvz=0;
 
 // ── LocalStorage ──
 const LS = {nm:'pf2_name', co:'pf2_coins', wc:'pf2_wc', si:'pf2_seeds', pi:'pf2_potatoes', dl:'pf2_daily', sk:'pf2_stock', fd:'pf2_farm'};
@@ -492,6 +517,128 @@ function buildMarket(){
   buildFarmerNPC(g, 0, 0, -1.0);
 }
 
+// ── Weather VFX ──
+function buildWeatherVfx(wid){
+  if(weatherVfx){ scene.remove(weatherVfx); weatherVfx=null; }
+  if(wid==='clear') return;
+  const g=new THREE.Group(); weatherVfx=g; scene.add(g);
+  if(wid==='rain'||wid==='storm'){
+    const n=wid==='storm'?1300:750;
+    const pos=new Float32Array(n*3);
+    for(let i=0;i<n;i++){ pos[i*3]=(Math.random()-.5)*90; pos[i*3+1]=Math.random()*36; pos[i*3+2]=(Math.random()-.5)*90; }
+    const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    const mat=new THREE.PointsMaterial({color:wid==='storm'?0x6688cc:0x88aaee,size:.18,transparent:true,opacity:.7});
+    g._rain=new THREE.Points(geo,mat); g._rainSpd=wid==='storm'?.6:.35; g._ltTimer=wid==='storm'?200:null;
+    g.add(g._rain);
+  }
+  if(wid==='snow'){
+    const n=550; const pos=new Float32Array(n*3);
+    for(let i=0;i<n;i++){ pos[i*3]=(Math.random()-.5)*90; pos[i*3+1]=Math.random()*30; pos[i*3+2]=(Math.random()-.5)*90; }
+    const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    g._snow=new THREE.Points(geo,new THREE.PointsMaterial({color:0xffffff,size:.28,transparent:true,opacity:.85}));
+    g.add(g._snow);
+  }
+  if(wid==='aurora'){
+    const cols=[0x00ff88,0x0066ff,0xff00cc,0x00ffcc,0x88ff00];
+    for(let i=0;i<5;i++){
+      const m=new THREE.Mesh(new THREE.PlaneGeometry(75,14+Math.random()*10),
+        new THREE.MeshBasicMaterial({color:cols[i],transparent:true,opacity:.10+Math.random()*.08,side:THREE.DoubleSide,depthWrite:false}));
+      m.position.set((i-2)*15,35+Math.random()*5,-8+Math.random()*6);
+      m.rotation.x=-.22+Math.random()*.1; m.rotation.z=(Math.random()-.5)*.2;
+      m._baseY=m.position.y; m._phase=Math.random()*Math.PI*2; g.add(m);
+    }
+  }
+  if(wid==='meteor'){
+    g._meteors=[]; g._nextMeteor=Date.now()+500+Math.random()*2500;
+  }
+}
+function spawnMeteor(g){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(.25,5,4),
+    new THREE.MeshBasicMaterial({color:0xffffff,transparent:true}));
+  m.position.set((Math.random()-.5)*60,42+Math.random()*8,(Math.random()-.5)*50);
+  m._vel=new THREE.Vector3(1.8+Math.random(),-.9-.5*Math.random(),.4+Math.random()*.4);
+  m._life=1.0; g._meteors.push(m); g.add(m);
+}
+function tickWeatherVfx(){
+  if(!weatherVfx) return;
+  const g=weatherVfx;
+  if(g._rain){
+    const p=g._rain.geometry.attributes.position;
+    for(let i=0;i<p.count;i++){
+      p.setY(i,p.getY(i)-g._rainSpd);
+      if(p.getY(i)<-1){ p.setY(i,35); p.setX(i,(Math.random()-.5)*90); p.setZ(i,(Math.random()-.5)*90); }
+    }
+    p.needsUpdate=true;
+    if(g._ltTimer!==null){ g._ltTimer--;
+      if(g._ltTimer<=0){ g._ltTimer=160+Math.floor(Math.random()*260);
+        scene.background=new THREE.Color(0xccccff);
+        setTimeout(()=>{ const wd=WEATHER_DEFS.find(d=>d.id===currentWeather); if(wd) scene.background=new THREE.Color(wd.sky); },90); }
+    }
+  }
+  if(g._snow){
+    const p=g._snow.geometry.attributes.position;
+    for(let i=0;i<p.count;i++){
+      p.setY(i,p.getY(i)-.055); p.setX(i,p.getX(i)+Math.sin(Date.now()*.0008+i)*.014);
+      if(p.getY(i)<-1) p.setY(i,29);
+    }
+    p.needsUpdate=true;
+  }
+  g.children.forEach(c=>{ if(c._baseY!==undefined){ c.position.y=c._baseY+Math.sin(Date.now()*.0006+c._phase)*2; c.material.opacity=.07+Math.abs(Math.sin(Date.now()*.0004+c._phase))*.13; } });
+  if(g._meteors){
+    if(Date.now()>g._nextMeteor){ spawnMeteor(g); g._nextMeteor=Date.now()+2000+Math.random()*4000; }
+    for(let i=g._meteors.length-1;i>=0;i--){ const m=g._meteors[i]; m.position.add(m._vel); m._life-=.022; m.material.opacity=m._life; if(m._life<=0||m.position.y<0){ g.remove(m); g._meteors.splice(i,1); } }
+  }
+}
+function parsePotatoKey(key){
+  let k=key, effect=null, mult=1, giant=false;
+  for(const [en,em] of Object.entries(EFFECT_MULT)){
+    if(k.endsWith('_'+en)){ effect=en; mult=em; k=k.slice(0,-(en.length+1)); break; }
+  }
+  if(k.endsWith('_g')){ giant=true; k=k.slice(0,-2); }
+  return {type:k, giant, effect, mult, pt:PTM[k]||null};
+}
+function harvestKey(type,giant,effect){ return type+(giant?'_g':'')+(effect?'_'+effect:''); }
+function rollWeather(){
+  const r=Math.random(); let cum=0;
+  for(const w of WEATHER_DEFS){ cum+=w.prob; if(r<cum){ setWeather(w.id); return; } }
+  setWeather('clear');
+}
+function setWeather(id){
+  currentWeather=id;
+  localStorage.setItem(LS_WEA,JSON.stringify({id,t:Date.now()}));
+  buildWeatherVfx(id);
+  const wd=WEATHER_DEFS.find(d=>d.id===id);
+  if(wd){ scene.background=new THREE.Color(wd.sky); scene.fog.color.set(wd.fog); }
+  applyWeatherToFarm();
+  document.getElementById('hud-weather').textContent=wd&&wd.id!=='clear'?wd.emoji+' '+wd.label:'';
+  if(wd&&wd.id!=='clear') toast(wd.emoji+' '+wd.label+' 날씨가 시작됐습니다!');
+}
+function applyWeatherToFarm(){
+  const effects=WEATHER_EFFECTS[currentWeather]; if(!effects) return;
+  const fd=farmData[myId]; if(!fd||!Array.isArray(fd.plots)) return;
+  let changed=false;
+  fd.plots.forEach(plot=>{ if(!Array.isArray(plot)) return;
+    plot.forEach(p=>{ if(!p||!p.type||p.harvested||p.weatherEffect) return;
+      for(const eff of effects){ if(Math.random()<eff.prob){ p.weatherEffect=eff.name; p.weatherMult=eff.mult; changed=true; break; } }
+    });
+  });
+  if(changed){ saveF(myId,fd); rebuildFarmPlants(myId); }
+}
+function loadWeather(){
+  try{
+    const d=JSON.parse(localStorage.getItem(LS_WEA)||'null');
+    if(d&&Date.now()-d.t<WEATHER_DURATION){
+      currentWeather=d.id;
+      const wd=WEATHER_DEFS.find(w=>w.id===d.id);
+      if(wd){ scene.background=new THREE.Color(wd.sky); scene.fog.color.set(wd.fog); }
+      document.getElementById('hud-weather').textContent=wd&&wd.id!=='clear'?wd.emoji+' '+wd.label:'';
+      buildWeatherVfx(d.id);
+      const rem=WEATHER_DURATION-(Date.now()-d.t);
+      setTimeout(()=>{ rollWeather(); setInterval(rollWeather,WEATHER_DURATION); },rem);
+    } else { rollWeather(); setInterval(rollWeather,WEATHER_DURATION); }
+  }catch(e){ rollWeather(); setInterval(rollWeather,WEATHER_DURATION); }
+}
+
 // ── Decorations ──
 function addDeco(){
   const treeMat=new THREE.MeshLambertMaterial({color:0x1e6c0a});
@@ -709,6 +856,12 @@ function rebuildPlant(fid,i){
     if(prog>=1){
       const ring=new THREE.Mesh(new THREE.TorusGeometry(.42*scaleMul,.06,6,16),SM.ring);
       ring.rotation.x=Math.PI/2; ring.position.y=.04; sub.add(ring);
+    }
+    if(d.weatherEffect){
+      const ec=EFFECT_COLOR[d.weatherEffect]||0xffffff;
+      const ering=new THREE.Mesh(new THREE.TorusGeometry(.48*scaleMul,.04,5,14),
+        new THREE.MeshBasicMaterial({color:ec,transparent:true,opacity:.65}));
+      ering.rotation.x=Math.PI/2; ering.position.y=.06; sub.add(ering);
     }
     pg.add(sub);
   });
@@ -930,12 +1083,14 @@ function openHarvestModal(fid,idx){
   showModal('🥔 수확할 감자 선택',
     readyItems.map(({p,pi})=>{
       const pt=PTM[p.type];
-      const giantTag=p.giant?`<span style="color:#ffd700;margin-left:6px">🌟 거대한 감자!</span>`:'';
-      const giantInfo=p.giant?'거대한 감자 · 판매 시 2배':'일반 감자';
+      const giantTag=p.giant?`<span style="color:#ffd700;margin-left:6px">🌟 거대</span>`:'';
+      const effCol=p.weatherEffect?('#'+EFFECT_COLOR[p.weatherEffect]?.toString(16).padStart(6,'0')):'';
+      const effTag=p.weatherEffect?`<span style="color:${effCol||'#adf'};margin-left:6px">${p.weatherEffect} ×${p.weatherMult||EFFECT_MULT[p.weatherEffect]}</span>`:'';
+      const baseMult=(p.giant?2:1)*(p.weatherMult||1);
       return `<div class="pc" onclick="doHarvest('${fid}',${idx},${pi})">
-        <div class="pcdot" style="background:${pt.hex};${p.giant?'box-shadow:0 0 8px #ffd700':''}"></div>
-        <div><div class="pcn">${pt.name}${giantTag}</div>
-        <div class="pci">${giantInfo}</div></div>
+        <div class="pcdot" style="background:${pt.hex};${p.giant?'box-shadow:0 0 8px #ffd700':''}${p.weatherEffect?';outline:2px solid '+(effCol||'#adf'):''}"></div>
+        <div><div class="pcn">${pt.name}${giantTag}${effTag}</div>
+        <div class="pci">판매가 ${Math.round(pt.coin*baseMult)}코인${baseMult>1?' (×'+baseMult.toFixed(2)+'배)':''}</div></div>
       </div>`;
     }).join('')
   );
@@ -945,12 +1100,14 @@ window.doHarvest=(fid,idx,pi)=>{
   const p=fd.plots?.[idx]?.[pi];
   if(!p||p.harvested||growProgress(p)<1){ toast('수확할 수 없습니다'); return; }
   const isGiant=!!p.giant;
-  const key=isGiant?p.type+'_g':p.type;
+  const effect=p.weatherEffect||null;
+  const key=harvestKey(p.type,isGiant,effect);
   potatoInv[key]=(potatoInv[key]||0)+1;
   p.harvested=true;
   saveLS(); updateHUD(); saveF(fid,fd); rebuildPlant(fid,idx); closeModal();
-  if(isGiant) toast(`🌟 거대한 ${PTM[p.type].name}! 인벤토리에 저장됨`);
-  else toast(`🥔 ${PTM[p.type].name} 수확! 인벤토리에 저장됨`);
+  const effTag=effect?` [${effect}]`:'';
+  if(isGiant) toast(`🌟 거대한 ${PTM[p.type].name}${effTag}! 인벤토리에 저장됨`);
+  else toast(`🥔 ${PTM[p.type].name}${effTag} 수확! 인벤토리에 저장됨`);
   advanceTutorial('harvested');
 };
 
@@ -1127,19 +1284,22 @@ window.doReset=()=>{
 
 function openMarket(){
   const items=[];
-  PT.forEach(pt=>{
-    const n=potatoInv[pt.id]||0;
-    const g=potatoInv[pt.id+'_g']||0;
-    if(n>0) items.push({key:pt.id,name:pt.name,hex:pt.hex,count:n,price:pt.coin,giant:false});
-    if(g>0) items.push({key:pt.id+'_g',name:'🌟 거대한 '+pt.name,hex:pt.hex,count:g,price:pt.coin*2,giant:true});
-  });
+  for(const [key,cnt] of Object.entries(potatoInv)){
+    if(!cnt) continue;
+    const {type,giant,effect,mult,pt}=parsePotatoKey(key); if(!pt) continue;
+    const price=Math.round(pt.coin*(giant?2:1)*mult);
+    const effCol=effect?('#'+((EFFECT_COLOR[effect]||0xffffff).toString(16).padStart(6,'0'))):'';
+    const name=(effect?`<span style="color:${effCol}">[${effect}]</span> `:'')+( giant?'🌟 거대한 ':'')+pt.name;
+    items.push({key,name,hex:pt.hex,count:cnt,price,giant,effect,effCol});
+  }
+  items.sort((a,b)=>b.price-a.price);
   const total=items.reduce((s,it)=>s+it.count*it.price,0);
   showModal('🏪 판매소', items.length===0
     ? '<div style="color:#888;text-align:center;padding:20px">판매할 감자가 없습니다<br><small>농장에서 감자를 수확하세요</small></div>'
     : `<div style="font-size:12px;color:#f5d060;margin-bottom:8px">수확한 감자를 여기서 팔 수 있습니다</div>
     ${items.map(it=>`
       <div class="pc" onclick="sellPotato('${it.key}')">
-        <div class="pcdot" style="background:${it.hex};${it.giant?'box-shadow:0 0 7px gold':''}"></div>
+        <div class="pcdot" style="background:${it.hex};${it.giant?'box-shadow:0 0 7px gold':''}${it.effect?';outline:2px solid '+(it.effCol||'#adf'):''}"></div>
         <div><div class="pcn">${it.name} ×${it.count}</div>
         <div class="pci">개당 ${it.price}코인 · 합계 ${it.count*it.price}코인</div></div>
       </div>`).join('')}
@@ -1152,27 +1312,26 @@ function openMarket(){
 }
 window.sellPotato=(key)=>{
   const cnt=potatoInv[key]||0; if(!cnt){ toast('없습니다'); return; }
-  const baseId=key.endsWith('_g')?key.slice(0,-2):key;
-  const pt=PTM[baseId];
-  const price=key.endsWith('_g')?pt.coin*2:pt.coin;
+  const {type,giant,effect,mult,pt}=parsePotatoKey(key); if(!pt) return;
+  const price=Math.round(pt.coin*(giant?2:1)*mult);
   potatoInv[key]--; if(potatoInv[key]<=0) delete potatoInv[key];
   coins+=price; saveLS(); updateHUD();
-  toast(`🪙 ${key.endsWith('_g')?'거대한 ':''}${pt.name} 판매! +${price}코인`);
-  advanceTutorial('sold');
-  openMarket();
+  const effTag=effect?` [${effect}]`:'';
+  toast(`🪙 ${giant?'거대한 ':''}${pt.name}${effTag} 판매! +${price}코인`);
+  advanceTutorial('sold'); openMarket();
 };
 window.sellAll=()=>{
   let total=0;
-  PT.forEach(pt=>{
-    const n=potatoInv[pt.id]||0; const g=potatoInv[pt.id+'_g']||0;
-    total+=n*pt.coin+g*pt.coin*2;
-    delete potatoInv[pt.id]; delete potatoInv[pt.id+'_g'];
-  });
+  for(const [key,cnt] of Object.entries(potatoInv)){
+    if(!cnt) continue;
+    const {type,giant,effect,mult,pt}=parsePotatoKey(key); if(!pt) continue;
+    total+=cnt*Math.round(pt.coin*(giant?2:1)*mult);
+  }
   if(!total){ toast('팔 감자가 없습니다'); closeModal(); return; }
+  Object.keys(potatoInv).forEach(k=>delete potatoInv[k]);
   coins+=total; saveLS(); updateHUD();
   toast(`🪙 전부 판매! +${total}코인`);
-  advanceTutorial('sold');
-  closeModal();
+  advanceTutorial('sold'); closeModal();
 };
 
 // ── Tutorial ──
@@ -1321,12 +1480,19 @@ function movePlayer(){
   if(keys['s']||keys['arrowdown'])  { vx-=_fwd.x; vz-=_fwd.z; }
   if(keys['a']||keys['arrowleft'])  { vx-=_rgt.x; vz-=_rgt.z; }
   if(keys['d']||keys['arrowright']) { vx+=_rgt.x; vz+=_rgt.z; }
+  const isSnow=currentWeather==='snow';
   if(vx||vz){
     const len=Math.hypot(vx,vz)||1;
     vx=vx/len*spd; vz=vz/len*spd;
+    if(isSnow){ pvx=pvx*.65+vx*.35; pvz=pvz*.65+vz*.35; } else { pvx=vx; pvz=vz; }
+  } else {
+    if(isSnow){ pvx*=.90; pvz*=.90; if(Math.abs(pvx)<.001) pvx=0; if(Math.abs(pvz)<.001) pvz=0; }
+    else { pvx=0; pvz=0; }
+  }
+  if(pvx||pvz){
     const cx=playerMesh.position.x, cz=playerMesh.position.z;
-    const nx=Math.max(-55,Math.min(55,cx+vx));
-    const nz=Math.max(-55,Math.min(55,cz+vz));
+    const nx=Math.max(-55,Math.min(55,cx+pvx));
+    const nz=Math.max(-55,Math.min(55,cz+pvz));
     if(!collideBldg(nx,nz)){
       playerMesh.position.x=nx; playerMesh.position.z=nz;
     } else if(!collideBldg(nx,cz)){
@@ -1334,7 +1500,7 @@ function movePlayer(){
     } else if(!collideBldg(cx,nz)){
       playerMesh.position.z=nz;
     }
-    const tA=Math.atan2(vx,vz);
+    const tA=Math.atan2(pvx,pvz);
     let da=tA-playerMesh.rotation.y;
     while(da>Math.PI) da-=Math.PI*2; while(da<-Math.PI) da+=Math.PI*2;
     playerMesh.rotation.y+=da*.2;
@@ -1372,6 +1538,7 @@ function animate(){
       });
     }
   }
+  tickWeatherVfx();
   if(tutArrow&&tutArrow.visible){
     tutArrow.position.y=4+Math.sin(Date.now()*.003)*.35;
     tutArrow.rotation.y+=.025;
@@ -1388,7 +1555,7 @@ async function init(){
   }
   pName=name; myId=name;
   document.getElementById('hud-name').textContent=name;
-  loadLS(); loadTut(); loadShopStock();
+  loadLS(); loadTut(); loadShopStock(); loadWeather();
   if(Object.keys(seedInv).length===0){ seedInv.common=3; saveLS(); }
   updateHUD(); updateTutUI();
   initPM();
