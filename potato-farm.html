@@ -681,7 +681,9 @@ function rebuildPlant(fid,i){
   active.forEach((d,ai)=>{
     const pt=PTM[d.type]; if(!pt) return;
     const prog=growProgress(d); if(prog<=0) return;
-    const sc=scaleMul*(.2+prog*.8);
+    const typeMul=pt.id==='king'?1.45:1.0;
+    const giantMul=d.giant?1.6:1.0;
+    const sc=scaleMul*typeMul*giantMul*(.2+prog*.8);
     const [ox,oz]=offsets[ai]||[0,0];
     const sub=new THREE.Group(); sub.position.set(ox,0,oz);
     // Body: Lambert (fast), shared material where possible
@@ -940,7 +942,7 @@ window.doHarvest=(fid,idx,pi)=>{
   const fd=farmData[fid]; if(!fd) return;
   const p=fd.plots?.[idx]?.[pi];
   if(!p||p.harvested||growProgress(p)<1){ toast('수확할 수 없습니다'); return; }
-  const isGiant=Math.random()<0.1;
+  const isGiant=!!p.giant;
   const key=isGiant?p.type+'_g':p.type;
   potatoInv[key]=(potatoInv[key]||0)+1;
   p.harvested=true;
@@ -973,7 +975,7 @@ window.doPlant=(fid,idx,tid)=>{
   if(active>=MAX_PER_PLOT){ toast(`한 칸에 최대 ${MAX_PER_PLOT}개까지 심을 수 있습니다`); return; }
   seedInv[tid]--; if(seedInv[tid]<=0) delete seedInv[tid];
   saveLS(); updateHUD();
-  const newPlant={type:tid,plantedAt:Date.now(),waterBoost:0,harvested:false};
+  const newPlant={type:tid,plantedAt:Date.now(),waterBoost:0,harvested:false,giant:Math.random()<0.1};
   const si=fd.plots[idx].findIndex(p=>!p?.type||p?.harvested);
   if(si>=0) fd.plots[idx][si]=newPlant;
   else fd.plots[idx].push(newPlant);
