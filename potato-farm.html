@@ -681,8 +681,8 @@ function rebuildPlant(fid,i){
   active.forEach((d,ai)=>{
     const pt=PTM[d.type]; if(!pt) return;
     const prog=growProgress(d); if(prog<=0) return;
-    const typeMul=pt.id==='king'?1.45:1.0;
-    const giantMul=d.giant?1.6:1.0;
+    const typeMul=pt.id==='king'?1.8:1.0;
+    const giantMul=d.giant?2.0:1.0;
     const sc=scaleMul*typeMul*giantMul*(.2+prog*.8);
     const [ox,oz]=offsets[ai]||[0,0];
     const sub=new THREE.Group(); sub.position.set(ox,0,oz);
