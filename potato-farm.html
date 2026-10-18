@@ -142,16 +142,19 @@ const COLL = 'potato_farms';
 
 // ── Potato types ──
 const PT = [
-  {id:'common',  name:'일반 감자',    coin:5,    sec:10,    hex:'#c8a050', seed:0  },
-  {id:'unusual', name:'특이한 감자',  coin:20,   sec:40,    hex:'#50c870', seed:8  },
-  {id:'good',    name:'좋은 감자',    coin:50,   sec:100,   hex:'#5088ff', seed:20 },
-  {id:'great',   name:'훌륭한 감자',  coin:100,  sec:200,   hex:'#b060ff', seed:40 },
-  {id:'king',    name:'대왕 감자',    coin:200,  sec:400,   hex:'#ff5555', seed:80 },
-  {id:'rainbow', name:'레인보우 감자',coin:500,  sec:1000,  hex:'#ffffff', seed:150},
-  {id:'golden',  name:'황금 감자',    coin:1000, sec:2000,  hex:'#ffd700', seed:300},
+  {id:'common',  name:'일반 감자',    coin:4,    sec:10,    hex:'#c8a050', seed:0  },
+  {id:'unusual', name:'특이한 감자',  coin:15,   sec:40,    hex:'#50c870', seed:8  },
+  {id:'good',    name:'좋은 감자',    coin:38,   sec:100,   hex:'#5088ff', seed:20 },
+  {id:'great',   name:'훌륭한 감자',  coin:75,   sec:200,   hex:'#b060ff', seed:40 },
+  {id:'king',    name:'대왕 감자',    coin:150,  sec:400,   hex:'#ff5555', seed:80 },
+  {id:'rainbow', name:'레인보우 감자',coin:375,  sec:1000,  hex:'#ffffff', seed:150},
+  {id:'golden',  name:'황금 감자',    coin:750,  sec:2000,  hex:'#ffd700', seed:300},
 ];
 const PTM = Object.fromEntries(PT.map(p=>[p.id,p]));
 const WATER_SAVE = 0.25;
+// Stock prob for premium seeds (re-rolled each shop open)
+const STOCK_PROB={king:1/3, rainbow:0.25, golden:0.15};
+let shopStock={};
 
 // ── LocalStorage ──
 const LS = {nm:'pf2_name', co:'pf2_coins', wc:'pf2_wc', si:'pf2_seeds', pi:'pf2_potatoes', dl:'pf2_daily'};
@@ -615,12 +618,12 @@ function rebuildPlant(fid,i){
     const body=new THREE.Mesh(new THREE.SphereGeometry(.3*sc,8,6),bm);
     body.position.y=.32*sc; sub.add(body);
     if(prog>.28){
-      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.05*sc,.07*sc,.4*sc,5),SM.stem);
-      stem.position.y=.68*sc; sub.add(stem);
+      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.035*sc,.05*sc,.28*sc,5),SM.stem);
+      stem.position.y=.62*sc; sub.add(stem);
       for(let j=0;j<4;j++){
         const a=(j/4)*Math.PI*2;
-        const leaf=new THREE.Mesh(new THREE.ConeGeometry(.17*sc,.36*sc,4),SM.leaf);
-        leaf.position.set(Math.cos(a)*.22*sc,.84*sc,Math.sin(a)*.22*sc);
+        const leaf=new THREE.Mesh(new THREE.ConeGeometry(.12*sc,.25*sc,4),SM.leaf);
+        leaf.position.set(Math.cos(a)*.15*sc,.76*sc,Math.sin(a)*.15*sc);
         leaf.rotation.z=.65; leaf.rotation.y=a; sub.add(leaf);
       }
     }
@@ -876,14 +879,28 @@ window.doPlant=(fid,idx,tid)=>{
   advanceTutorial('planted');
 };
 
+function rollShopStock(){
+  shopStock={};
+  Object.entries(STOCK_PROB).forEach(([id,prob])=>{ shopStock[id]=Math.random()<prob; });
+}
 function openShop(){
+  rollShopStock();
   const seedSection=PT.map(pt=>{
+    const prob=STOCK_PROB[pt.id];
+    const outOfStock=prob!==undefined&&!shopStock[pt.id];
+    const stockTag=prob!==undefined
+      ?(outOfStock
+        ?`<span style="color:#f55;margin-left:5px">재고 없음</span>`
+        :`<span style="color:#7ddc44;margin-left:5px">재고 있음</span>`)
+      :'';
     const dailyInfo=pt.id==='common'?` · 오늘 ${getDailyBuy('common')}/6개`:'';
+    const probInfo=prob!==undefined?` · 입고 확률 ${Math.round(prob*100)}%`:'';
+    const clickAttr=outOfStock?'':'onclick="buySeed(\''+pt.id+'\')"';
     return `
-    <div class="pc" onclick="buySeed('${pt.id}')">
+    <div class="pc" ${clickAttr} style="${outOfStock?'opacity:.45;cursor:not-allowed':''}">
       <div class="pcdot" style="background:${pt.hex}"></div>
-      <div><div class="pcn">${pt.name} <span style="color:#7ddc44">보유 ${seedInv[pt.id]||0}개</span></div>
-      <div class="pci">${pt.seed?`씨앗 ${pt.seed}코인`:'무료'}${dailyInfo} · 수확 · ${fmtS(pt.sec)} 성장</div></div>
+      <div><div class="pcn">${pt.name} <span style="color:#7ddc44">보유 ${seedInv[pt.id]||0}개</span>${stockTag}</div>
+      <div class="pci">${pt.seed?`씨앗 ${pt.seed}코인`:'무료'}${dailyInfo}${probInfo} · ${fmtS(pt.sec)} 성장</div></div>
     </div>`;}).join('');
   showModal('🛒 상점',`
     <div style="font-size:12px;color:#f5d060;margin-bottom:8px;font-weight:bold;letter-spacing:1px">🌱 씨앗</div>
@@ -908,6 +925,7 @@ function openShop(){
 }
 window.buySeed=(tid)=>{
   const pt=PTM[tid];
+  if(STOCK_PROB[tid]!==undefined&&!shopStock[tid]){ toast('재고가 없습니다'); return; }
   if(tid==='common'){
     const bought=getDailyBuy('common');
     if(bought>=6){ toast('일반 감자 씨앗은 하루 최대 6개까지 구매 가능합니다'); return; }
