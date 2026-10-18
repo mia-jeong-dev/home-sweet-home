@@ -246,6 +246,20 @@ const MAX_PER_PLOT=4;
 const plotMeshes={}, plantGrps={}, farmGrps={};
 let playerMesh=null;
 
+// ── Cached plot world coords (x,z only — no Vector3 allocation per frame) ──
+const plotWC={}; // plotWC[fid][i] = {x,z}
+function buildPlotWC(){
+  [myId,...OTHER_SLOTS].forEach(fid=>{
+    plotWC[fid]=[];
+    const fp=farmGrps[fid]?.position||{x:0,z:0};
+    for(let i=0;i<6;i++){
+      const lx=(i%COLS-(COLS-1)/2)*(PW+PG);
+      const lz=(Math.floor(i/COLS)-(ROWS-1)/2)*(PW+PG);
+      plotWC[fid][i]={x:fp.x+lx, z:fp.z+lz};
+    }
+  });
+}
+
 // ── Helpers ──
 function plotLP(i){
   return new THREE.Vector3(
@@ -254,13 +268,33 @@ function plotLP(i){
   );
 }
 function plotWP(fid,i){
+  if(plotWC[fid]?.[i]) return plotWC[fid][i];
   const fp=farmGrps[fid]?.position;
   const lp=plotLP(i);
-  return new THREE.Vector3(
-    (fp?fp.x:0)+lp.x, 0,
-    (fp?fp.z:0)+lp.z
-  );
+  return {x:(fp?fp.x:0)+lp.x, z:(fp?fp.z:0)+lp.z};
 }
+
+// ── Pre-created shared plant materials (never disposed) ──
+const SM={
+  stem: Object.assign(new THREE.MeshLambertMaterial({color:0x2a8010}),{_s:1}),
+  leaf: Object.assign(new THREE.MeshLambertMaterial({color:0x1f9010,side:THREE.DoubleSide}),{_s:1}),
+  ring: Object.assign(new THREE.MeshBasicMaterial({color:0xffee22,transparent:true,opacity:.7}),{_s:1}),
+};
+const PM={}; // body material per type × ready state
+function initPM(){
+  PT.forEach(pt=>{
+    const c=parseInt(pt.hex.replace('#',''),16);
+    PM[pt.id]    =Object.assign(new THREE.MeshLambertMaterial({color:c}),{_s:1});
+    PM[pt.id+'r']=Object.assign(new THREE.MeshLambertMaterial({color:c,emissive:c,emissiveIntensity:.35}),{_s:1});
+  });
+}
+
+// ── Cached DOM refs ──
+const _moEl=()=>document.getElementById('mo');
+const _hintEl=document.createElement('div'); // filled after DOM ready
+let _hintElRef=null, _hintTxtRef=null;
+function getHintEl(){ return _hintElRef||(_hintElRef=document.getElementById('hint')); }
+function getHintTxt(){ return _hintTxtRef||(_hintTxtRef=document.getElementById('hint-text')); }
 
 // ── Build farm ──
 function buildFarm(fid,center,isMe){
@@ -547,8 +581,10 @@ function clearPG(pg){
     const c=pg.children[0];
     c.traverse(obj=>{
       obj.geometry?.dispose();
-      if(Array.isArray(obj.material)) obj.material.forEach(m=>m.dispose());
-      else obj.material?.dispose();
+      const m=obj.material;
+      if(!m||m._s) return; // skip shared materials
+      if(Array.isArray(m)) m.forEach(x=>{ if(!x._s) x.dispose(); });
+      else m.dispose();
     });
     pg.remove(c);
   }
@@ -561,36 +597,35 @@ function rebuildPlant(fid,i){
   const active=allP.filter(p=>p?.type&&!p?.harvested);
   if(!active.length) return;
   const offsets=plantOffsets(active.length);
-  const sm=active.length>2?0.72:active.length>1?0.82:1.0;
+  const scaleMul=active.length>2?0.72:active.length>1?0.82:1.0;
   active.forEach((d,ai)=>{
     const pt=PTM[d.type]; if(!pt) return;
     const prog=growProgress(d); if(prog<=0) return;
-    const sc=sm*(.2+prog*.8);
+    const sc=scaleMul*(.2+prog*.8);
     const [ox,oz]=offsets[ai]||[0,0];
     const sub=new THREE.Group(); sub.position.set(ox,0,oz);
-    const col=pt.id==='rainbow'
-      ?new THREE.Color().setHSL((Date.now()*.0004)%1,1,.55).getHex()
-      :parseInt(pt.hex.replace('#',''),16);
-    const bm=new THREE.MeshStandardMaterial({color:col,roughness:.6,
-      metalness:pt.id==='golden'?.55:0,
-      emissive:prog>=1?col:0,emissiveIntensity:prog>=1?.22:0});
-    const body=new THREE.Mesh(new THREE.SphereGeometry(.3*sc,10,8),bm);
-    body.position.y=.32*sc; body.castShadow=true; sub.add(body);
+    // Body: Lambert (fast), shared material where possible
+    let bm;
+    if(pt.id==='rainbow'){
+      const col=new THREE.Color().setHSL((Date.now()*.0004)%1,1,.55).getHex();
+      bm=new THREE.MeshLambertMaterial({color:col,emissive:prog>=1?col:0,emissiveIntensity:prog>=1?.35:0});
+    } else {
+      bm=prog>=1?PM[pt.id+'r']:PM[pt.id];
+    }
+    const body=new THREE.Mesh(new THREE.SphereGeometry(.3*sc,8,6),bm);
+    body.position.y=.32*sc; sub.add(body);
     if(prog>.28){
-      const stM=new THREE.MeshLambertMaterial({color:0x2a8010});
-      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.05*sc,.07*sc,.4*sc,6),stM);
+      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.05*sc,.07*sc,.4*sc,5),SM.stem);
       stem.position.y=.68*sc; sub.add(stem);
       for(let j=0;j<4;j++){
         const a=(j/4)*Math.PI*2;
-        const lm=new THREE.MeshLambertMaterial({color:0x1f9010,side:THREE.DoubleSide});
-        const leaf=new THREE.Mesh(new THREE.ConeGeometry(.17*sc,.36*sc,5),lm);
+        const leaf=new THREE.Mesh(new THREE.ConeGeometry(.17*sc,.36*sc,4),SM.leaf);
         leaf.position.set(Math.cos(a)*.22*sc,.84*sc,Math.sin(a)*.22*sc);
         leaf.rotation.z=.65; leaf.rotation.y=a; sub.add(leaf);
       }
     }
     if(prog>=1){
-      const rm=new THREE.MeshBasicMaterial({color:0xffee22,transparent:true,opacity:.7});
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(.42*sm,.06,8,24),rm);
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(.42*scaleMul,.06,6,16),SM.ring);
       ring.rotation.x=Math.PI/2; ring.position.y=.04; sub.add(ring);
     }
     pg.add(sub);
@@ -687,17 +722,19 @@ function toast(msg){
 }
 
 // ── Interaction ──
+const _allFarms=[]; // filled after init
 function checkNearby(){
   if(!playerMesh) return;
   const px=playerMesh.position.x, pz=playerMesh.position.z;
   nearTarget=null;
 
   const PR2=PLOT_INTERACT_R*PLOT_INTERACT_R;
-  const allFarms=[myId,...OTHER_SLOTS];
-  outer:for(const fid of allFarms){
+  outer:for(const fid of _allFarms){
+    const wcs=plotWC[fid];
+    if(!wcs) continue;
     for(let i=0;i<6;i++){
-      const wp=plotWP(fid,i);
-      const dx=px-wp.x, dz=pz-wp.z;
+      const w=wcs[i]; if(!w) continue;
+      const dx=px-w.x, dz=pz-w.z;
       if(dx*dx+dz*dz<PR2){ nearTarget={type:'plot',fid,idx:i}; break outer; }
     }
   }
@@ -710,8 +747,8 @@ function checkNearby(){
     if(dx*dx+dz*dz<MARKET_INTERACT_R*MARKET_INTERACT_R) nearTarget={type:'market'};
   }
 
-  const hintEl=document.getElementById('hint');
-  const hintTxt=document.getElementById('hint-text');
+  const hintEl=getHintEl();
+  const hintTxt=getHintTxt();
   if(!nearTarget){ hintEl.style.display='none'; return; }
 
   hintEl.style.display='block';
@@ -740,7 +777,7 @@ function checkNearby(){
 }
 
 function doInteract(){
-  if(document.getElementById('mo').classList.contains('open')){ closeModal(); return; }
+  if(_moEl().classList.contains('open')){ closeModal(); return; }
   if(!nearTarget) return;
   if(nearTarget.type==='shop'){ openShop(); return; }
   if(nearTarget.type==='market'){ openMarket(); return; }
@@ -1044,13 +1081,16 @@ window.addEventListener('mousemove',e=>{
 window.addEventListener('mouseup',()=>isDragging=false);
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
+const _camTgt=new THREE.Vector3();
 function updateCamera(){
   if(!playerMesh) return;
   const px=playerMesh.position.x, py=playerMesh.position.y, pz=playerMesh.position.z;
-  const cx=px+Math.sin(cameraYaw)*Math.cos(cameraPitch)*CAM_DIST;
-  const cy=py+Math.sin(cameraPitch)*CAM_DIST+1;
-  const cz=pz+Math.cos(cameraYaw)*Math.cos(cameraPitch)*CAM_DIST;
-  camera.position.lerp(new THREE.Vector3(cx,cy,cz),0.12);
+  _camTgt.set(
+    px+Math.sin(cameraYaw)*Math.cos(cameraPitch)*CAM_DIST,
+    py+Math.sin(cameraPitch)*CAM_DIST+1,
+    pz+Math.cos(cameraYaw)*Math.cos(cameraPitch)*CAM_DIST
+  );
+  camera.position.lerp(_camTgt,0.12);
   camera.lookAt(px,py+0.5,pz);
 }
 
@@ -1058,7 +1098,7 @@ function updateCamera(){
 const _fwd=new THREE.Vector3(), _rgt=new THREE.Vector3();
 function movePlayer(){
   if(!playerMesh) return;
-  if(document.getElementById('mo').classList.contains('open')) return;
+  if(_moEl().classList.contains('open')) return;
   const spd=.1;
   _fwd.set(-Math.sin(cameraYaw),0,-Math.cos(cameraYaw));
   _rgt.set( Math.cos(cameraYaw),0,-Math.sin(cameraYaw));
@@ -1090,25 +1130,25 @@ let frame=0;
 function animate(){
   requestAnimationFrame(animate); frame++;
   movePlayer();
-  if(frame%2===0) checkNearby();
+  if(frame%6===0) checkNearby();
   updateCamera();
-  if(frame%180===0) Object.keys(farmData).forEach(fid=>{
-    const plots=farmData[fid]?.plots||[];
-    const hasPlants=plots.some(arr=>(Array.isArray(arr)?arr:[arr]).some(p=>p?.type&&!p?.harvested));
-    if(hasPlants) rebuildFarmPlants(fid);
-  });
-  if(frame%8===0){
+  if(frame%240===0) Object.keys(farmData).forEach(rebuildFarmPlants);
+  if(frame%24===0){
     for(const fid of Object.keys(plantGrps)){
       (farmData[fid]?.plots||[]).forEach((raw,i)=>{
-        const arr=Array.isArray(raw)?raw:(raw?.type?[raw]:[]);
-        const active=arr.filter(p=>p?.type&&!p?.harvested);
-        active.forEach((p,ai)=>{
-          if(p.type!=='rainbow') return;
+        const arr=Array.isArray(raw)?raw:[];
+        for(let ai=0;ai<arr.length;ai++){
+          const p=arr[ai];
+          if(!p||p.type!=='rainbow'||p.harvested) continue;
           const sub=plantGrps[fid]?.[i]?.children[ai];
-          sub?.children.forEach(c=>{
-            if(c.material?.color) c.material.color.setHSL((Date.now()*.0004+i*.2)%1,1,.55);
-          });
-        });
+          if(!sub) continue;
+          const hsl=(Date.now()*.0004+i*.2)%1;
+          for(let ci=0;ci<sub.children.length;ci++){
+            const c=sub.children[ci];
+            if(c.material&&!c.material._s&&c.material.color)
+              c.material.color.setHSL(hsl,1,.55);
+          }
+        }
       });
     }
   }
@@ -1127,6 +1167,7 @@ async function init(){
   loadLS(); loadTut();
   if(Object.keys(seedInv).length===0){ seedInv.common=3; saveLS(); }
   updateHUD(); updateTutUI();
+  initPM();
 
   buildPlayerModel();
   buildFarm(myId,FARM_POS[0],true);
@@ -1138,6 +1179,8 @@ async function init(){
   buildShop();
   buildMarket();
   addDeco();
+  _allFarms.push(myId,...OTHER_SLOTS);
+  buildPlotWC();
   animate();
 
   try{
