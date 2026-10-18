@@ -43,6 +43,22 @@ canvas { display:block; }
   backdrop-filter:blur(4px);
 }
 #inv-btn:hover { background:rgba(40,24,0,.9); }
+#tut {
+  position:fixed; top:58px; left:50%; transform:translateX(-50%);
+  background:rgba(10,8,0,.93); border:2px solid #f5d060;
+  border-radius:14px; padding:14px 22px 10px;
+  z-index:30; max-width:330px; width:88%;
+  text-align:center; backdrop-filter:blur(4px);
+  box-shadow:0 4px 24px rgba(0,0,0,.6);
+}
+#tut-step { font-size:11px; color:#f5d060; margin-bottom:4px; letter-spacing:1px; }
+#tut-msg { color:#fff; font-size:14px; line-height:1.65; white-space:pre-line; display:block; }
+#tut-skip {
+  margin-top:9px; background:none; border:1px solid #444;
+  color:#666; font-size:11px; border-radius:6px;
+  padding:3px 12px; cursor:pointer;
+}
+#tut-skip:hover { color:#999; border-color:#666; }
 
 #mo {
   position:fixed; inset:0; background:rgba(0,0,0,.75);
@@ -100,6 +116,11 @@ canvas { display:block; }
   </div>
 </div>
 <button id="inv-btn" onclick="openInventory()">🎒</button>
+<div id="tut" style="display:none">
+  <div id="tut-step"></div>
+  <span id="tut-msg"></span><br>
+  <button id="tut-skip" onclick="skipTutorial()">건너뛰기</button>
+</div>
 <div id="toast"></div>
 
 <script type="module">
@@ -700,7 +721,7 @@ function checkNearby(){
   const ready=active.filter(p=>growProgress(p)>=1);
   const hasSeed=Object.values(seedInv).some(v=>v>0);
   if(ready.length>0){
-    hintTxt.textContent=mine?`🥔 수확! (${ready.length}개)`:'수확 준비 완료';
+    hintTxt.textContent=mine?`🥔 수확 선택 (${ready.length}개 준비)`:'수확 준비 완료';
   } else if(active.length<MAX_PER_PLOT){
     hintTxt.textContent=mine?(hasSeed?`🌱 심기 (${active.length}/${MAX_PER_PLOT})`:'상점에서 씨앗 구매'):'관람 중';
   } else if(wc>0&&mine&&active.some(p=>(p.waterBoost||0)<.9)){
@@ -730,18 +751,7 @@ function doInteract(){
 
   if(ready.length>0){
     if(!mine){ toast('수확은 내 농장에서만'); return; }
-    let giantCnt=0;
-    ready.forEach(p=>{
-      const isGiant=Math.random()<0.1;
-      const key=isGiant?p.type+'_g':p.type;
-      potatoInv[key]=(potatoInv[key]||0)+1;
-      p.harvested=true;
-      if(isGiant) giantCnt++;
-    });
-    saveLS(); updateHUD(); saveF(fid,fd); rebuildPlant(fid,idx);
-    if(giantCnt>0) toast(`🌟 거대한 감자 ${giantCnt}개 포함! ${ready.length}개 수확!`);
-    else toast(`🥔 ${ready.length}개 수확! 인벤토리에 저장됨`);
-    return;
+    openHarvestModal(fid,idx); return;
   }
   if(active.length<MAX_PER_PLOT){
     if(!mine){ toast('관람만 가능합니다'); return; }
@@ -759,6 +769,37 @@ function doInteract(){
     toast(minR>0?`⏳ ${fmtS(minR)} 남음 · 상점에서 물뿌리개 구매`:`⏳ 성장 중`);
   }
 }
+
+function openHarvestModal(fid,idx){
+  const fd=farmData[fid];
+  if(!fd) return;
+  const raw=fd.plots?.[idx];
+  const arr=Array.isArray(raw)?raw:[];
+  const readyItems=arr.map((p,pi)=>({p,pi})).filter(({p})=>p?.type&&!p?.harvested&&growProgress(p)>=1);
+  showModal('🥔 수확할 감자 선택',
+    readyItems.map(({p,pi})=>{
+      const pt=PTM[p.type];
+      return `<div class="pc" onclick="doHarvest('${fid}',${idx},${pi})">
+        <div class="pcdot" style="background:${pt.hex}"></div>
+        <div><div class="pcn">${pt.name}</div>
+        <div class="pci">수확 → 인벤토리 저장 · 10% 확률로 거대한 감자 (2배)</div></div>
+      </div>`;
+    }).join('')
+  );
+}
+window.doHarvest=(fid,idx,pi)=>{
+  const fd=farmData[fid]; if(!fd) return;
+  const p=fd.plots?.[idx]?.[pi];
+  if(!p||p.harvested||growProgress(p)<1){ toast('수확할 수 없습니다'); return; }
+  const isGiant=Math.random()<0.1;
+  const key=isGiant?p.type+'_g':p.type;
+  potatoInv[key]=(potatoInv[key]||0)+1;
+  p.harvested=true;
+  saveLS(); updateHUD(); saveF(fid,fd); rebuildPlant(fid,idx); closeModal();
+  if(isGiant) toast(`🌟 거대한 ${PTM[p.type].name}! 인벤토리에 저장됨`);
+  else toast(`🥔 ${PTM[p.type].name} 수확! 인벤토리에 저장됨`);
+  advanceTutorial('harvested');
+};
 
 function openSeedModal(fid,idx){
   const raw=farmData[fid]?.plots?.[idx];
@@ -790,6 +831,7 @@ window.doPlant=(fid,idx,tid)=>{
   saveF(fid,fd); closeModal();
   toast(`🌱 ${PTM[tid].name} 심기 완료! (${active+1}/${MAX_PER_PLOT})`);
   rebuildPlant(fid,idx);
+  advanceTutorial('planted');
 };
 
 function openShop(){
@@ -832,6 +874,7 @@ window.buySeed=(tid)=>{
   if(coins<pt.seed){ toast(`씨앗 비용 ${pt.seed}코인 부족`); return; }
   coins-=pt.seed; seedInv[tid]=(seedInv[tid]||0)+1; saveLS(); updateHUD();
   toast(`🌱 ${pt.name} 씨앗 구입!`);
+  advanceTutorial('bought_seed');
   openShop();
 };
 window.buyWC=()=>{
@@ -893,6 +936,7 @@ window.sellPotato=(key)=>{
   potatoInv[key]--; if(potatoInv[key]<=0) delete potatoInv[key];
   coins+=price; saveLS(); updateHUD();
   toast(`🪙 ${key.endsWith('_g')?'거대한 ':''}${pt.name} 판매! +${price}코인`);
+  advanceTutorial('sold');
   openMarket();
 };
 window.sellAll=()=>{
@@ -904,8 +948,35 @@ window.sellAll=()=>{
   });
   if(!total){ toast('팔 감자가 없습니다'); closeModal(); return; }
   coins+=total; saveLS(); updateHUD();
-  toast(`🪙 전부 판매! +${total}코인`); closeModal();
+  toast(`🪙 전부 판매! +${total}코인`);
+  advanceTutorial('sold');
+  closeModal();
 };
+
+// ── Tutorial ──
+const TUT=[
+  '🌱 상점 근처에서 Space를 눌러\n씨앗을 사고 농장 칸에 심어보세요!',
+  '🌿 잘했어요! 감자가 자라고 있어요.\n다 자라면 Space로 수확하세요 🥔',
+  '🏪 수확했어요!\n판매소에 가서 감자를 팔아보세요!',
+  '🛒 멋져요! 상점에서\n새로운 씨앗을 구매해보세요!',
+];
+let tutStep=0;
+function loadTut(){ tutStep=+(localStorage.getItem('pf2_tut')||0); }
+function saveTut(){ localStorage.setItem('pf2_tut',tutStep); }
+function updateTutUI(){
+  const el=document.getElementById('tut');
+  if(tutStep>=TUT.length){ el.style.display='none'; return; }
+  el.style.display='block';
+  document.getElementById('tut-step').textContent=`STEP ${tutStep+1} / ${TUT.length}`;
+  document.getElementById('tut-msg').textContent=TUT[tutStep];
+}
+function advanceTutorial(ev){
+  if(tutStep>=TUT.length) return;
+  const map={planted:0, harvested:1, sold:2, bought_seed:3};
+  if(map[ev]===tutStep){ tutStep++; saveTut(); updateTutUI();
+    if(tutStep>=TUT.length) toast('🎉 튜토리얼 완료! 이제 감자 농부!'); }
+}
+window.skipTutorial=()=>{ tutStep=TUT.length; saveTut(); updateTutUI(); };
 
 function openInventory(){
   const seedRows=PT.filter(pt=>(seedInv[pt.id]||0)>0).map(pt=>`
@@ -1044,9 +1115,9 @@ async function init(){
   }
   pName=name; myId=name;
   document.getElementById('hud-name').textContent=name;
-  loadLS();
+  loadLS(); loadTut();
   if(Object.keys(seedInv).length===0){ seedInv.common=3; saveLS(); }
-  updateHUD();
+  updateHUD(); updateTutUI();
 
   buildPlayerModel();
   buildFarm(myId,FARM_POS[0],true);
