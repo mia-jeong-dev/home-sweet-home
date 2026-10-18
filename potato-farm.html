@@ -930,10 +930,12 @@ function openHarvestModal(fid,idx){
   showModal('🥔 수확할 감자 선택',
     readyItems.map(({p,pi})=>{
       const pt=PTM[p.type];
+      const giantTag=p.giant?`<span style="color:#ffd700;margin-left:6px">🌟 거대한 감자!</span>`:'';
+      const giantInfo=p.giant?'거대한 감자 · 판매 시 2배':'일반 감자';
       return `<div class="pc" onclick="doHarvest('${fid}',${idx},${pi})">
-        <div class="pcdot" style="background:${pt.hex}"></div>
-        <div><div class="pcn">${pt.name}</div>
-        <div class="pci">수확 → 인벤토리 저장 · 10% 확률로 거대한 감자 (2배)</div></div>
+        <div class="pcdot" style="background:${pt.hex};${p.giant?'box-shadow:0 0 8px #ffd700':''}"></div>
+        <div><div class="pcn">${pt.name}${giantTag}</div>
+        <div class="pci">${giantInfo}</div></div>
       </div>`;
     }).join('')
   );
